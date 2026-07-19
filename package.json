@@ -1,0 +1,24 @@
+{
+  "name": "margo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Margo — the done-for-you AI workforce. Learns the business, drafts the team, proves it in a sandbox, keeps the owner in control.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^15.4.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zustand": "^5.0.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.8.0"
+  }
+}

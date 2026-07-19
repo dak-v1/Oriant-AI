@@ -1,0 +1,1306 @@
+
+PRODUCT CONCEPT, USER JOURNEY, AGENT ARCHITECTURE
+AND IMPLEMENTATION BLUEPRINT
+How Tandemry learns a small business, designs an AI workforce, builds each agent, validates the workflow, and keeps humans in control.
+Working product name
+Tandemry
+Document version
+1.0
+Prepared
+18 July 2026
+Status
+Product concept and system blueprint
+This document explains the complete product idea and the role of every component. It separates the long-term product architecture from a realistic mock MVP.
+
+Document purpose and scope
+This blueprint turns the current Tandemry concept into a coherent product architecture. It describes what the user experiences, what each agent or service does, what information moves between stages, where human approval is required, how sponsor technologies fit, and what should be demonstrated in a mock MVP.
+CORE PRODUCT PROMISE
+A small-business owner can spend a short guided session explaining how the company works. Tandemry converts that knowledge into an approved company report, proposes a practical AI workforce, generates the required agent packages, validates them safely, and presents the resulting workforce in an operations workspace.
+
+How to read this document
+Sections 1-5 explain the product, guiding principles and complete journey.
+Sections 6-13 explain Phase 1 and Phase 2 in detail, including preset and custom agent planning.
+Sections 14-19 explain asynchronous generation, deployment, operations, approvals and notifications.
+Sections 20-25 cover sponsors, data, security, pricing, MVP scope and acceptance criteria.
+The appendices provide example JSON, YAML, generated files, terminology and official technology references.
+This is not a final production specification. Product decisions such as pricing, supported integrations and deployment runtime should be validated through user testing and sponsor access.
+Key corrections applied to the original concept
+Original wording
+Refined product rule
+The Orchestrator is the main AI brain
+The Orchestration Controller is primarily deterministic application logic. AI models provide analysis and plans, but code controls state, approvals, retries and allowed transitions.
+Remove Tier 1 context before Tier 2
+Do not delete context. Mark which use cases are covered by Tier 1, then give Tier 2 the full approved report plus an explicit list of uncovered or partially covered use cases.
+The Executor creates API keys
+The system can identify required credentials and generate connection instructions, but only the user or an authorized administrator can create and supply real API keys.
+A generated workflow can deploy immediately
+Every plan must pass human approval, artifact validation, sandbox tests and integration checks before activation.
+Setup takes 15 minutes
+Treat 15 minutes as a guided target for simple businesses. Complex workflows, permissions and third-party integrations may require more time.
+
+CONTENTS
+Detailed contents
+
+Section
+Subject
+1
+Executive overview
+2
+Product vision, audience and positioning
+3
+Core architecture principles and terminology
+4
+Complete user journey and system states
+5
+Orchestration Controller - the main coordinator
+6
+Phase 1 - onboarding and Lean Canvas
+7
+Discovery Agent
+8
+Interview Agent and voice call
+9
+Editable company report and Phase 1 approval
+10
+Phase 2 - Planner Agent and use-case extraction
+11
+Tier 1 - preset agent matching and configuration
+12
+Tier 2 - complex custom agent design cycle
+13
+Planner workspace, drag-and-drop, reconfiguration, undo and pricing
+14
+Workflow confirmation and per-agent setup
+15
+Executor Agent / Agent Factory
+16
+Deployment Agent / Deployment Controller
+17
+Post-deployment AI workforce workspace
+18
+Human approvals and calendar dashboard
+19
+WhatsApp and notification design
+20
+Sponsor API integration
+21
+Data model and shared contracts
+22
+Security, governance and human-in-the-loop controls
+23
+Pricing, usage limits, ROI and performance measurement
+24
+Recommended mock MVP and demo story
+25
+Acceptance criteria and definition of done
+26
+Risks, open decisions and product roadmap
+Appendix A
+Example CompanyReport, WorkflowPlan and AgentSpec
+Appendix B
+Generated agent package and deployment manifest
+Appendix C
+Glossary
+Appendix D
+Official sponsor technology references
+
+1
+Executive overview
+The product in one sentence, the problem it solves, and the full value chain.
+
+1.1 Product definition
+Tandemry is an AI workforce design and operations platform for small businesses. It learns how a company works, helps the owner clarify missing operational details, recommends a combination of preset and custom digital workers, converts the approved plan into technical agent packages, validates those packages in isolated environments, and gives the owner a workspace for running, reviewing and approving the resulting work.
+ONE-SENTENCE PITCH
+Tandemry turns the knowledge inside a small business into a structured, owner-approved digital workforce.
+
+1.2 The problem
+Small-business owners often know that their team spends too much time on repeated work, but they may not have an operations department, automation consultant or engineering team. Existing automation products frequently expect the owner to understand triggers, APIs, data mappings and error handling. Tandemry reverses that model: the owner describes the business, and the platform does the analysis and technical planning while keeping the owner in control of important decisions.
+1.3 The complete value chain
+
+Figure 1. Tandemry converts business knowledge into an operating AI workforce through six controlled stages.
+1.4 What each major part does
+Part
+Primary responsibility
+Orchestration Controller
+Routes requests, enforces state transitions, records versions, invokes the correct agent or service, manages async jobs and prevents work from moving forward without required approvals.
+Onboarding
+Creates the organization workspace and collects the first company details, goals, systems and constraints.
+Discovery Agent
+Reads the Lean Canvas and company information, extracts facts, identifies missing operational details and prepares the Interview Agent.
+Interview Agent
+Runs a focused voice or text interview to clarify only the information needed for useful workflow planning.
+Company Report Editor
+Presents the analysis as a document-style editable report. The owner corrects and approves the source of truth for Phase 2.
+Planner Agent
+Extracts use cases, matches preset agents, designs custom agents, maps communications and produces the proposed company workflow.
+Executor / Agent Factory
+Generates prompts, YAML, policies, tests and other files asynchronously for every approved agent.
+Deployment Controller
+Validates generated files, runs tests in isolated sandboxes, checks integrations and activates approved agents.
+AI Workforce Workspace
+Shows active agents, assigned tasks, events, integrations, approvals, schedule, logs, costs and measured outcomes.
+
+2
+Product vision, audience and positioning
+Who the product is for and why it should feel different from a generic AI tool.
+
+2.1 Target audience
+The initial audience is owner-led or manager-led small businesses that have repeatable digital work but no dedicated operations automation or AI engineering function. The platform is especially relevant where business knowledge lives in the owner or a few experienced employees rather than in formal process documentation.
+Audience aspect
+Definition
+Primary buyer
+Small-business owner, general manager or operations lead.
+Company profile
+Roughly 5-100 employees, some existing digital tools, repeated customer, sales, administrative, marketing or reporting work.
+Main need
+More operational capacity without first learning automation software or hiring a large technical team.
+Primary concern
+Trust, control, price, data access and whether the suggested workflow reflects the real business.
+Secondary audience
+Automation consultants and agencies that could use Tandemry to accelerate discovery, planning and handoff.
+
+2.2 Positioning
+Done-for-you rather than do-it-yourself: users describe the business instead of starting from a blank workflow canvas.
+Document-to-workforce: the product turns a reviewed company report into a workforce plan and then into deployable agent packages.
+Preset speed plus custom depth: common tasks use configurable templates, while unusual tasks receive a focused custom-agent design cycle.
+Human-controlled autonomy: the platform identifies where a person must review, edit or approve an action before anything irreversible occurs.
+Explainable cost and impact: each agent shows why it was recommended, what information it needs, how it is priced and how success will be measured.
+2.3 Brand and product tone
+The experience should feel like a calm operations studio rather than a science-fiction control room. Use plain business language, progressive disclosure and one clear decision at a time. The product name Tandemry suggests people, systems and digital workers operating in tandem, while the foundry-like ending suggests building something practical from raw company knowledge.
+Design quality
+Application
+Credible
+Show sources, assumptions, missing information and status truthfully.
+Guided
+Explain why each question is asked and what will happen next.
+Editable
+Treat AI output as a draft until the user approves it.
+Operational
+Always connect recommendations to triggers, inputs, outputs, integrations and human controls.
+Accessible
+Typed input must always work; color is never the only indicator; the interface remains understandable to non-technical owners.
+
+3
+Core architecture principles and terminology
+The rules that keep the product coherent, safe and buildable.
+
+Principle
+Meaning
+Approved information is the source of truth
+AI-generated drafts never automatically become planning inputs. The owner must approve the CompanyReport and WorkflowPlan versions used downstream.
+Application code controls the lifecycle
+The Orchestration Controller, not a free-form LLM, controls which stage is active, which action is permitted and which job may run next.
+AI reasoning is schema-constrained
+Discovery, planning and generation return structured objects that are validated before use.
+Context is covered, not destroyed
+Tier 1 matching marks use cases as covered, partially covered or uncovered. Tier 2 still sees the complete approved business context.
+Preset and custom agents share one final schema
+Their design process differs, but both end as a validated AgentSpec with the same required fields.
+Secrets are referenced, never embedded
+Generated files contain credential references such as crm_primary, not real API keys.
+Every important action is auditable
+The system records who changed or approved a report, plan, agent, integration or task.
+Mocks are explicit
+The mock MVP may use fixture data, but fixture and live modes must be labeled honestly.
+
+3.1 Recommended names for the components
+Original term
+Recommended term
+Reason
+Orchestrator agent
+Orchestration Controller
+Emphasizes that lifecycle and permissions are deterministic.
+Executor Agent
+Agent Factory
+Its job is to generate structured artifacts, not to execute arbitrary business actions.
+Deployment Agent
+Deployment Controller
+Deployment should be test-driven and policy-controlled.
+Lean Canvas document
+Business Blueprint
+The Lean Canvas is included, but operational details are added so agent planning is possible.
+Word document report
+Editable Company Report
+The main interface is a document-style editor; Word/PDF is an export.
+AI workers
+Agents or digital workers
+Use whichever term is clearest for the audience, but keep technical schemas named AgentSpec.
+
+4
+Complete user journey and system states
+How a user moves from first visit to an active digital workforce.
+
+4.1 Journey at a glance
+1. Create workspace: The owner creates an account or demo workspace, enters company basics and chooses whether to upload or build a Lean Canvas.
+2. Build the Business Blueprint: The user uploads an existing canvas or completes guided cards. The platform improves formatting but keeps all fields editable.
+3. Discover missing information: The Discovery Agent extracts business facts, operational processes, systems, goals, constraints and unanswered questions.
+4. Clarify through interview: The owner starts a voice or text call. The Interview Agent asks only targeted questions needed for reliable planning.
+5. Approve company report: The system generates a document-style report. The owner edits and approves the version that becomes Phase 2 input.
+6. Plan the workforce: The Planner extracts use cases, matches preset agents, proposes custom agents and creates the initial workflow.
+7. Refine the plan: The user configures preset agents, completes focused interviews for custom agents, adds or removes cards, reconfigures through natural language and reviews price.
+8. Approve and build: The approved plan is sent asynchronously to the Agent Factory, which creates technical packages.
+9. Validate and deploy: Generated artifacts are tested in Daytona sandboxes. The owner reviews results and approves activation.
+10. Operate and approve: The user monitors agents, communicates through tasks and events, reviews approvals and manages the calendar.
+4.2 Lifecycle states
+
+Figure 2. The Orchestration Controller moves objects through explicit states and can stop on failure, missing information or stale versions.
+4.3 Version and stale-state rules
+Editing an approved CompanyReport marks any derived WorkflowPlan as stale.
+Editing a WorkflowPlan marks generated artifacts and workflow tests as stale.
+Editing one AgentSpec invalidates only that agent build and dependent workflow tests where possible.
+The UI must show which source version produced each plan, build and deployment.
+5
+Orchestration Controller - the main coordinator
+Routing, state management, retries, approvals and provider coordination.
+
+5.1 Mission
+The Orchestration Controller is the central coordinator of Tandemry. It does not replace the specialist agents. Instead, it decides which specialist may run, verifies that the correct approved inputs exist, records the result, schedules asynchronous jobs, manages retries and prevents unauthorized transitions.
+5.2 Responsibilities
+Responsibility
+What it means
+Routing
+Select the Discovery, Interview, Planner, Agent Factory, Deployment or notification service based on current state and request type.
+State control
+Apply allowed transitions such as report_draft -> report_review -> report_approved.
+Version control
+Attach source_report_version and source_plan_version to downstream objects.
+Approval enforcement
+Block planning, building, deployment or high-risk runtime actions until the required person approves.
+Job management
+Store provider job IDs, poll async services, handle timeouts and expose normalized progress.
+Failure handling
+Retry only within policy, return understandable errors and preserve last known good versions.
+Usage limiting
+Prevent duplicate builds, uncontrolled agent spawning and unbounded provider calls.
+Provider trace
+Record which sponsor service performed each operation and whether it completed, failed or used a fixture.
+
+5.3 Routing example
+if company_report.status != "approved":    route_to("company_report_review")elif workflow_plan is None:    invoke("planner_agent")elif workflow_plan.status != "approved":    route_to("workflow_plan_review")elif any(agent.status == "needs_refinement" for agent in workflow_plan.agents):    route_to("agent_design_interview")elif build.status != "completed":    invoke_async("agent_factory")elif validation.status != "passed":    invoke("deployment_validation")else:    wait_for("final_deployment_approval")
+
+IMPORTANT BOUNDARY
+AI models may recommend the next question or propose a workflow. They do not directly change authoritative lifecycle state. The backend validates the output and performs the transition.
+
+6
+Phase 1 - onboarding and Lean Canvas
+Collect a useful business foundation without forcing the owner to become a process analyst.
+
+Figure 3. Phase 1 produces a reviewed, approved CompanyReport that becomes the only planning input.
+6.1 Onboarding goals
+Onboarding should establish the company workspace, basic identity, owner goals and the source material for discovery. It must be short enough to start quickly but structured enough that later AI output is grounded in real company information.
+Area
+Information collected
+Company profile
+Name, industry, location, team size, website, customer types and primary contact.
+Business goals
+What the owner wants to improve: capacity, response time, revenue, cost, accuracy, reporting or customer experience.
+Current systems
+Email, CRM, ecommerce, accounting, calendars, spreadsheets, messaging channels and internal knowledge sources.
+Constraints
+Budget, language, operating hours, regulations, sensitive data, actions that always require approval and systems agents may never access.
+Readiness
+Whether the owner has an existing Lean Canvas, operating document, website or only an idea that needs guided questioning.
+
+6.2 Two Lean Canvas paths
+Path
+Experience
+Output
+Upload existing canvas
+Upload PDF, DOCX, PNG or JPG. The system extracts fields, labels uncertain text and shows the mapped template for review.
+LeanCanvasDraft with field-level sources and confidence.
+Guided card questionnaire
+The user completes one card at a time with examples, definitions and optional AI elaboration. The owner can edit the improved wording before saving.
+LeanCanvasDraft built from owner-confirmed answers.
+
+6.3 Extend the Lean Canvas with operational fields
+A standard Lean Canvas explains the business strategy but not enough of the day-to-day work to design agents. Tandemry should therefore add an Operations Canvas.
+Repeated processes: what happens often and consumes staff time.
+Triggers: what starts the process.
+Inputs and systems: what information or software is required.
+Decisions: what judgement is made and by whom.
+Outputs: what is produced, sent or changed.
+Volume, duration and error rate: the baseline needed for ROI.
+Approval and risk: which actions are sensitive, irreversible or regulated.
+Success metrics: how the owner knows the process improved.
+6.4 Phase 1 UI direction
+
+Figure 4. Existing Phase 1 UI concept: onboarding hub, Lean Canvas choices, guided cards, voice interview, editable report and approval transition.
+7
+Discovery Agent
+Convert company material into a structured Business Blueprint and a focused list of information gaps.
+
+7.1 Inputs
+Company profile and goals entered during onboarding.
+Uploaded or guided Lean Canvas.
+Operations Canvas fields and existing systems.
+Optional company documents, website text or screenshots.
+Previous owner answers and confirmed corrections.
+7.2 What the Discovery Agent does
+Operation
+Result
+Extract
+Map documents and answers into fixed BusinessBlueprint fields.
+Normalize
+Turn inconsistent wording into concise, readable business terms while preserving the original evidence.
+Identify processes
+Find repeated work, current actors, triggers, systems, decisions and outputs.
+Detect gaps
+Mark missing numbers, unclear responsibilities, conflicting answers and absent approval rules.
+Prioritize questions
+Rank information gaps by how much they affect workflow planning, risk or ROI.
+Prepare interview
+Send the Interview Agent the approved context, unresolved fields and the reason each question matters.
+Build evidence map
+Label each fact as owner-supplied, document-extracted, AI-inferred or externally observed.
+
+7.3 Output contract
+{  "business_blueprint": {    "company_profile": {},    "lean_canvas": {},    "operations": [],    "systems": [],    "goals": [],    "constraints": []  },  "information_gaps": [    {      "field": "operations.customer_support.weekly_volume",      "priority": "high",      "reason": "Required to estimate impact and choose an agent pattern"    }  ],  "evidence": []}
+
+7.4 Evidence discipline
+RULE
+Owner-confirmed facts and AI interpretations must remain distinguishable. A model may suggest that a process appears repetitive, but it must not state a task volume, cost or permission as fact unless the owner or a trusted source supplied it.
+
+8
+Interview Agent and voice call
+Ask only the questions that materially improve the report or unlock a useful workflow.
+
+8.1 Role of the Interview Agent
+The Interview Agent is a guided clarification layer, not an open-ended general chatbot. It receives the Discovery Agent output and asks one question at a time about the highest-priority missing or ambiguous information.
+8.2 Call sequence
+1. Prepare: The Orchestration Controller provides approved context and ranked information gaps.
+2. Ask: AI& generates a concise question and a short explanation of why it matters.
+3. Listen: The user speaks or types an answer. Nosana-hosted speech recognition can transcribe recorded audio.
+4. Confirm: The transcript appears as editable text. The user corrects it before submission.
+5. Update: The Discovery Agent updates relevant BusinessBlueprint fields and evidence.
+6. Evaluate: The Orchestration Controller determines whether another question is needed.
+7. Finish: The system generates the first CompanyReport draft when required fields are complete or the owner chooses to stop.
+8.3 Question categories
+Question category
+Example
+Volume and time
+How often does this task occur, and how long does one case take?
+Trigger
+What event causes someone to start this work?
+Inputs
+What information or documents are needed?
+Systems
+Which tools or accounts are used?
+Decision
+What judgement is made, and what exceptions change the normal path?
+Permission
+May software complete the action, prepare a draft, or only notify a person?
+Escalation
+When must a person take over?
+Success
+What outcome, time or error rate would count as improvement?
+
+8.4 Stopping rules
+All required fields for a first report are complete.
+The user chooses to finish and accept remaining unknowns.
+A configured maximum question count is reached.
+Remaining gaps are optional or cannot be answered by the current user.
+A question requires another employee, in which case the report records an owner and follow-up task.
+8.5 Voice and accessibility rules
+Typed input remains available at all times.
+The interface clearly indicates when the microphone is active and provides a visible Stop action.
+Raw audio should not be retained longer than required for transcription unless the user explicitly agrees.
+The transcript is never submitted invisibly; the user sees and can edit it first.
+Text-to-speech is optional and should not auto-play without user action.
+9
+Editable company report and Phase 1 approval
+Turn discovery into a human-reviewed document that Phase 2 can trust.
+
+9.1 Why the report should feel like a document
+The company report is the bridge between conversation and workflow planning. It should look like a polished, editable operating document rather than a set of disconnected AI cards. Users can read a coherent story, edit any field, see evidence, and approve a version. Word and PDF exports are useful, but the live source of truth should remain the structured editor inside Tandemry.
+9.2 Recommended report sections
+Report section
+Purpose
+Executive summary
+What the company does, who it serves and the main operating goals.
+Lean Canvas
+Customer segments, problems, value proposition, solution, channels, revenue, cost, metrics and advantage.
+Operations overview
+Core recurring processes and which teams or systems perform them.
+Systems and data
+Current software, information sources and connection readiness.
+Pain points
+Repeated work, delays, errors, missed opportunities and estimated volumes.
+Automation opportunities
+Candidate use cases without yet committing to a specific final workflow.
+Constraints and approvals
+Sensitive data, forbidden actions, required human decisions and policy limitations.
+Unknowns and follow-ups
+Information that remains missing or requires another person.
+Sources and confidence
+Where each important fact came from and whether it is confirmed.
+Phase 2 readiness
+Whether enough information exists to begin workforce planning.
+
+9.3 Editing experience
+Click any section to edit plain text or structured fields.
+Reject or correct AI-generated claims without rewriting the entire report.
+Add comments, evidence, assigned owners and follow-up dates.
+Show a change history between report versions.
+Allow the owner to export DOCX or PDF for internal review.
+Require an explicit Approve and send to planning action.
+9.4 Phase 1 output
+ApprovedCompanyReport- report_id- organization_id- version- status = approved- company_profile- lean_canvas- operations- systems- pain_points- automation_goals- constraints- approval_policies- information_gaps- evidence- approved_by- approved_at
+
+10
+Phase 2 - Planner Agent and use-case extraction
+Turn the approved company report into a practical AI workforce plan, without executing anything yet.
+
+10.1 Planner mission
+The Planner Agent is a context planner. It does not generate production code and does not activate agents. It converts the approved CompanyReport into discrete automation use cases, recommends a workforce, explains the workflow, identifies required integrations and prepares the specifications that the owner will refine.
+10.2 Planner inputs
+Input
+Purpose
+Approved CompanyReport
+The complete reviewed business context.
+Agent Catalog
+Preset agent templates, capabilities, risks, required inputs and supported integrations.
+Integration Catalog
+Systems Tandemry knows how to connect and their permission requirements.
+Organization policy
+Budget, forbidden actions, approval rules, data restrictions and preferred languages.
+Pricing snapshot
+Current platform and provider assumptions used to estimate cost.
+Existing workforce plan
+If reconfiguring, the current plan and version history.
+
+10.3 Use-case extraction
+Before choosing an agent, the Planner turns company problems into structured use cases. This prevents the model from recommending a fashionable agent without a clear task.
+{  "use_case_id": "uc_customer_questions",  "name": "Respond to repeated customer questions",  "trigger": "customer.message.received",  "inputs": ["customer_message", "approved_company_knowledge"],  "decision": "select approved answer or escalate",  "outputs": ["customer_response", "escalation_request"],  "frequency_per_week": 80,  "minutes_per_task": 4,  "risk_level": "medium",  "success_metrics": ["response_time", "correct_escalation_rate"]}
+
+10.4 Planner stages
+
+Figure 5. The Planner first structures use cases, then combines Tier 1 preset matching and Tier 2 custom design into a single editable workflow.
+11
+Tier 1 - preset agent matching and configuration
+Use proven templates for common business tasks, while allowing company-specific choices.
+
+11.1 Preset agent catalog
+Preset agents are reusable patterns for tasks that appear across many businesses. They reduce setup time because the purpose, supported triggers, tools, permissions, tests and common failure behavior are already designed.
+Preset agent
+Typical scope
+Customer Support Agent
+FAQ responses, message classification, draft or send options, human escalation.
+Lead Qualification Agent
+Collect lead information, score against approved criteria and route qualified leads.
+Appointment Agent
+Offer available slots, create bookings, send reminders and escalate exceptions.
+Invoice Preparation Agent
+Extract approved data, prepare invoices or drafts and request financial approval.
+Inventory Alert Agent
+Monitor stock data, create alerts and prepare reorder recommendations.
+Marketing Content Agent
+Draft scheduled content using approved brand and campaign rules.
+Reporting Agent
+Combine approved data sources into recurring management reports.
+
+11.2 Template structure
+AgentTemplate- template_id and version- supported use cases- capabilities- required data- supported triggers- available configuration options- required integrations- default permissions- forbidden actions- human approval defaults- standard test cases- pricing rules
+
+11.3 Matching approach
+Criterion
+Question
+Capability fit
+Can the template perform the required trigger, decision and output?
+Data readiness
+Does the company have the required knowledge or system data?
+Integration readiness
+Can the required system be connected?
+Process clarity
+Are the normal path and exceptions understood?
+Risk compatibility
+Can the template respect the company approval and permission policy?
+Expected value
+Is the task frequent or costly enough to justify the agent?
+
+11.4 Preset agent configuration UI
+When the user taps a preset agent card, the right-side inspector opens with dropdowns, multiple-choice controls and recommended defaults. The owner should not be asked to write YAML.
+Operating mode: draft only, automatic for routine cases, or approval for every action.
+Channels and triggers: email, website chat, schedule, uploaded file or another agent event.
+Knowledge sources: approved company report, FAQ, catalog, documents or connected system.
+Human approval categories: refunds, legal questions, sensitive customer cases, financial changes or external publication.
+Response target, working hours, retry policy and escalation owner.
+11.5 Context coverage rule
+DO NOT REMOVE CONTEXT
+Tier 1 should produce a CoverageMap. Tier 2 receives the full approved CompanyReport, all use cases and the coverage status. It does not receive a damaged fragment with important business relationships removed.
+
+12
+Tier 2 - complex custom agent design cycle
+Create focused custom agents when preset templates cannot safely or completely solve the use case.
+
+12.1 When Tier 2 is used
+No single preset agent supports the required trigger, decision or output.
+The task crosses several business systems or departments.
+The company has unusual rules, exception paths or approval requirements.
+Several preset agents must be composed and coordinated.
+The task requires a new structured output, tool or escalation pattern.
+12.2 Design order
+1. Check whether an existing preset can be configured differently.
+2. Check whether two or more presets can be composed without creating a new agent.
+3. Confirm that enough information exists to define a safe custom AgentSpec.
+4. Create a custom agent card with an explanation of why it is needed and what information is missing.
+5. Run a focused custom-agent interview.
+6. Generate an editable agent report and technical requirement list.
+7. Approve the AgentSpec and return it to the main workflow.
+12.3 Custom-agent interview
+Question area
+What the Interview Agent must clarify
+Objective
+What business result must the agent produce?
+Trigger
+What event or schedule starts the work?
+Inputs
+What records, documents, messages or context are required?
+Decision rules
+What rules or judgement determine the next action?
+Actions and tools
+What may the agent read, create, update, send or request?
+Forbidden actions
+What may it never do?
+Human approval
+Which decisions require a person, and who is responsible?
+Exceptions
+What happens when information is missing, an integration fails or confidence is low?
+Output schema
+What exact result must the agent return?
+Success metrics
+How will response time, accuracy, cost or business outcome be measured?
+
+12.4 Custom agent report
+The custom agent report is another document-style editable section. It should include plain-language behavior and the technical requirements needed for building. The user edits and approves it before the agent returns to the Planner.
+Purpose and business reason.
+Trigger, inputs, decisions, outputs and workflow steps.
+Required integrations and credential names, without real secrets.
+Tools, read/write permissions and forbidden actions.
+Human approval and escalation rules.
+Example cases, failure behavior and success measurements.
+Estimated cost range and setup blockers.
+12.5 Final Tier 2 output
+Preset and custom agents must both become the same AgentSpec structure. The only difference is the source field and the amount of discovery required.
+13
+Planner workspace, drag-and-drop, reconfiguration, undo and pricing
+A living workforce plan rather than a static Word document or a blank engineering canvas.
+
+13.1 Recommended planner layout
+
+Figure 6. Concept planner: document outline on the left, narrative and workflow in the center, selected-agent configuration on the right.
+The primary planning experience should combine four views: a readable plan document, clickable agent cards, a workflow map and a selected-agent inspector. The final Word or PDF document is an export generated after approval, not the only editing interface.
+13.2 Main planner sections
+Planner section
+Purpose
+Overview
+Business goals, identified use cases, proposed workforce and expected impact.
+Workflow map
+Agents, humans, business systems, typed event connections and approval points.
+Agents
+Preset and custom cards with status, fit, price, missing information and readiness.
+Integrations
+Required systems, connection status, permissions and credential owner.
+Human approvals
+Actions that require review, responsible person and response target.
+Pricing
+Per-agent estimate, provider assumptions, total workflow estimate and usage scenarios.
+Final plan
+Generated document preview, version summary, risks and build order.
+
+13.3 Drag-and-drop behavior
+The Agent Library contains preset agents and a Create custom agent placeholder.
+Dragging a card onto the plan adds a draft node; it does not silently activate the agent.
+The Planner proposes compatible connections, required integrations and new approval gates.
+The user previews the change and sees price, readiness and risk differences before applying it.
+Invalid connections are blocked with a plain explanation, such as missing output schema or forbidden permission.
+13.4 Natural-language reconfiguration
+The user can describe a change, for example: "Add human approval before any refund-related action" or "Use the Marketing Agent only on weekdays." The Planner converts the request into a proposed plan diff. Nothing changes until the user reviews and applies the diff.
+ChangeRequest- user_instruction- affected_agents- affected_edges- proposed_additions- proposed_removals- pricing_change- risk_change- validation_warnings- source_plan_version
+
+13.5 Undo and version history
+Every applied change creates a new WorkflowPlan version.
+Undo returns to the previous version rather than trying to reverse individual model text edits.
+The user can compare versions and restore an earlier plan.
+An approved plan becomes immutable; changes create a new draft version.
+13.6 Pricing display
+Each card should show an estimated monthly range and the assumptions behind it. The planner should also show setup blockers and a total workflow range. Estimates should be described as projections, not guaranteed savings or final invoices.
+14
+Workflow confirmation and per-agent setup
+Turn the visual plan into a complete, approved set of agent specifications.
+
+14.1 Readiness states
+Status
+Meaning
+Recommended
+The Planner suggests the agent, but the user has not selected it.
+Needs information
+Required business details are missing.
+Needs configuration
+A preset agent fits, but the owner must choose operating options.
+Needs integration
+Required external system is not connected.
+Configured
+The AgentSpec is complete but the workflow is not approved.
+Ready to build
+The selected agent, permissions, integration references and tests are approved.
+Building
+The Agent Factory is generating the package.
+Validating
+Daytona is running schema, unit and workflow tests.
+Ready to deploy
+Validation passed and final activation approval is pending.
+Active
+The agent is running under the approved policy.
+
+14.2 Confirming the workflow
+The Confirm Workflow button should remain disabled until every selected agent is ready to build or intentionally excluded. Before confirmation, the user reviews the workflow graph, permissions, human approvals, required integrations, cost estimate and unresolved warnings.
+14.3 What the WorkflowPlan contains
+The general planner narrative and executive summary.
+The use-case list and Tier 1/Tier 2 coverage decisions.
+Every selected AgentSpec and its source template or custom report.
+Workflow nodes and typed event edges.
+Integration requirements and credential references.
+Human approval gates, escalation owners and time targets.
+Build waves and dependency order.
+Projected pricing, ROI assumptions, risks and unsupported actions.
+14.4 Target setup time
+POSITIONING GUIDANCE
+For a simple business with one or two preset agents, Tandemry can target a guided setup of about 15 minutes. Do not promise that every complex multi-agent workflow can be safely designed and connected in that time.
+
+15
+Executor Agent / Agent Factory
+Generate the approved technical package for each agent asynchronously.
+
+15.1 Mission
+The Agent Factory receives an approved WorkflowPlan and creates implementation artifacts for each agent. It does not invent new business requirements or change permissions. Its work is constrained by the approved AgentSpec and shared workflow contracts.
+15.2 Why asynchronous generation
+Several agent packages can be generated independently in parallel.
+The user can leave the page and return while jobs continue.
+Longer reasoning or coding tasks do not block an HTTP request.
+Each job has its own status, provider ID, retry policy and result.
+Dependency waves ensure shared schemas are generated before dependent adapters and tests.
+15.3 Build waves
+Build wave
+Generated content
+Wave 0 - shared contracts
+Event schemas, shared error model, logging conventions and integration interfaces.
+Wave 1 - agent packages
+Prompt, AgentSpec, workflow steps, tools, permissions and unit tests for independent agents.
+Wave 2 - adapters
+Agent-to-agent event mappings, human approval adapters and external integration wrappers.
+Wave 3 - workflow tests
+End-to-end scenarios, failure cases, approval paths and expected outputs.
+
+15.4 Generated files
+Artifact
+Purpose
+agent.yaml
+Identity, objective, source template, runtime settings and success metrics.
+workflow.yaml
+Trigger, inputs, decisions, outputs, event connections and failure behavior.
+prompt.md
+Model instructions, company context boundaries and output requirements.
+tools.yaml
+Allowed tools, parameters, return schemas and error conditions.
+permissions.yaml
+Read, write, forbidden and human-approval actions.
+test-cases.yaml
+Normal, edge, sensitive, missing-data and integration-failure cases.
+README.md
+Human-readable purpose, setup steps, limitations and operating guidance.
+required-integrations.json
+Connection names, permission scopes and credential references; never actual keys.
+src/
+Optional executable code or adapters where the agent needs custom logic.
+
+15.5 Human confirmation
+Generated artifacts should be displayed as a package summary. The user or technical reviewer confirms that the behavior matches the approved plan before validation. Tandemry should highlight any generated dependency, permission or integration that was not already present in the AgentSpec.
+16
+Deployment Agent / Deployment Controller
+Prove that generated agents work safely before activation.
+
+Figure 7. Doubleword generates approved artifacts asynchronously; Daytona validates and runs them before the owner activates the agent.
+16.1 Deployment responsibilities
+Stage
+What happens
+Preflight
+Check required integrations, credential references, source versions and artifact completeness.
+Sandbox creation
+Create an isolated Daytona environment for the agent or workflow.
+Upload
+Place only approved files and test fixtures into the sandbox.
+Static validation
+Validate YAML/JSON, paths, dependency allowlists, secret scans and permission policies.
+Unit tests
+Run each agent test case independently.
+Integration tests
+Use mocks or safe test accounts to validate external connectors.
+Workflow test
+Pass typed events through the complete multi-agent graph, including simulated human approvals.
+Manifest
+Return sandbox ID, artifact hash, passed/failed tests, warnings and runtime requirements.
+Activation
+Wait for explicit approval, then start the approved runtime configuration.
+Rollback
+Allow the owner to pause or return to the last validated version.
+
+16.2 Important deployment rule
+NO AUTOMATIC PRIVILEGE EXPANSION
+The Deployment Controller may not add a tool, dependency, integration or permission simply because generated code requests it. It must compare the request against the approved AgentSpec and block unexpected changes.
+
+16.3 Validation result example
+{  "agent_id": "customer_support",  "sandbox_id": "sandbox_123",  "status": "validated",  "tests": {"passed": 12, "failed": 0},  "security_checks": {    "schema": "passed",    "secret_scan": "passed",    "tool_allowlist": "passed",    "permission_policy": "passed"  },  "artifact_hash": "sha256:...",  "warnings": []}
+
+17
+Post-deployment AI workforce workspace
+How the owner starts agents, communicates with them and understands what they are doing.
+
+17.1 Workspace purpose
+After deployment, Tandemry becomes the operating interface for the digital workforce. The owner should not need to open raw configuration files for routine use. The workspace shows agent status, tasks, events, integrations, human approvals, calendar items, logs, usage and performance.
+17.2 Agent controls
+Control
+Behavior
+Test agent
+Run a safe sample task using test data.
+Activate
+Start the validated version after approval.
+Pause
+Stop new work while preserving configuration and history.
+Resume
+Continue the current validated version.
+Edit configuration
+Create a new draft AgentSpec; the active version keeps running until the new one passes validation.
+View logs
+See sanitized events, task outcomes, errors and provider traces.
+Roll back
+Return to the previous validated version.
+Archive
+Disable the agent and retain audit history.
+
+17.3 How users communicate with agents
+Not every agent should be presented as a general chatbot. Communication depends on the agent type.
+Interaction type
+Example
+Direct task
+Ask the Customer Support Agent to draft a response to a specific customer question.
+Approval response
+Approve, reject or comment on a proposed refund, post or reorder.
+Configuration request
+Tell Tandemry to change working hours or add an approval rule. The system produces a plan diff.
+Escalation
+An agent asks the owner for missing information or a decision.
+Event feed
+The owner sees what agents completed, passed to another agent or could not finish.
+Scheduled work
+The owner reviews future tasks and approvals through the calendar.
+
+17.4 Agent card contents
+Name, purpose, preset/custom source and active version.
+Status, current tasks, recent outcomes and next scheduled work.
+Connected systems and missing or expired credentials.
+Human approval rules and assigned owner.
+Estimated and actual cost, time saved and success metrics.
+Quick actions: Test, Pause, View approvals, View logs and Edit configuration.
+18
+Human approvals and calendar dashboard
+Keep important decisions visible, scheduled and auditable.
+
+18.1 Recommended layout
+
+Figure 8. Approval queue on the left and month calendar on the right, with consistent state colors and direct links to review cards.
+18.2 Left approval panel
+Scrollable list of approval cards ordered by urgency or selected filter.
+Filters for all approvals, assigned owner, agent, risk, status and date range.
+Selecting a calendar date filters the list to that date.
+Each card shows task, proposing agent, due time, risk, summary and current status.
+18.3 Calendar behavior
+Default month view similar to common calendar products.
+Red indicates approval required; dark navy indicates approved and scheduled; gray indicates completed or cancelled.
+Color must be paired with a status label or icon for accessibility.
+Clicking a date opens a day view with time blocks.
+Clicking an unapproved time block opens the corresponding approval card.
+Dragging or rescheduling a block creates a change request and may require agent recalculation.
+18.4 Approval card
+Card element
+Behavior
+Summary
+What the agent proposes and why.
+Decision context
+Inputs, relevant evidence, policy, confidence and expected effect.
+Proposed changes
+Exact message, post, reorder, schedule or update that will occur.
+Risk and reversibility
+Whether the action is financial, external, sensitive or difficult to undo.
+Review button
+Open full details, comments and editable fields.
+Ask Agent to update
+Send comments back as a revision request and create a new proposal version.
+Approve button
+Approve the exact current version and record the person and timestamp.
+Reject button
+Reject or cancel with an optional reason. Recommended even if the first mock only shows Review and Approve.
+
+19
+WhatsApp and notification design
+Notify the owner without weakening authentication or audit controls.
+
+19.1 Recommended notification flow
+WhatsApp can be an optional notification channel for urgent approvals. The safest general design is to send a short summary and a secure deep link to the Tandemry approval card. Direct in-message approval should only be enabled when the messaging integration, identity binding and audit requirements are fully supported.
+1. Owner connects a verified business messaging account and chooses notification preferences.
+2. An agent creates an ApprovalRequest with due time and risk level.
+3. Tandemry sends a minimal notification containing the task, agent, deadline and secure link.
+4. The owner authenticates or uses an approved short-lived session to open the exact card.
+5. The owner reviews, comments, edits, approves or rejects.
+6. Tandemry records the decision and notifies the proposing agent.
+19.2 Notification rules
+Do not include sensitive customer or financial details in the notification preview.
+Do not treat message delivery as approval.
+Expire approval links and prevent reuse after a decision.
+Allow quiet hours, escalation thresholds and digest mode.
+Keep email and in-app notifications as fallback channels.
+
+20
+Sponsor API integration
+A distinct, honest role for AI&, Nosana, Doubleword and Daytona.
+
+20.1 Sponsor responsibility map
+Sponsor
+Primary role
+Tandemry use
+AI&
+Reasoning and structured output
+Lean Canvas extraction with vision-capable models, Discovery analysis, adaptive interview questions, CompanyReport generation, use-case extraction and WorkflowPlan generation.
+Nosana
+GPU inference workload
+Run or host a Whisper speech-recognition workload for owner interviews; optional future OCR or other compute-intensive jobs.
+Doubleword
+Asynchronous and batch model inference
+Generate agent packages from approved AgentSpecs, including prompts, YAML, tests and documentation. Async is suited to user-visible background builds; batch is suited to large overnight rebuilds or evaluation.
+Daytona
+Isolated execution and validation
+Create sandboxes, manage files, execute commands or code, run tests, capture logs and produce a safe deployment proof.
+
+20.2 AI& integration
+AI& exposes an OpenAI-compatible chat-completions interface and supports structured outputs. Its vision and Files capabilities can be used to extract a Lean Canvas image or document into a fixed schema. Model access is organization-specific, so the application should list available models and store the selected model ID in backend configuration. [1][2][3]
+Use strict JSON schemas for BusinessBlueprintDraft, CompanyReport and WorkflowPlan outputs.
+Use one provider adapter so models can be changed without changing product contracts.
+Keep all API keys on the server.
+20.3 Nosana integration
+Nosana provides infrastructure for running GPU inference workloads. Its official Whisper example demonstrates multilingual speech recognition. Tandemry would deploy or invoke a Whisper container and send short interview recordings from the backend to that workload. [4]
+Nosana deployment IDs and service URLs are outputs of deploying the workload, not ordinary model names.
+Keep typed input as a complete fallback if the voice workload is unavailable.
+20.4 Doubleword integration
+Doubleword provides OpenAI-compatible inference with structured outputs and separate real-time, async and batch modes. Tandemry should use async inference for per-agent background generation and batch for larger offline rebuild or evaluation work. [5][6][7]
+Submit one job per build task or use dependency-aware waves.
+Store response or batch IDs and normalize status for the UI.
+Require strict ArtifactBundle output rather than free-form file writing.
+20.5 Daytona integration
+Daytona SDKs can create and manage isolated sandboxes, execute code or commands and manage files. Tandemry uses those capabilities to validate generated artifacts, run tests and show a traceable deployment result. [8]
+Provider-specific SDK code remains behind a DeploymentRunner adapter.
+Never expose Daytona credentials or raw provider objects to the browser.
+20.6 Sponsor trace
+{  "provider_runs": [    {"provider": "aiand", "operation": "workflow_planning", "status": "completed"},    {"provider": "nosana", "operation": "voice_transcription", "status": "completed"},    {"provider": "doubleword", "operation": "agent_artifact_generation", "status": "completed"},    {"provider": "daytona", "operation": "sandbox_validation", "status": "completed"}  ]}
+
+21
+Data model and shared contracts
+The objects that keep every phase asynchronous, versioned and independently testable.
+
+21.1 Core entities
+Entity
+Purpose
+User
+Identity, notification preferences and organization membership.
+Organization
+Company workspace, policy, billing and integrations.
+BusinessBlueprint
+Lean Canvas plus operational fields and evidence.
+DiscoverySession
+Source inputs, extracted fields, information gaps and provider trace.
+InterviewSession
+Questions, confirmed transcripts and updated fields.
+CompanyReport
+Editable document content, source version, approval and evidence.
+UseCase
+Structured business task considered for automation.
+AgentTemplate
+Versioned preset agent definition and options.
+AgentSpec
+Company-specific approved behavior for a preset or custom agent.
+WorkflowPlan
+Nodes, edges, integrations, approval gates, pricing and build order.
+BuildJob
+Async artifact generation status and provider job ID.
+ArtifactBundle
+Generated files, warnings, dependencies and version hash.
+ValidationRun
+Sandbox ID, tests, security checks and result.
+AgentDeployment
+Active version, runtime status and rollback target.
+ApprovalRequest
+Proposed action, details, status, deadline and reviewer.
+CalendarEvent
+Scheduled task or approval linked to an agent and request.
+AuditEvent
+Immutable record of important changes and decisions.
+
+21.2 Shared API boundary
+Endpoint
+Purpose
+POST /business-blueprints/import
+Upload or submit Lean Canvas material.
+POST /discovery-runs
+Start extraction and gap analysis.
+POST /interviews/{id}/answers
+Submit a confirmed text or transcript answer.
+POST /company-reports/{id}/approve
+Approve the exact report version.
+POST /workflow-plans
+Generate an initial plan from an approved report.
+PATCH /workflow-plans/{id}
+Apply reviewed drag/drop or natural-language plan changes.
+POST /workflow-plans/{id}/approve
+Approve the exact plan version.
+POST /builds
+Start async ArtifactBundle generation.
+GET /jobs/{id}
+Poll discovery, planning, build or validation status.
+POST /validations
+Run generated artifacts in sandboxes.
+POST /deployments
+Activate a validated version after approval.
+POST /approvals/{id}/decision
+Approve, reject or request revision.
+GET /calendar
+Retrieve scheduled tasks and approvals.
+
+21.3 Event communication
+Agents should communicate through typed events rather than unrestricted natural-language messages. Typed events can be validated, retried, audited and displayed clearly.
+{  "event_type": "lead.qualified",  "version": "1.0",  "source_agent": "lead_qualification",  "target_agent": "sales_follow_up",  "payload": {    "lead_id": "lead_123",    "score": 82,    "reason_codes": ["budget_confirmed", "timeline_confirmed"]  }}
+
+22
+Security, governance and human-in-the-loop controls
+Make the system useful without allowing agents to gain silent, unlimited authority.
+
+22.1 Permission model
+Each agent has explicit read, write, send, execute and forbidden permissions.
+Tool calls and integration actions are allowlisted.
+High-risk actions require human approval even if the model is confident.
+Generated files may reference credentials but never contain secret values.
+A new permission requires a plan change, validation and approval.
+22.2 Human approval levels
+Level
+Meaning
+Inform only
+Agent completes the action and records the result. Suitable for low-risk, reversible internal tasks.
+Review after action
+Agent acts, but the result is queued for quality review. Use cautiously and only for reversible work.
+Draft for approval
+Agent prepares the exact output; a person must approve before it is sent or applied.
+Decision required
+Agent cannot continue until a person chooses an option or supplies missing information.
+Always human
+The agent may gather context but may never perform the final action.
+
+22.3 Security requirements
+Control
+Requirement
+Secrets
+Server-side secret store; no API keys in browser code, logs, prompts, YAML or exports.
+Data minimization
+Send only required data to each provider and agent.
+Audit
+Record report edits, plan changes, approvals, builds, validation results and runtime actions.
+Retention
+Define how long transcripts, documents, logs and customer data are retained.
+Isolation
+Use sandboxes for generated code and tests.
+Timeouts and limits
+Bound provider calls, build duration, runtime, file size, retries and concurrency.
+Error handling
+Return safe error codes to users; keep sanitized technical detail for operators.
+Prompt injection
+Treat documents and user content as untrusted data; enforce system policy and schema outside the model.
+Rollback
+Keep validated versions and allow pause or restore.
+
+23
+Pricing, usage limits, ROI and performance measurement
+Show the owner what the workforce may cost and whether it actually helps.
+
+23.1 Per-agent price estimate
+The Planner should show a projected monthly range rather than one false-precision number. The estimate can combine model tokens, scheduled frequency, expected task volume, sandbox runtime, external integration fees, storage and Tandemry platform margin.
+Component
+Meaning
+Base agent fee
+Template maintenance, monitoring and platform access.
+Model inference
+Estimated input/output usage for planning or runtime.
+Async build or batch work
+Artifact generation, evaluation and background analysis.
+Sandbox runtime
+Validation and execution time where applicable.
+Integration cost
+Third-party API or messaging charges outside Tandemry.
+Usage band
+Included tasks and overage assumptions.
+Support tier
+Optional onboarding or managed operations assistance.
+
+23.2 Workflow total
+Show the estimated monthly cost for each selected agent.
+Show shared integration or platform costs only once.
+Show a low, expected and high usage scenario where possible.
+Update the estimate when the user adds, removes or reconfigures agents.
+Save the pricing snapshot with the approved WorkflowPlan.
+23.3 ROI model
+Projected ROI should use owner-provided baseline data and deterministic formulas. After deployment, the dashboard should compare projections with observed results.
+projected_hours_saved =    task_volume * minutes_per_task * expected_automation_rate / 60projected_monthly_value =    projected_hours_saved * 4.33 * loaded_hourly_costprojected_net_value =    projected_monthly_value - estimated_monthly_workflow_cost
+
+23.4 Operational metrics
+Metric
+Meaning
+Task volume
+How many tasks the agent received and completed.
+Success rate
+Percentage meeting the expected output and validation rules.
+Human intervention
+How often a person was required and why.
+Approval latency
+Time between proposal and human decision.
+Cycle time
+Time from trigger to final outcome.
+Estimated and actual cost
+Provider, sandbox, integration and platform usage.
+Time saved
+Difference between measured manual baseline and observed agent-assisted effort.
+Error and rollback rate
+Failures, corrections and restored versions.
+Business outcome
+Revenue, response time, missed leads, stockouts or another use-case-specific metric.
+
+23.5 Usage limits
+One active discovery or planning job per company version.
+Bound file sizes, interview length and generated artifact count.
+Limit custom-agent creation until required fields are complete.
+Prevent duplicate builds or deployments with idempotency keys.
+Cap retries and stop polling after terminal status or timeout.
+Require explicit confirmation before high-cost batch work.
+
+24
+Recommended mock MVP and demo story
+Demonstrate the complete idea without pretending to build the full production platform.
+
+24.1 Mock MVP scope
+The mock MVP should show one complete company journey with enough interactivity to make the concept believable. It does not need production authentication, a general integration marketplace or many functioning agents.
+MVP area
+What to demonstrate
+Phase 1
+One prepared small-business example; upload or guided Lean Canvas; one live or mocked discovery result; one short voice or typed interview; editable CompanyReport; approval.
+Planner
+Three agent cards: two presets and one custom. A generated workflow map, drag/drop simulation, natural-language reconfigure, undo, price update and final plan preview.
+Custom agent
+One focused design interview that produces an editable AgentSpec report.
+Build
+Doubleword async generation for one selected agent, or a transparent fixture with a genuine submitted job ID if timing prevents completion.
+Validation
+Daytona sandbox validates and runs one agent package.
+Operations
+Agent workspace with one live result plus approval/calendar mock data.
+Sponsors
+One visible, truthful contribution from AI&, Nosana, Doubleword and Daytona.
+
+24.2 Recommended demo company
+Use a small restaurant, ecommerce retailer or service company with repeated customer questions and one more complex cross-system issue. The example should naturally produce a Customer Support preset agent, an Inventory or Scheduling preset agent and one custom Order Exception or Client Intake agent.
+24.3 Two-minute story
+1. The owner opens a prepared company workspace and uploads or selects a Lean Canvas.
+2. Nosana transcribes one spoken clarification; AI& updates the CompanyReport.
+3. The owner edits one field and approves the report.
+4. The Planner shows two preset agents and one custom agent in a top-to-bottom workflow.
+5. The owner opens the custom agent card, answers two focused questions and approves its report.
+6. The owner adds one agent from the library, asks AI to reconfigure the workflow and sees an undoable plan diff and updated price.
+7. The owner confirms the WorkflowPlan.
+8. Doubleword generates one real ArtifactBundle asynchronously.
+9. Daytona validates and executes the selected agent.
+10. The final workspace shows the result, provider trace and one approval on the calendar.
+24.4 Mock honesty
+DEMO RULE
+Any fixture, cached result or prerecorded provider output must be labeled as such. Do not display a newly submitted async or batch job as completed if it has not completed.
+
+25
+Acceptance criteria and definition of done
+What must be true for the product concept or mock MVP to be considered complete.
+
+25.1 End-to-end user flows
+Flow
+Acceptance condition
+F-01
+User creates or opens a company workspace and chooses upload or guided Lean Canvas.
+F-02
+Discovery produces a structured draft and a visible list of missing information.
+F-03
+Voice failure does not block the typed interview path.
+F-04
+Interview answers update the report and remain editable.
+F-05
+The Planner cannot run from an unapproved report.
+F-06
+Tier 1 matches preset agents with reasons, configuration options and blockers.
+F-07
+Tier 2 custom agent opens a focused interview and produces an AgentSpec.
+F-08
+User can add/remove an agent, preview reconfiguration, apply it and undo to a previous version.
+F-09
+Per-agent and total price estimates update after plan changes.
+F-10
+Workflow confirmation is blocked until selected agents are ready.
+F-11
+Build jobs return status and generated file summaries.
+F-12
+Daytona validation reaches passed or a safe terminal failure.
+F-13
+An active-agent workspace shows status, tasks, logs and controls.
+F-14
+Approval cards support review, comments, update request and approval.
+F-15
+Calendar events link to approval cards and use consistent status labels.
+F-16
+Sponsor traces are backed by server-side provider results, not client-generated labels.
+F-17
+No secret appears in browser code, generated files, exports or logs.
+F-18
+Every approved report, plan, AgentSpec and deployment identifies its source version.
+
+25.2 Definition of done
+The full journey is integrated and reproducible from documented instructions.
+A new team member can run the application and mock/live adapters without verbal help.
+Contracts are frozen or versioned and fixtures match the live response shape.
+All asynchronous jobs reach a terminal state and expose safe errors.
+Human approval and rollback paths are tested, not only the happy path.
+The UI never invents provider success, price, ROI or task status.
+At least one generated agent package has been validated and executed in Daytona.
+The final demo has been rehearsed from a clean session at least twice.
+26
+Risks, open decisions and product roadmap
+What still needs validation before Tandemry becomes a production platform.
+
+26.1 Main product risks
+Risk
+Mitigation
+Discovery quality
+Owners may omit exceptions or describe work differently from employees. Mitigation: evidence, report editing, assigned follow-ups and approval.
+Over-automation
+A model may recommend too much autonomy. Mitigation: permission templates, risk tiers, human gates and least privilege.
+Integration complexity
+Real systems have authentication, rate limits and inconsistent data. Mitigation: start with a small integration catalog and explicit readiness states.
+Generated code quality
+Artifacts may be incomplete or unsafe. Mitigation: strict schemas, dependency allowlists, secret scans and Daytona validation.
+Pricing uncertainty
+Provider and volume costs vary. Mitigation: ranges, usage bands and post-deployment actuals.
+Trust and explainability
+Owners may not understand why an agent was recommended. Mitigation: reasons, use-case trace, sources and plain-language capability boundaries.
+Notification overload
+Frequent approvals can become another burden. Mitigation: risk-based approval levels, batching, quiet hours and escalation rules.
+Version confusion
+Edits can make downstream work stale. Mitigation: source-version links and visible invalidation.
+Scope expansion
+Trying to support every agent and integration immediately will slow the product. Mitigation: narrow verticals and a reusable core schema.
+
+26.2 Open decisions
+Which preset agents form the initial catalog?
+Which business vertical should be the first production focus?
+Which integrations can be supported reliably at launch?
+Which actions are categorically never allowed without human approval?
+How are per-agent fees separated from provider usage?
+What data retention and regional hosting commitments are required?
+Which runtime hosts active production agents after Daytona validation?
+26.3 Suggested roadmap
+Roadmap stage
+Scope
+Stage 1 - Mock MVP
+Phase 1, planner UI, one custom-agent interview, one generated package, one Daytona run and approvals calendar mock.
+Stage 2 - Pilot
+Authentication, persistent versions, two verticals, limited integration catalog, live approval workflows and measured ROI.
+Stage 3 - Managed workforce
+Multiple active agents, scheduling, monitoring, usage billing, notification channels and rollback.
+Stage 4 - Continuous optimization
+Observe real outcomes, recommend plan changes, run batch evaluation and maintain governance at scale.
+
+APPENDIX A
+Example CompanyReport, WorkflowPlan and AgentSpec
+Illustrative contracts for teams building the mock MVP or future product.
+
+A.1 Approved CompanyReport
+{  "report_id": "report_001",  "version": 2,  "status": "approved",  "company_profile": {    "name": "Acme Restaurant",    "industry": "hospitality",    "team_size": 12  },  "operations": [    {      "process_id": "customer_enquiries",      "trigger": "customer message received",      "systems": ["website_chat", "email"],      "frequency_per_week": 80,      "minutes_per_task": 4,      "approval_rules": ["allergen and refund questions require staff"]    }  ],  "constraints": {    "forbidden_actions": ["issue_refund", "change_payment_record"]  },  "approved_by": "user_123"}
+
+A.2 WorkflowPlan
+{  "plan_id": "plan_001",  "source_report_version": 2,  "status": "approved",  "agents": [    {"agent_id": "customer_support", "source": "preset", "status": "ready_to_build"},    {"agent_id": "inventory_alert", "source": "preset", "status": "ready_to_build"},    {"agent_id": "order_exception", "source": "custom", "status": "ready_to_build"}  ],  "edges": [    {"source": "website_chat", "target": "customer_support", "event_type": "customer.message.received"},    {"source": "customer_support", "target": "order_exception", "event_type": "order.help_needed"}  ],  "human_gates": ["refund.approval.required"],  "estimated_monthly_cost": {"low": 240, "high": 360}}
+
+A.3 AgentSpec YAML
+schema_version: "1.0"agent:  id: order-exception  name: Order Exception Coordinator  source: custom  objective: Resolve delayed-order cases and keep customers updatedtrigger:  event_type: order.delay_detectedinputs:  - order_id  - customer_message  - delivery_statusoutputs:  - customer_update_draft  - escalation_requesttools:  - get_order_status  - request_inventory_status  - create_response_draftpermissions:  read: [order_status, inventory_status]  write: [response_drafts, escalation_queue]  forbidden: [issue_refund, cancel_order, modify_payment]human_approval:  required_for: [refund_request, order_cancellation, missing_information]integrations:  - id: order_system    credential_ref: order_system_primaryruntime:  mode: event_driven  timeout_seconds: 30  retry_limit: 1success_metrics:  - resolution_time  - correct_escalation_rate
+
+APPENDIX B
+Generated agent package and deployment manifest
+What the Agent Factory and Deployment Controller exchange.
+
+B.1 ArtifactBundle
+{  "agent_id": "order-exception",  "artifact_version": "build_004",  "files": [    {"path": "agent.yaml", "type": "configuration", "content": "..."},    {"path": "workflow.yaml", "type": "workflow", "content": "..."},    {"path": "prompt.md", "type": "prompt", "content": "..."},    {"path": "permissions.yaml", "type": "policy", "content": "..."},    {"path": "tests/test-cases.yaml", "type": "tests", "content": "..."}  ],  "required_integrations": ["order_system_primary"],  "warnings": []}
+
+B.2 DeploymentManifest
+{  "deployment_id": "deploy_008",  "source_build": "build_004",  "source_plan_version": 3,  "status": "ready_to_deploy",  "validation": {    "sandbox_id": "sandbox_123",    "tests_passed": 12,    "tests_failed": 0,    "security_checks": "passed"  },  "required_approval": "organization_owner",  "rollback_target": "deploy_007"}
+
+B.3 ApprovalRequest
+{  "approval_id": "approval_091",  "agent_id": "marketing_agent",  "task_type": "publish_campaign_post",  "status": "pending",  "scheduled_for": "2026-07-21T14:00:00+08:00",  "summary": "Publish the approved weekend promotion post",  "risk_level": "medium",  "proposed_output": {},  "comments": [],  "version": 1}
+
+APPENDIX C
+Glossary
+Plain-language definitions for product and engineering teams.
+
+Term
+Definition
+Agent
+A configured digital worker that follows an approved purpose, tools, permissions and workflow.
+Agent Catalog
+The versioned library of preset agent templates.
+AgentSpec
+The company-specific, approved structured definition of an agent.
+ArtifactBundle
+The generated files required to validate and run an AgentSpec.
+Business Blueprint
+Lean Canvas plus operational details, systems, goals, constraints and evidence.
+CompanyReport
+The document-style, human-reviewed source of truth produced in Phase 1.
+CoverageMap
+Tier 1 result showing which use cases are covered, partially covered or uncovered.
+Human approval gate
+A point where an authorized person must approve before the process continues.
+Orchestration Controller
+Deterministic backend coordinator that routes work and enforces lifecycle rules.
+Preset agent
+An agent created from a reusable template with configurable options.
+Custom agent
+An agent designed through a focused interview because preset templates are insufficient.
+Provider trace
+Record of sponsor or model operations used to produce a result.
+Stale
+A downstream object created from an older source version and therefore no longer safe to use without review.
+Typed event
+A validated structured message passed between agents, humans or systems.
+WorkflowPlan
+The approved company-level graph of agents, humans, systems, integrations, pricing and build order.
+
+APPENDIX D
+Official sponsor technology references
+Capabilities referenced in the sponsor-integration section, verified from official documentation on 18 July 2026.
+
+1. ai& Chat Completions: OpenAI-compatible chat-completions endpoint, streaming and tool calling. Official documentation
+2. ai& Structured Outputs: JSON mode and strict JSON Schema output. Official documentation
+3. ai& Vision and Files: Vision-capable model input and structured extraction from uploaded images. Official documentation
+4. Nosana Whisper example: Official example for running multilingual Whisper speech recognition on a GPU workload. Official documentation
+5. Doubleword async inference: Background inference with polling and lower-cost async service tier. Official documentation
+6. Doubleword structured outputs: OpenAI-compatible tool calling and strict structured outputs. Official documentation
+7. Doubleword inference modes: Overview of real-time, async and batch inference. Official documentation
+8. Daytona SDK and sandboxes: SDK capabilities for sandbox creation, code execution, commands and file management. Official documentation
+Closing statement
+TANDEMRY IN ONE PARAGRAPH
+Tandemry is not simply a chatbot, workflow canvas or collection of AI agents. It is a controlled product lifecycle: learn the business, clarify the facts, approve the source document, design the workforce, refine preset and custom agents, generate implementation packages, prove them in isolated environments, activate only approved versions, and keep the owner in control through visible approvals, schedules, logs and measured outcomes.
+

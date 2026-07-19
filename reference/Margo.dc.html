@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:ital,wght@0,400..600;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+ --paper:#F4EEE3; --paper2:#ECE3D2; --paper3:#E4D9C4; --card:#FBF7EE;
+ --ink:#1A1712; --ink2:#5B5347; --ink3:#8B8272;
+ --line:rgba(26,23,18,.14); --line2:rgba(26,23,18,.28);
+ --ember:#B8442A; --forest:#3C6151; --ochre:#A9782A;
+ --disp:'Bricolage Grotesque',system-ui,sans-serif;
+ --sans:'Instrument Sans',system-ui,sans-serif;
+ --mono:'Space Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:var(--ink);text-decoration:none}
+a:hover{color:var(--ember)}
+button{font-family:inherit}
+::selection{background:var(--ink);color:var(--paper)}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:20px;border:3px solid var(--paper)}
+input,textarea{font-family:inherit}
+@keyframes marq{to{transform:translateX(-50%)}}
+@keyframes pulse{0%{transform:scale(1);opacity:.55}70%{opacity:0}100%{transform:scale(2.4);opacity:0}}
+@keyframes wave{0%,100%{transform:scaleY(.28)}50%{transform:scaleY(1)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes blink{50%{opacity:.15}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bar{to{background-position:22px 0}}
+@keyframes revUp{from{opacity:0;transform:translateY(34px)}to{opacity:1;transform:none}}
+@keyframes floatA{0%,100%{transform:rotate(-3deg) translateY(0)}50%{transform:rotate(-3deg) translateY(-13px)}}
+@keyframes floatB{0%,100%{transform:rotate(2.5deg) translateY(0)}50%{transform:rotate(2.5deg) translateY(-13px)}}
+</style>
+</helmet>
+<div style="min-height:100vh">
+
+<sc-if value="{{ onLanding }}" hint-placeholder-val="{{ true }}">
+<div style="animation:fadeUp .5s ease both">
+<!-- TICKER -->
+<div style="background:var(--ink);color:var(--paper);overflow:hidden;white-space:nowrap;border-bottom:1px solid var(--ink)">
+ <div style="display:inline-flex;gap:34px;padding:9px 0;font-family:var(--mono);font-size:12px;letter-spacing:.04em;animation:marq 34s linear infinite;will-change:transform">
+  <span>✶ MEET MARGO — YOUR AI OPERATIONS MANAGER</span><span>✶ SHE LEARNS THE SHOP</span><span>✶ HIRES THE TEAM</span><span>✶ RUNS IT PAST YOU FIRST</span><span>✶ FOR SMALL BRANDS THAT OUTGREW THE SPREADSHEET</span>
+  <span>✶ MEET MARGO — YOUR AI OPERATIONS MANAGER</span><span>✶ SHE LEARNS THE SHOP</span><span>✶ HIRES THE TEAM</span><span>✶ RUNS IT PAST YOU FIRST</span><span>✶ FOR SMALL BRANDS THAT OUTGREW THE SPREADSHEET</span>
+ </div>
+</div>
+<!-- NAV -->
+<nav style="position:sticky;top:0;z-index:50;background:rgba(244,238,227,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)">
+ <div style="max-width:1180px;margin:0 auto;padding:15px 40px;display:flex;align-items:center;justify-content:space-between">
+  <div style="display:flex;align-items:center;gap:9px">
+   <span style="width:11px;height:11px;border-radius:50%;background:var(--ink);display:inline-block"></span>
+   <span style="font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:-.02em">Margo</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:30px;font-size:14.5px">
+   <a href="#how">How it works</a><a href="#team">The team</a><a href="#pricing">Pricing</a>
+   <button onClick="{{ enterApp }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer;transition:transform .2s,background .2s" style-hover="background:var(--ember);transform:translateY(-2px)">Start free →</button>
+  </div>
+ </div>
+</nav>
+
+<!-- HERO -->
+<header style="max-width:1180px;margin:0 auto;padding:70px 40px 40px">
+ <div style="font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink2);display:flex;gap:12px;align-items:center">
+  <span style="width:26px;height:1px;background:var(--ink2);display:inline-block"></span>The done-for-you AI workforce
+ </div>
+ <h1 style="font-family:var(--disp);font-weight:800;font-size:clamp(48px,8.2vw,104px);line-height:.9;letter-spacing:-.035em;margin:22px 0 0;max-width:15ch;text-wrap:balance">Hire the team you keep meaning to build.</h1>
+ <div style="display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:end;margin-top:30px">
+  <div>
+   <p style="font-size:19px;line-height:1.5;color:var(--ink2);max-width:46ch;margin:0">Margo sits down with you for twenty minutes, learns how the shop actually runs, then drafts a crew of AI agents to handle the busywork — every big decision still lands on your desk.</p>
+   <div style="display:flex;gap:14px;margin-top:26px;flex-wrap:wrap">
+    <button onClick="{{ enterApp }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:16px 28px;font-size:15.5px;font-weight:600;cursor:pointer;transition:transform .22s,background .22s" style-hover="background:var(--ember);transform:translateY(-3px)">Show me my team →</button>
+    <button onClick="{{ enterApp }}" style="background:transparent;color:var(--ink);border:1px solid var(--line2);border-radius:999px;padding:16px 26px;font-size:15.5px;font-weight:600;cursor:pointer;transition:transform .22s,border-color .22s" style-hover="border-color:var(--ink);transform:translateY(-3px)">Watch the 2-min tour</button>
+   </div>
+   <div style="display:flex;gap:34px;margin-top:34px;padding-top:22px;border-top:1px solid var(--line)">
+    <sc-for list="{{ heroStats }}" as="s" hint-placeholder-count="3">
+     <div><div style="font-family:var(--disp);font-weight:700;font-size:30px;letter-spacing:-.02em">{{ s.big }}</div><div style="font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-top:2px">{{ s.label }}</div></div>
+    </sc-for>
+   </div>
+  </div>
+  <!-- hero product composition -->
+  <div style="position:relative;height:340px">
+   <div style="position:absolute;inset:0;background:var(--paper2);border:1px solid var(--line);border-radius:16px;background-image:repeating-linear-gradient(-45deg,transparent 0 13px,rgba(26,23,18,.035) 13px 14px)"></div>
+   <div style="position:absolute;left:26px;top:30px;width:250px;background:var(--card);border:1px solid var(--line2);border-radius:13px;padding:16px;box-shadow:0 18px 40px -20px rgba(26,23,18,.4);transform:rotate(-3deg);animation:floatA 6s ease-in-out infinite">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--ink3)">AGENT · ACTIVE</span><span style="width:7px;height:7px;border-radius:50%;background:var(--forest)"></span></div>
+    <div style="font-family:var(--disp);font-weight:700;font-size:19px;margin-top:8px">Front Desk</div>
+    <div style="font-size:12.5px;color:var(--ink2);line-height:1.35;margin-top:3px">Cleared 41 “where’s my order?” tickets today.</div>
+    <div style="display:flex;gap:5px;margin-top:12px"><span style="height:6px;flex:1;background:var(--forest);border-radius:3px"></span><span style="height:6px;flex:1;background:var(--forest);border-radius:3px"></span><span style="height:6px;flex:1;background:var(--line2);border-radius:3px"></span></div>
+   </div>
+   <div style="position:absolute;right:8px;bottom:8px;width:236px;background:var(--ink);color:var(--paper);border-radius:13px;padding:16px;box-shadow:0 18px 40px -20px rgba(26,23,18,.55);transform:rotate(2.5deg);animation:floatB 6.6s ease-in-out .4s infinite">
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;opacity:.7">NEEDS YOUR SIGN-OFF</div>
+    <div style="font-size:13.5px;line-height:1.4;margin-top:8px">Refund $48 to <b>M. Alvarez</b> — order arrived cracked.</div>
+    <div style="display:flex;gap:8px;margin-top:13px"><span style="flex:1;text-align:center;background:var(--paper);color:var(--ink);border-radius:8px;padding:7px 0;font-size:12px;font-weight:600">Approve</span><span style="flex:1;text-align:center;border:1px solid rgba(244,238,227,.4);border-radius:8px;padding:7px 0;font-size:12px">Edit</span></div>
+   </div>
+  </div>
+ </div>
+</header>
+
+<!-- MARQUEE BAND -->
+<div style="border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;white-space:nowrap;margin-top:44px;padding:17px 0">
+ <div style="display:inline-flex;gap:22px;font-family:var(--disp);font-weight:800;font-size:36px;letter-spacing:-.02em;animation:marq 32s linear infinite;will-change:transform">
+  <span>Learn the business</span><span style="color:var(--ember)">✶</span><span>Draft the team</span><span style="color:var(--ember)">✶</span><span>Prove it in a sandbox</span><span style="color:var(--ember)">✶</span><span>Keep the owner in control</span><span style="color:var(--ember)">✶</span>
+  <span>Learn the business</span><span style="color:var(--ember)">✶</span><span>Draft the team</span><span style="color:var(--ember)">✶</span><span>Prove it in a sandbox</span><span style="color:var(--ember)">✶</span><span>Keep the owner in control</span><span style="color:var(--ember)">✶</span>
+ </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section id="how" style="max-width:1180px;margin:0 auto;padding:84px 40px 20px;animation:revUp .9s ease both;animation-timeline:view();animation-range:entry 0% cover 16%">
+ <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px">
+  <div>
+   <div style="font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ember)">✶ The arc</div>
+   <h2 style="font-family:var(--disp);font-weight:800;font-size:clamp(34px,5vw,58px);line-height:.95;letter-spacing:-.03em;margin:14px 0 0;max-width:16ch">From “it’s all in my head” to a running crew.</h2>
+  </div>
+  <p style="font-size:15px;color:var(--ink2);max-width:30ch;margin:0">Six steps, roughly twenty guided minutes for a simple shop. You approve every gate.</p>
+ </div>
+ <div style="margin-top:44px;border-top:1px solid var(--line2)">
+  <sc-for list="{{ steps }}" as="st" hint-placeholder-count="6">
+   <div style="display:grid;grid-template-columns:90px 1fr 1.3fr;gap:28px;padding:26px 18px;margin:0 -18px;border-bottom:1px solid var(--line);align-items:baseline;border-radius:12px;transition:background .25s,transform .25s" style-hover="background:var(--paper2);transform:translateX(7px)">
+    <div style="font-family:var(--mono);font-size:14px;color:var(--ink3)">{{ st.n }}</div>
+    <h3 style="font-family:var(--disp);font-weight:700;font-size:23px;letter-spacing:-.01em;margin:0;line-height:1.05">{{ st.title }}</h3>
+    <p style="margin:0;font-size:15.5px;color:var(--ink2);line-height:1.5">{{ st.body }}</p>
+   </div>
+  </sc-for>
+ </div>
+</section>
+
+<!-- MEET THE TEAM -->
+<section id="team" style="background:var(--paper2);border-top:1px solid var(--line);margin-top:70px">
+ <div style="max-width:1180px;margin:0 auto;padding:80px 40px;animation:revUp .9s ease both;animation-timeline:view();animation-range:entry 0% cover 20%">
+  <div style="font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ember)">✶ The roster</div>
+  <h2 style="font-family:var(--disp);font-weight:800;font-size:clamp(34px,5vw,58px);line-height:.95;letter-spacing:-.03em;margin:14px 0 6px;max-width:20ch">Configurable presets for the routine. Custom agents for the exceptions.</h2>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:38px">
+   <sc-for list="{{ catalog }}" as="c" hint-placeholder-count="6">
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;min-height:184px;display:flex;flex-direction:column;transition:transform .28s,box-shadow .28s,border-color .28s" style-hover="border-color:var(--ink);transform:translateY(-6px);box-shadow:0 22px 40px -26px rgba(26,23,18,.5)">
+     <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--ink3)">{{ c.n }}</span>
+      <span style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);border:1px solid var(--line2);border-radius:20px;padding:3px 9px">{{ c.tag }}</span>
+     </div>
+     <h3 style="font-family:var(--disp);font-weight:700;font-size:22px;margin:16px 0 2px;letter-spacing:-.01em">{{ c.name }}</h3>
+     <div style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ember);margin-bottom:9px">{{ c.role }}</div>
+     <p style="margin:0;font-size:14px;color:var(--ink2);line-height:1.45">{{ c.desc }}</p>
+    </div>
+   </sc-for>
+  </div>
+ </div>
+</section>
+
+<!-- MANIFESTO -->
+<section style="background:var(--ink);color:var(--paper)">
+ <div style="max-width:1180px;margin:0 auto;padding:90px 40px;animation:revUp .9s ease both;animation-timeline:view();animation-range:entry 0% cover 22%">
+  <div style="font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--paper);opacity:.55">✶ The deal</div>
+  <p style="font-family:var(--disp);font-weight:600;font-size:clamp(30px,4.6vw,54px);line-height:1.08;letter-spacing:-.02em;margin:22px 0 0;max-width:20ch;text-wrap:balance">Autopilot is a myth. Margo keeps her hands on the wheel — the final call stays yours.</p>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:30px;margin-top:54px;border-top:1px solid rgba(244,238,227,.2);padding-top:30px">
+   <sc-for list="{{ pillars }}" as="p" hint-placeholder-count="3">
+    <div><div style="font-family:var(--disp);font-weight:700;font-size:20px">{{ p.t }}</div><p style="font-size:14.5px;opacity:.72;line-height:1.5;margin:8px 0 0">{{ p.b }}</p></div>
+   </sc-for>
+  </div>
+ </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" style="max-width:1180px;margin:0 auto;padding:84px 40px;animation:revUp .9s ease both;animation-timeline:view();animation-range:entry 0% cover 18%">
+ <div style="font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ember)">✶ Pay for the desk, not the drama</div>
+ <h2 style="font-family:var(--disp);font-weight:800;font-size:clamp(34px,5vw,58px);line-height:.95;letter-spacing:-.03em;margin:14px 0 38px">Straightforward pricing.</h2>
+ <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+  <sc-for list="{{ prices }}" as="p" hint-placeholder-count="3">
+   <div style="border:1px solid {{ p.border }};background:{{ p.bg }};color:{{ p.fg }};border-radius:16px;padding:28px;display:flex;flex-direction:column;transition:transform .28s,box-shadow .28s" style-hover="transform:translateY(-8px);box-shadow:0 26px 46px -28px rgba(26,23,18,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-family:var(--disp);font-weight:700;font-size:20px">{{ p.name }}</span><span style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.7">{{ p.badge }}</span></div>
+    <div style="margin:18px 0 4px"><span style="font-family:var(--disp);font-weight:800;font-size:44px;letter-spacing:-.03em">{{ p.price }}</span><span style="font-family:var(--mono);font-size:12px;opacity:.7"> {{ p.unit }}</span></div>
+    <p style="font-size:13.5px;opacity:.75;line-height:1.45;margin:0 0 18px">{{ p.blurb }}</p>
+    <div style="display:flex;flex-direction:column;gap:9px;flex:1">
+     <sc-for list="{{ p.features }}" as="f" hint-placeholder-count="4"><div style="display:flex;gap:9px;font-size:13.5px;align-items:baseline"><span style="opacity:.5">→</span>{{ f }}</div></sc-for>
+    </div>
+    <button onClick="{{ enterApp }}" style="margin-top:22px;border:none;border-radius:999px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;background:{{ p.ctaBg }};color:{{ p.ctaFg }}">{{ p.cta }}</button>
+   </div>
+  </sc-for>
+ </div>
+</section>
+
+<!-- FAQ -->
+<section style="border-top:1px solid var(--line)">
+ <div style="max-width:1180px;margin:0 auto;padding:70px 40px;display:grid;grid-template-columns:.7fr 1.3fr;gap:48px;animation:revUp .9s ease both;animation-timeline:view();animation-range:entry 0% cover 20%">
+  <h2 style="font-family:var(--disp);font-weight:800;font-size:clamp(30px,4vw,46px);line-height:.95;letter-spacing:-.03em;margin:0">The obvious questions.</h2>
+  <div style="border-top:1px solid var(--line2)">
+   <sc-for list="{{ faqs }}" as="q" hint-placeholder-count="4">
+    <div onClick="{{ q.toggle }}" style="padding:22px 6px;margin:0 -6px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .2s" style-hover="background:rgba(26,23,18,.025)">
+     <div style="display:flex;justify-content:space-between;align-items:center;gap:18px">
+      <div style="font-family:var(--disp);font-weight:700;font-size:19px;line-height:1.15">{{ q.q }}</div>
+      <span style="font-family:var(--mono);font-size:22px;line-height:1;color:var(--ink2);transition:transform .3s;transform:{{ q.rot }};flex:none">+</span>
+     </div>
+     <sc-if value="{{ q.open }}" hint-placeholder-val="{{ false }}">
+      <p style="margin:12px 0 2px;font-size:15px;color:var(--ink2);line-height:1.55;max-width:64ch;animation:revUp .35s ease both">{{ q.a }}</p>
+     </sc-if>
+    </div>
+   </sc-for>
+  </div>
+ </div>
+</section>
+
+<!-- FOOTER CTA -->
+<footer style="background:var(--ink);color:var(--paper)">
+ <div style="max-width:1180px;margin:0 auto;padding:70px 40px 40px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:24px">
+   <div>
+    <div style="font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.55">✶ Twenty minutes. No card.</div>
+    <div style="font-family:var(--disp);font-weight:800;font-size:clamp(40px,7vw,86px);line-height:.9;letter-spacing:-.03em;margin-top:14px">Let’s meet the shop.</div>
+   </div>
+   <button onClick="{{ enterApp }}" style="background:var(--paper);color:var(--ink);border:none;border-radius:999px;padding:17px 30px;font-size:16px;font-weight:600;cursor:pointer;white-space:nowrap" style-hover="background:var(--ember);color:var(--paper)">Start with Margo →</button>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:70px;padding-top:22px;border-top:1px solid rgba(244,238,227,.18);font-family:var(--mono);font-size:12px;opacity:.6;flex-wrap:wrap;gap:12px">
+   <span>© 2026 MARGO LABS</span><span>SHE WORKS FOR YOU · YOU SIGN THE CHECKS</span><span>HELLO@MARGO.WORK</span>
+  </div>
+ </div>
+</footer>
+</div>
+</sc-if>
+
+<!-- ============ APP ============ -->
+<sc-if value="{{ inApp }}">
+<div style="display:flex;min-height:100vh">
+ <!-- SIDEBAR -->
+ <aside style="width:266px;flex:none;background:var(--paper2);border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh">
+  <div style="padding:20px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px">
+   <span style="width:10px;height:10px;border-radius:50%;background:var(--ink);display:inline-block"></span>
+   <span style="font-family:var(--disp);font-weight:800;font-size:20px;letter-spacing:-.02em">Margo</span>
+  </div>
+  <div style="padding:16px 22px;border-bottom:1px solid var(--line)">
+   <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Workspace</div>
+   <div style="display:flex;align-items:center;gap:9px;margin-top:7px">
+    <span style="width:24px;height:24px;border-radius:6px;background:var(--ink);color:var(--paper);font-family:var(--disp);font-weight:700;font-size:13px;display:grid;place-items:center">O</span>
+    <span style="font-weight:600;font-size:14.5px">Overtone Coffee</span>
+   </div>
+  </div>
+  <nav style="flex:1;overflow-y:auto;padding:12px 12px">
+   <sc-for list="{{ journey }}" as="j" hint-placeholder-count="9">
+    <div onClick="{{ j.go }}" style="display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;cursor:pointer;background:{{ j.bg }}" style-hover="background:var(--paper3)">
+     <span style="font-family:var(--mono);font-size:11px;width:34px;color:{{ j.numColor }}">{{ j.n }}</span>
+     <span style="width:7px;height:7px;border-radius:50%;background:{{ j.dot }};flex:none"></span>
+     <span style="font-size:14px;font-weight:{{ j.weight }};color:{{ j.color }}">{{ j.label }}</span>
+    </div>
+   </sc-for>
+  </nav>
+  <div style="padding:14px 22px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
+   <div style="display:flex;align-items:center;gap:9px"><span style="width:26px;height:26px;border-radius:50%;background:var(--paper3);border:1px solid var(--line2);font-family:var(--disp);font-weight:700;font-size:12px;display:grid;place-items:center">NO</span><span style="font-size:13px">Nadia O.</span></div>
+   <span onClick="{{ toLanding }}" style="font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--ink3);cursor:pointer" style-hover="color:var(--ember)">EXIT ↗</span>
+  </div>
+ </aside>
+
+ <!-- MAIN -->
+ <main style="flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:hidden">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 34px;border-bottom:1px solid var(--line);background:rgba(244,238,227,.7);backdrop-filter:blur(8px);flex:none">
+   <div style="display:flex;align-items:center;gap:14px">
+    <span style="font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">{{ topKicker }}</span>
+    <span style="width:5px;height:5px;border-radius:50%;background:var(--line2)"></span>
+    <span style="font-family:var(--disp);font-weight:700;font-size:16px">{{ topTitle }}</span>
+   </div>
+   <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-family:var(--mono);font-size:11px;color:var(--ink3);letter-spacing:.04em">SAVED · 2:14PM</span>
+    <span style="width:30px;height:30px;border-radius:8px;border:1px solid var(--line2);display:grid;place-items:center;font-size:15px;cursor:pointer">?</span>
+   </div>
+  </div>
+
+  <div style="flex:1;overflow-y:auto">
+  <!-- CALL -->
+  <sc-if value="{{ onCall }}" hint-placeholder-val="{{ true }}">
+   <div style="height:100%;display:flex;min-height:0">
+    <!-- VOICE STAGE -->
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 30px;position:relative;overflow:hidden">
+     <div style="position:absolute;top:20px;left:24px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--ink3)">{{ callTopic }}</div>
+     <button onClick="{{ callToggleTx }}" style="position:absolute;top:16px;right:20px;background:transparent;border:1px solid var(--line2);border-radius:999px;padding:6px 13px;font-size:12px;color:var(--ink2);cursor:pointer" style-hover="border-color:var(--ink)">Transcript</button>
+
+     <sc-if value="{{ callDone }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align:center;animation:fadeUp .5s ease both">
+       <span style="width:60px;height:60px;border-radius:50%;background:var(--forest);color:var(--paper);display:inline-grid;place-items:center;font-size:28px">✓</span>
+       <h1 style="font-family:var(--disp);font-weight:800;font-size:40px;letter-spacing:-.03em;margin:18px 0 6px">Great call.</h1>
+       <p style="font-size:16px;color:var(--ink2);max-width:40ch;margin:0 auto 22px">I’m writing everything up into your company brief — you’ll get to edit and approve it.</p>
+       <button onClick="{{ callToReport }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:15px 28px;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:var(--ember)">Read the brief →</button>
+      </div>
+     </sc-if>
+
+     <sc-if value="{{ callPaused }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align:center;animation:fadeUp .4s ease both">
+       <span style="width:80px;height:80px;border-radius:50%;background:var(--paper2);border:1px solid var(--line2);display:inline-grid;place-items:center;font-size:30px;color:var(--ink3)">⏸</span>
+       <h2 style="font-family:var(--disp);font-weight:700;font-size:26px;margin:16px 0 4px">Call paused</h2>
+       <p style="font-size:14.5px;color:var(--ink2);margin:0 0 20px">Everything’s saved. Pick up right where you left off.</p>
+       <button onClick="{{ resumeCall }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:14px 26px;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)">Resume call →</button>
+      </div>
+     </sc-if>
+
+     <sc-if value="{{ callActive }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:520px">
+       <div style="position:relative;width:196px;height:196px;display:grid;place-items:center;margin-bottom:2px">
+        <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,var(--paper2) 0%,var(--paper) 70%);border:1px solid var(--line)"></div>
+        <div style="position:absolute;inset:20px;border-radius:50%;border:1px solid var(--line)"></div>
+        <div style="position:relative;display:flex;align-items:center;gap:3px;height:82px">
+         <sc-for list="{{ waveBars }}" as="bar" hint-placeholder-count="34">
+          <span style="width:3px;height:{{ bar.h }}px;background:var(--ink);border-radius:3px;transform-origin:center;animation:wave 1s ease-in-out infinite;animation-delay:{{ bar.delay }}"></span>
+         </sc-for>
+        </div>
+       </div>
+       <div style="font-family:var(--mono);letter-spacing:.04em;color:var(--ink);margin-top:0;font-size:28px">{{ callTimer }}</div>
+       <div style="font-family:var(--disp);font-weight:700;font-size:20px;margin-top:7px;color:var(--ink)">{{ callStatusBig }}</div>
+       <div style="font-size:13.5px;color:var(--ink3);margin-top:3px">{{ callStatusSub }}</div>
+       
+       <div style="min-height:48px;margin-top:14px;display:flex;justify-content:center;width:100%">
+        <sc-if value="{{ composeVoice }}" hint-placeholder-val="{{ false }}">
+         <button onClick="{{ callAnswerVoice }}" style="display:flex;align-items:center;gap:11px;background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:13px 26px;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)"><span style="width:13px;height:19px;border:2px solid var(--paper);border-radius:8px;position:relative;display:block"><span style="position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);width:9px;height:5px;border:2px solid var(--paper);border-top:none;border-radius:0 0 7px 7px"></span></span>Tap to answer</button>
+        </sc-if>
+        <sc-if value="{{ composeOptions }}" hint-placeholder-val="{{ false }}">
+         <div style="display:flex;flex-wrap:wrap;gap:9px;justify-content:center">
+          <sc-for list="{{ optionList }}" as="op" hint-placeholder-count="3"><button onClick="{{ op.pick }}" style="background:var(--card);border:1px solid var(--line2);border-radius:999px;padding:11px 19px;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer" style-hover="border-color:var(--ink);background:var(--paper2)">{{ op.label }}</button></sc-for>
+         </div>
+        </sc-if>
+        <sc-if value="{{ composeGoals }}" hint-placeholder-val="{{ false }}">
+         <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;max-width:480px"><sc-for list="{{ obGoals }}" as="g" hint-placeholder-count="6"><span onClick="{{ g.toggle }}" style="cursor:pointer;font-size:13px;padding:8px 14px;border-radius:999px;border:1px solid {{ g.bd }};background:{{ g.bg }};color:{{ g.fg }};user-select:none">{{ g.label }}</span></sc-for><button onClick="{{ callNext }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:9px 18px;font-size:13.5px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)">Send →</button></div>
+        </sc-if>
+        <sc-if value="{{ composeSystems }}" hint-placeholder-val="{{ false }}">
+         <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;max-width:480px"><sc-for list="{{ obSystems }}" as="sy" hint-placeholder-count="8"><span onClick="{{ sy.toggle }}" style="cursor:pointer;font-size:13px;padding:8px 13px;border-radius:9px;border:1px solid {{ sy.bd }};background:{{ sy.bg }};color:{{ sy.fg }};display:flex;align-items:center;gap:6px;user-select:none"><span style="width:6px;height:6px;border-radius:50%;background:{{ sy.dot }}"></span>{{ sy.label }}</span></sc-for><button onClick="{{ callNext }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:9px 18px;font-size:13.5px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)">Send →</button></div>
+        </sc-if>
+        <sc-if value="{{ composeIntro }}" hint-placeholder-val="{{ false }}">
+         <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button onClick="{{ callUpload }}" style="background:var(--card);border:1px dashed var(--line2);border-radius:999px;padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink)" style-hover="border-color:var(--ink);border-style:solid">⬆ Upload my canvas</button><button onClick="{{ callBuild }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:12px 22px;font-size:14px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)">Build it together →</button></div>
+        </sc-if>
+       </div>
+
+       <div style="display:flex;align-items:center;gap:24px;margin-top:14px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><button onClick="{{ callMute }}" style="width:50px;height:50px;border-radius:50%;border:1px solid var(--line2);background:var(--card);cursor:pointer;display:grid;place-items:center" style-hover="border-color:var(--ink)"><span style="width:12px;height:17px;border:2px solid var(--ink);border-radius:7px;display:block"></span></button><span style="font-size:11px;color:var(--ink3)">{{ muteLabel }}</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><button onClick="{{ endCall }}" style="width:56px;height:56px;border-radius:50%;border:none;background:var(--ember);cursor:pointer;display:grid;place-items:center;box-shadow:0 6px 18px rgba(184,68,42,.35)" style-hover="filter:brightness(1.06)"><span style="width:22px;height:22px;border:3px solid var(--paper);border-radius:6px;display:block;transform:rotate(135deg)"></span></button><span style="font-size:11px;color:var(--ink3)">End call</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><button onClick="{{ callToggleTx }}" style="width:50px;height:50px;border-radius:50%;border:1px solid var(--line2);background:var(--card);cursor:pointer;display:grid;place-items:center" style-hover="border-color:var(--ink)"><span style="width:16px;height:14px;display:flex;flex-direction:column;gap:3px;justify-content:center"><span style="height:2px;background:var(--ink);border-radius:2px"></span><span style="height:2px;width:70%;background:var(--ink);border-radius:2px"></span><span style="height:2px;background:var(--ink);border-radius:2px"></span></span></button><span style="font-size:11px;color:var(--ink3)">Transcript</span></div>
+       </div>
+      </div>
+     </sc-if>
+    </div>
+
+    <!-- TRANSCRIPT PANEL -->
+    <sc-if value="{{ callTxOpen }}" hint-placeholder-val="{{ true }}">
+     <div style="width:334px;flex:none;border-left:1px solid var(--line);background:var(--paper2);display:flex;flex-direction:column;min-height:0">
+      <div style="display:flex;gap:4px;padding:14px 16px 0">
+       <button onClick="{{ txTabTranscript }}" style="flex:1;background:transparent;border:none;border-bottom:2px solid {{ callTxTab }};padding:8px 0;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;font-family:var(--sans)">Transcript</button>
+       <button onClick="{{ txTabNotes }}" style="flex:1;background:transparent;border:none;border-bottom:2px solid var(--line);padding:8px 0;font-size:13px;font-weight:600;color:var(--ink3);cursor:pointer;font-family:var(--sans)">Notes</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:10px 16px;min-height:0">
+       <sc-if value="{{ txIsTranscript }}" hint-placeholder-val="{{ true }}">
+        <sc-for list="{{ callTx }}" as="e" hint-placeholder-count="2">
+         <div style="padding:10px 0;border-bottom:1px solid var(--line)">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><span style="font-size:12px;font-weight:700;color:{{ e.whoColor }}">{{ e.who }}</span><span style="font-family:var(--mono);font-size:10px;color:var(--ink3)">{{ e.time }}</span></div>
+          <div style="font-size:13px;line-height:1.5;color:var(--ink2)">{{ e.text }}</div>
+         </div>
+        </sc-for>
+       </sc-if>
+       <sc-if value="{{ txIsNotes }}" hint-placeholder-val="{{ false }}">
+        <sc-for list="{{ callNotes }}" as="n" hint-placeholder-count="3">
+         <div style="display:flex;gap:9px;padding:8px 0;font-size:13px;line-height:1.5;color:var(--ink2)"><span style="color:var(--ember)">✎</span>{{ n }}</div>
+        </sc-for>
+       </sc-if>
+      </div>
+      <div style="border-top:1px solid var(--line);padding:11px 16px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--ink3)">Powered by Margo · Transcription</div>
+     </div>
+    </sc-if>
+   </div>
+  </sc-if>
+
+  <!-- REPORT -->
+  <sc-if value="{{ onReport }}">
+   <div style="max-width:1180px;margin:0 auto;padding:44px 40px 90px;animation:fadeUp .45s ease both">
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:start;margin-bottom:26px">
+     <div style="font-family:var(--disp);font-weight:800;font-size:74px;line-height:.8;letter-spacing:-.03em;color:var(--paper3)">02</div>
+     <div>
+      <div style="font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ember)">The company brief</div>
+      <h1 style="font-family:var(--disp);font-weight:800;font-size:clamp(32px,4.4vw,50px);line-height:.98;letter-spacing:-.03em;margin:10px 0 6px;max-width:18ch">Everything Margo learned.</h1>
+      <p style="font-size:15.5px;color:var(--ink2);max-width:60ch;margin:0">Written from your call. Edit any line, check where each fact came from, then approve — this becomes the single source of truth for planning.</p>
+     </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 288px;gap:24px;align-items:start">
+     <div contentEditable="true" suppressContentEditableWarning="{{ true }}" style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:38px 44px;outline:none">
+      <div style="display:flex;align-items:center;gap:8px;background:var(--paper2);border:1px solid var(--line);border-radius:9px;padding:9px 13px;margin-bottom:20px;font-size:12.5px;color:var(--ink2)"><span style="font-family:var(--mono);font-size:11px;color:var(--ember)">✎ LIVE</span>Every line here is editable — click any text to change it, then approve.</div><div style="font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:14px"><span>Overtone Coffee — Company Report</span><span>v3 · draft</span></div>
+
+      <div id="rep-01" style="display:flex;align-items:center;gap:12px;margin:36px 0 14px">
+       <span style="font-family:var(--mono);font-size:12px;color:var(--ink3)">§01</span>
+       <h2 style="font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0;flex:1">Executive summary</h2>
+       <span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap">Owner + call</span>
+      </div>
+      <p style="margin:0;font-size:15.5px;line-height:1.65;color:var(--ink)" contentEditable="true" suppressContentEditableWarning="{{ true }}">Overtone Coffee is a 12-person specialty roaster selling single-origin beans and flexible subscriptions direct-to-consumer, with a small but growing wholesale channel. The team is strong on product and thin on operational capacity: repetitive support, subscription admin and wholesale intake eat hours that don’t scale. The owner wants more capacity and faster response times without hiring — while keeping the final say on anything financial or brand-facing.</p>
+
+      <div id="rep-02" style="display:flex;align-items:center;gap:12px;margin:36px 0 14px">
+       <span style="font-family:var(--mono);font-size:12px;color:var(--ink3)">§02</span>
+       <h2 style="font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0;flex:1">Company snapshot</h2>
+       <span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap">Owner</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden">
+       <sc-for list="{{ repFacts }}" as="r" hint-placeholder-count="6">
+        <div style="display:flex;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)"><span style="font-size:13px;color:var(--ink3)">{{ r.k }}</span><span style="font-size:13.5px;font-weight:600;text-align:right">{{ r.v }}</span></div>
+       </sc-for>
+      </div>
+
+      <div id="rep-03" style="display:flex;align-items:center;gap:12px;margin:36px 0 14px">
+       <span style="font-family:var(--mono);font-size:12px;color:var(--ink3)">§03</span>
+       <h2 style="font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0;flex:1">Lean Canvas</h2>
+       <span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap">Owner + AI</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+       <sc-for list="{{ canvas }}" as="c" hint-placeholder-count="9">
+        <div style="background:var(--paper2);border:1px solid var(--line);border-radius:10px;padding:13px;min-height:96px">
+         <div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:6px">{{ c.label }}</div>
+         <p style="margin:0;font-size:12.5px;line-height:1.4;color:var(--ink)">{{ c.body }}</p>
+        </div>
+       </sc-for>
+      </div>
+
+      <div id="rep-04" style="display:flex;align-items:center;gap:12px;margin:36px 0 14px">
+       <span style="font-family:var(--mono);font-size:12px;color:var(--ink3)">§04</span>
+       <h2 style="font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0;flex:1">Operations overview</h2>
+       <span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap">From call</span>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden">
+       <div style="display:grid;grid-template-columns:1.5fr 1.1fr 1.2fr .8fr .8fr;background:var(--paper2);font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)"><span style="padding:9px 12px">Process</span><span style="padding:9px 12px">Trigger</span><span style="padding:9px 12px">Systems</span><span style="padding:9px 12px">Volume</span><span style="padding:9px 12px">Owner</span></div>
+       <sc-for list="{{ repProcesses }}" as="p" hint-placeholder-count="5">
+        <div style="display:grid;grid-template-columns:1.5fr 1.1fr 1.2fr .8fr .8fr;border-top:1px solid var(--line);font-size:12.5px;align-items:center"><span style="padding:11px 12px;font-weight:600">{{ p.name }}</span><span style="padding:11px 12px;color:var(--ink2)">{{ p.trigger }}</span><span style="padding:11px 12px;color:var(--ink2)">{{ p.systems }}</span><span style="padding:11px 12px;font-family:var(--mono);font-size:11px">{{ p.freq }}</span><span style="padding:11px 12px;color:var(--ink2)">{{ p.owner }}</span></div>
+       </sc-for>
+      </div>
+
+      <div id="rep-05" style="display:flex;align-items:center;gap:12px;margin:36px 0 14px">
+       <span style="font-family:var(--mono);font-size:12px;color:var(--ink3)">§05</span>
+       <h2 style="font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0;flex:1">Systems &amp; data</h2>
+       <span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap">Owner</span>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden">
+       <sc-for list="{{ repSystems }}" as="s" hint-placeholder-count="6">
+        <div style="display:grid;grid-template-columns:1fr 1.4fr auto;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:center"><span style="font-weight:600;font-size:13.5px">{{ s.name }}</span><span style="font-size:13px;color:var(--ink2)">{{ s.use }}</span><span style="font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:{{ s.color }};display:flex;align-items:center;gap:6px;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:{{ s.color }}"></span>{{ s.status }}</span></div>
+       </sc-for>
+      </div>
+
+      <div id="rep-06" style="display:flex;align-items:center;gap:12px;margin:36px 0 14px">
+       <span style="font-family:var(--mono);font-size:12px;color:var(--ink3)">§06</span>
+       <h2 style="font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0;flex:1">Pain points</h2>
+       <span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap">From call</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+       <sc-for list="{{ repPain }}" as="p" hint-placeholder-count="3">
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start"><span style="width:7px;height:7px;border-radius:50%;background:var(--ember);margin-top:7px"></span><div><span style="font-weight:600;font-size:14.5px">{{ p.t }}</span><p style="margin:2px 0 0;font-size:13.5px;color:var(--ink2);line-height:1.45">{{ p.detail }}</p></div></div>
+       </sc-for>
+      </div>
+
+      <div id="rep-07" style="display:flex;align-items:center;gap:12px;margin:36px 0 14px">
+       <span style="font-family:var(--mono);font-size:12px;color:var(--ink3)">§07</span>
+       <h2 style="font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0;flex:1">Automation opportunities</h2>
+       <span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap">AI-inferred</span>
+      </div>
+      <p style="margin:0 0 12px;font-size:13.5px;color:var(--ink2);line-height:1.5">Candidate use cases only — the workforce isn’t committed until you approve the plan in the next step.</p>
+      <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden">
+       <div style="display:grid;grid-template-columns:1.7fr 1.3fr .7fr .7fr;background:var(--paper2);font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)"><span style="padding:9px 12px">Use case</span><span style="padding:9px 12px">Trigger</span><span style="padding:9px 12px">Volume</span><span style="padding:9px 12px">Risk</span></div>
+       <sc-for list="{{ repUseCases }}" as="u" hint-placeholder-count="5">
+        <div style="display:grid;grid-template-columns:1.7fr 1.3fr .7fr .7fr;border-top:1px solid var(--line);font-size:12.5px;align-items:center"><span style="padding:11px 12px;font-weight:600">{{ u.name }}</span><span style="padding:11px 12px;font-family:var(--mono);font-size:11px;color:var(--ink2)">{{ u.trigger }}</span><span style="padding:11px 12px;font-family:var(--mono);font-size:11px">{{ u.freq }}</span><span style="padding:11px 12px"><span style="font-family:var(--mono);font-size:10px;text-transform:uppercase;color:{{ u.rc }}">{{ u.risk }}</span></span></div>
+       </sc-for>
+      </div>
+
+      <div id="rep-08" style="display:flex;align-items:center;gap:12px;margin:36px 0 14px">
+       <span style="font-family:var(--mono);font-size:12px;color:var(--ink3)">§08</span>
+       <h2 style="font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0;flex:1">Constraints &amp; approvals</h2>
+       <span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap">Owner</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+       <sc-for list="{{ repConstraints }}" as="c" hint-placeholder-count="4">
+        <div style="display:flex;gap:10px;font-size:14px;color:var(--ink);align-items:baseline"><span style="color:var(--forest)">◆</span>{{ c }}</div>
+       </sc-for>
+      </div>
+
+      <div id="rep-09" style="display:flex;align-items:center;gap:12px;margin:36px 0 14px">
+       <span style="font-family:var(--mono);font-size:12px;color:var(--ink3)">§09</span>
+       <h2 style="font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0;flex:1">Sources &amp; confidence</h2>
+       <span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap">Method</span>
+      </div>
+      <p style="margin:0 0 12px;font-size:13.5px;color:var(--ink2);line-height:1.55">Every fact is labelled by where it came from. Margo may suggest a pattern, but never states a volume, cost or permission as fact unless you supplied it.</p>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--ink2)">
+       <span><span style="width:7px;height:7px;border-radius:50%;background:var(--forest);display:inline-block;margin-right:5px"></span>Owner-supplied</span>
+       <span><span style="width:7px;height:7px;border-radius:50%;background:var(--ink2);display:inline-block;margin-right:5px"></span>From the call</span>
+       <span><span style="width:7px;height:7px;border-radius:50%;background:var(--ochre);display:inline-block;margin-right:5px"></span>AI-inferred — confirm</span>
+      </div>
+
+      <div id="rep-10" style="display:flex;align-items:center;gap:12px;margin:36px 0 14px">
+       <span style="font-family:var(--mono);font-size:12px;color:var(--ink3)">§10</span>
+       <h2 style="font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0;flex:1">Phase 2 readiness</h2>
+       <span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap">Status</span>
+      </div>
+      <div style="display:flex;gap:14px;align-items:center;background:var(--paper2);border:1px solid var(--forest);border-radius:12px;padding:18px 20px">
+       <span style="width:34px;height:34px;border-radius:50%;background:var(--forest);color:var(--paper);display:grid;place-items:center;font-size:17px;flex:none">✓</span>
+       <p style="margin:0;font-size:14px;color:var(--ink);line-height:1.5">Ready for planning. The blueprint has enough operational detail to extract use cases and match a workforce. Three follow-ups remain, but none block Phase 2.</p>
+      </div>
+     </div>
+
+     <aside style="position:sticky;top:20px;display:flex;flex-direction:column;gap:14px">
+      <div style="background:var(--paper2);border:1px solid var(--line);border-radius:14px;padding:16px 18px">
+       <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px">Contents</div>
+       <sc-for list="{{ repToc }}" as="t" hint-placeholder-count="10">
+        <div style="display:flex;gap:9px;font-size:12.5px;color:var(--ink2);padding:4px 0"><span style="font-family:var(--mono);color:var(--ink3)">{{ t.n }}</span>{{ t.label }}</div>
+       </sc-for>
+      </div>
+      <sc-if value="{{ reportApproved }}" hint-placeholder-val="{{ false }}">
+       <div style="background:var(--forest);color:var(--paper);border-radius:14px;padding:20px;text-align:center">
+        <div style="font-size:26px">✓</div><div style="font-weight:600;margin-top:4px">Approved</div><div style="font-size:12.5px;opacity:.8;margin-top:2px">Locked as v3 · sent to planning</div>
+       </div>
+      </sc-if>
+      <sc-if value="{{ reportNotApproved }}" hint-placeholder-val="{{ true }}">
+       <div style="background:var(--card);border:1px solid var(--line2);border-radius:14px;padding:18px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Sign-off</div>
+        <p style="font-size:13px;color:var(--ink2);line-height:1.45;margin:8px 0 14px">Approving locks this version as the only input to planning. You can always edit and re-approve.</p>
+        <button onClick="{{ approveReport }}" style="width:100%;background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:13px;font-size:14px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)">Approve &amp; send to planning →</button>
+        <button style="width:100%;background:transparent;border:1px solid var(--line2);color:var(--ink2);border-radius:999px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px">Export DOCX / PDF</button>
+       </div>
+      </sc-if>
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px">
+       <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px">Change history</div>
+       <sc-for list="{{ history }}" as="h" hint-placeholder-count="3">
+        <div style="display:flex;gap:9px;font-size:12.5px;color:var(--ink2);padding:5px 0"><span style="font-family:var(--mono);color:var(--ink3)">{{ h.v }}</span>{{ h.t }}</div>
+       </sc-for>
+      </div>
+     </aside>
+    </div>
+   </div>
+  </sc-if>
+
+  <!-- PLANNER -->
+  <sc-if value="{{ onPlanner }}">
+   <div style="max-width:1180px;margin:0 auto;padding:28px 30px 0;animation:fadeUp .45s ease both">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
+     <div style="display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start">
+      <div style="font-family:var(--disp);font-weight:800;font-size:58px;line-height:.8;letter-spacing:-.03em;color:var(--paper3)">03</div>
+      <div>
+       <div style="font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ember)">Build the team</div>
+       <h1 style="font-family:var(--disp);font-weight:800;font-size:clamp(28px,3.6vw,42px);line-height:.98;letter-spacing:-.03em;margin:8px 0 4px;max-width:20ch">Margo drafted your crew.</h1>
+       <p style="font-size:14.5px;color:var(--ink2);max-width:60ch;margin:0">See the workflow, drag agents in from the library, set each one up, or tell Margo what to change. Nothing builds until every agent is ready.</p>
+      </div>
+     </div>
+     <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--ink3);border:1px solid var(--line2);border-radius:20px;padding:6px 12px">Plan {{ plVer }}</span>
+      <sc-if value="{{ plCanUndo }}" hint-placeholder-val="{{ false }}"><button onClick="{{ plUndo }}" style="background:transparent;border:1px solid var(--line2);border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink2)">↺ Undo</button></sc-if>
+     </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:20px">
+     <div style="flex:1;display:flex;gap:8px;background:var(--card);border:1px solid var(--line2);border-radius:999px;padding:6px 6px 6px 16px;align-items:center">
+      <span style="width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--paper);font-family:var(--disp);font-weight:700;font-size:11px;display:grid;place-items:center;flex:none">M</span>
+      <input value="{{ plNl }}" onChange="{{ plSetNl }}" placeholder="Tell Margo a change — e.g. “add invoicing” or “require approval before refunds”" style="flex:1;border:none;outline:none;background:transparent;font-size:14px;color:var(--ink)" />
+      <button onClick="{{ plPreview }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer" style-hover="background:var(--ember)">Preview change</button>
+     </div>
+    </div>
+    <sc-if value="{{ plHasDiff }}" hint-placeholder-val="{{ false }}">
+     <div style="margin-top:12px;background:var(--paper2);border:1px solid var(--ink);border-radius:14px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;animation:revUp .3s ease both">
+      <div><div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px">Proposed change · review before applying</div><div style="font-family:var(--disp);font-weight:700;font-size:18px">{{ plDiff.title }}</div><div style="display:flex;gap:16px;margin-top:6px;font-size:13px;color:var(--ink2)"><span style="font-family:var(--mono);font-size:12px">{{ plDiff.price }}</span><span>· {{ plDiff.risk }}</span></div></div>
+      <div style="display:flex;gap:9px"><button onClick="{{ plDiscard }}" style="background:transparent;border:1px solid var(--line2);border-radius:999px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink2)">Discard</button><button onClick="{{ plApply }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)">Apply →</button></div>
+     </div>
+    </sc-if>
+
+    <div style="margin-top:18px">
+     <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px">Agent library · drag one into the team, or click to add</div>
+     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:stretch">
+      <sc-for list="{{ plLibrary }}" as="l" hint-placeholder-count="7">
+       <div draggable="true" onDragStart="{{ l.dragStart }}" onClick="{{ l.add }}" style="width:150px;background:var(--card);border:1px dashed var(--line2);border-radius:11px;padding:11px 12px;cursor:grab" style-hover="border-color:var(--ink);border-style:solid">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-family:var(--disp);font-weight:700;font-size:14.5px">{{ l.name }}</span><span style="font-size:15px;color:var(--ink3)">＋</span></div>
+        <div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ember);margin-top:2px">{{ l.role }}</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:5px">{{ l.priceLabel }}</div>
+       </div>
+      </sc-for>
+      <div onClick="{{ plAddCustom }}" style="width:164px;background:var(--ink);color:var(--paper);border-radius:11px;padding:11px 12px;cursor:pointer;display:flex;flex-direction:column;justify-content:center" style-hover="background:var(--ember)"><div style="font-size:18px;line-height:1">＋</div><div style="font-size:13px;font-weight:600;margin-top:3px">Create custom agent</div><div style="font-size:10.5px;opacity:.7">Draggable · renamable</div></div>
+     </div>
+    </div>
+
+    <div style="display:flex;gap:6px;margin:18px 0 14px;background:var(--paper2);border:1px solid var(--line);border-radius:999px;padding:4px;width:fit-content">
+     <span onClick="{{ setFlowTab }}" style="cursor:pointer;font-size:13px;font-weight:600;padding:8px 18px;border-radius:999px;background:{{ plTabFlowBg }};color:{{ plTabFlowFg }}">Workflow</span>
+     <span onClick="{{ setTeamTab }}" style="cursor:pointer;font-size:13px;font-weight:600;padding:8px 18px;border-radius:999px;background:{{ plTabTeamBg }};color:{{ plTabTeamFg }}">The team</span>
+     <span onClick="{{ setUseTab }}" style="cursor:pointer;font-size:13px;font-weight:600;padding:8px 18px;border-radius:999px;background:{{ plTabUseBg }};color:{{ plTabUseFg }}">Use cases</span>
+    </div>
+
+    <div style="padding-bottom:96px">
+    <sc-if value="{{ plViewConfig }}" hint-placeholder-val="{{ false }}">
+     <div style="background:var(--card);border:1px solid var(--line2);border-radius:16px;padding:22px 24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px">
+       <div><div style="font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ember)">Configure for execution</div><div style="font-family:var(--disp);font-weight:700;font-size:22px">{{ cfgName }}</div></div>
+       <button onClick="{{ plConfigBack }}" style="background:transparent;border:1px solid var(--line2);border-radius:999px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink2)">← Back to plan</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px">
+       <div>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px">Operating mode</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+         <div onClick="{{ setCfgDraft }}" style="border:1px solid {{ cfgModeDraftBd }};border-radius:9px;padding:10px 12px;cursor:pointer;font-size:13px"><b>Draft only</b> — prepares, never sends</div>
+         <div onClick="{{ setCfgRoutine }}" style="border:1px solid {{ cfgModeRoutineBd }};border-radius:9px;padding:10px 12px;cursor:pointer;font-size:13px"><b>Auto for routine</b> — sends the safe ones</div>
+         <div onClick="{{ setCfgApproval }}" style="border:1px solid {{ cfgModeApprovalBd }};border-radius:9px;padding:10px 12px;cursor:pointer;font-size:13px"><b>Approval for all</b> — you sign every action</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin:16px 0 8px">Triggers &amp; channels</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cfgChannels }}" as="c" hint-placeholder-count="5"><span onClick="{{ c.toggle }}" style="cursor:pointer;font-size:12.5px;padding:7px 12px;border-radius:20px;user-select:none;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</span></sc-for></div>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin:16px 0 8px">Knowledge sources</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cfgKnowledge }}" as="c" hint-placeholder-count="4"><span onClick="{{ c.toggle }}" style="cursor:pointer;font-size:12.5px;padding:7px 12px;border-radius:20px;user-select:none;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</span></sc-for></div>
+       </div>
+       <div>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px">Always needs your approval</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cfgApprovals }}" as="c" hint-placeholder-count="5"><span onClick="{{ c.toggle }}" style="cursor:pointer;font-size:12.5px;padding:7px 12px;border-radius:20px;user-select:none;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</span></sc-for></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px">
+         <div><div style="font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:7px">Response target</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cfgTarget }}" as="c" hint-placeholder-count="3"><span onClick="{{ c.set }}" style="cursor:pointer;font-size:12.5px;padding:7px 12px;border-radius:20px;user-select:none;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</span></sc-for></div></div>
+         <div><div style="font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:7px">Working hours</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cfgHours }}" as="c" hint-placeholder-count="2"><span onClick="{{ c.set }}" style="cursor:pointer;font-size:12.5px;padding:7px 12px;border-radius:20px;user-select:none;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</span></sc-for></div></div>
+         <div><div style="font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:7px">Escalation owner</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cfgEsc }}" as="c" hint-placeholder-count="3"><span onClick="{{ c.set }}" style="cursor:pointer;font-size:12.5px;padding:7px 12px;border-radius:20px;user-select:none;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</span></sc-for></div></div>
+         <div><div style="font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:7px">Retry policy</div><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ cfgRetry }}" as="c" hint-placeholder-count="3"><span onClick="{{ c.set }}" style="cursor:pointer;font-size:12.5px;padding:7px 12px;border-radius:20px;user-select:none;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }}">{{ c.label }}</span></sc-for></div></div>
+        </div>
+       </div>
+      </div>
+      <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px">
+       <div style="font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:9px">Admin setup · credentials this agent needs (referenced by name, never stored in the open)</div>
+       <div style="display:flex;flex-direction:column;gap:7px">
+        <sc-for list="{{ cfgCreds }}" as="c" hint-placeholder-count="2">
+         <div style="display:flex;justify-content:space-between;align-items:center;background:var(--paper2);border:1px solid var(--line);border-radius:9px;padding:9px 13px"><div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--mono);font-size:12px;color:var(--ink)">{{ c.ref }}</span><span style="font-size:12px;color:var(--ink3)">for {{ c.system }}</span></div><span style="font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:{{ c.color }};display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:50%;background:{{ c.color }}"></span>{{ c.status }}</span></div>
+        </sc-for>
+       </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:20px"><button onClick="{{ plConfigSaveNew }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:13px 26px;font-size:14.5px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)">Save &amp; mark ready →</button></div>
+     </div>
+    </sc-if>
+
+    <sc-if value="{{ plViewPlan }}" hint-placeholder-val="{{ true }}">
+     <sc-if value="{{ plTabFlow }}" hint-placeholder-val="{{ true }}">
+      <div style="background:var(--paper2);border:1px solid var(--line);border-radius:16px;padding:26px 24px">
+       <div style="display:flex;flex-direction:column;align-items:center">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border:1px dashed var(--line2);border-radius:999px;font-size:13px"><span style="font-family:var(--mono);font-size:10px;color:var(--ink3)">TRIGGER</span>Customer &amp; stock events come in</div>
+        <div style="width:2px;height:20px;background:var(--line2)"></div>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px">Agents run in parallel</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%">
+         <sc-for list="{{ plNodes }}" as="n" hint-placeholder-count="4">
+          <div onClick="{{ n.open }}" style="flex:1;min-width:150px;max-width:210px;background:var(--ink);color:var(--paper);border-radius:12px;padding:14px 15px;cursor:pointer" style-hover="opacity:.92">
+           <div style="display:flex;justify-content:space-between;align-items:center"><span style="width:7px;height:7px;border-radius:50%;background:{{ n.dot }}"></span><span style="font-family:var(--mono);font-size:9px;opacity:.6;text-transform:uppercase">{{ n.role }}</span></div>
+           <div style="font-family:var(--disp);font-weight:700;font-size:16px;margin-top:8px">{{ n.name }}</div>
+           <div style="font-family:var(--mono);font-size:9.5px;opacity:.7;margin-top:6px">◇ {{ n.gate }}</div>
+          </div>
+         </sc-for>
+        </div>
+        <div style="width:2px;height:20px;background:var(--line2)"></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);border:1px solid var(--forest);border-radius:999px;font-size:13px"><span style="font-family:var(--mono);font-size:10px;color:var(--forest)">YOU</span>Approvals &amp; sign-off</div>
+       </div>
+      </div>
+     </sc-if>
+
+     <sc-if value="{{ plTabTeam }}" hint-placeholder-val="{{ false }}">
+      <div onDragOver="{{ plDragOver }}" onDrop="{{ plDropList }}" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+       <sc-for list="{{ plTeamCards }}" as="a" hint-placeholder-count="4">
+        <div draggable="true" onDragStart="{{ a.dragStart }}" onDragOver="{{ plDragOver }}" onDrop="{{ a.drop }}" style="background:var(--card);border:1px solid {{ a.cardBd }};border-radius:14px;padding:15px 16px;cursor:grab;transition:border-color .2s">
+         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="display:flex;gap:9px;align-items:baseline;flex:1;min-width:0">
+           <span style="width:8px;height:8px;border-radius:50%;background:{{ a.statusColor }};margin-top:6px;flex:none"></span>
+           <div style="flex:1;min-width:0">
+            <sc-if value="{{ a.isCustom }}" hint-placeholder-val="{{ false }}"><input value="{{ a.name }}" onChange="{{ a.rename }}" style="font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:-.01em;border:none;border-bottom:1px dashed var(--line2);background:transparent;outline:none;width:100%;color:var(--ink);padding:0 0 2px" /></sc-if>
+            <sc-if value="{{ a.notCustom }}" hint-placeholder-val="{{ true }}"><h3 style="font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:-.01em;margin:0">{{ a.name }}</h3></sc-if>
+            <div style="font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:{{ a.statusColor }};margin-top:3px">{{ a.role }} · {{ a.statusLabel }}</div>
+           </div>
+          </div>
+          <span style="font-family:var(--mono);font-size:11.5px;color:var(--ink2);white-space:nowrap">{{ a.priceLabel }}</span>
+         </div>
+         <p style="margin:9px 0 9px 17px;font-size:13px;color:var(--ink2);line-height:1.4">{{ a.desc }}</p>
+         <div style="margin-left:17px;font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin-bottom:11px">⚙ {{ a.integLabel }} · ◇ {{ a.approval }}</div>
+         <div style="display:flex;gap:8px;margin-left:17px">
+          <sc-if value="{{ a.hasAction }}" hint-placeholder-val="{{ false }}"><button onClick="{{ a.resolve }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer" style-hover="background:var(--ember)">{{ a.actionLabel }}</button></sc-if>
+          <button onClick="{{ a.remove }}" style="background:transparent;color:var(--ink2);border:1px solid var(--line2);border-radius:999px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer">Remove</button>
+         </div>
+        </div>
+       </sc-for>
+      </div>
+     </sc-if>
+
+     <sc-if value="{{ plTabUse }}" hint-placeholder-val="{{ false }}">
+      <div style="border:1px solid var(--line);border-radius:14px;overflow:hidden">
+       <div style="background:var(--paper2);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)"><span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)">Use-case coverage · Tier 1 + Tier 2</span><span style="font-family:var(--mono);font-size:12px;color:var(--forest)">{{ plCovered }} / {{ plUseTotal }} covered</span></div>
+       <sc-for list="{{ plCover }}" as="u" hint-placeholder-count="5">
+        <div style="display:grid;grid-template-columns:1.6fr 1fr auto;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);align-items:center"><div><div style="font-weight:600;font-size:14px">{{ u.name }}</div><div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin-top:2px">{{ u.trigger }} · {{ u.freq }}</div></div><div style="font-size:13px;color:var(--ink2)">{{ u.agent }}</div><span style="font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:{{ u.covColor }};display:flex;align-items:center;gap:6px;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:{{ u.covColor }}"></span>{{ u.covLabel }}</span></div>
+       </sc-for>
+      </div>
+     </sc-if>
+    </sc-if>
+    </div>
+
+    <div style="position:sticky;bottom:0;background:rgba(244,238,227,.94);backdrop-filter:blur(10px);border-top:1px solid var(--line2);padding:13px 0;margin-top:6px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+     <div><span style="font-family:var(--disp);font-weight:800;font-size:26px;letter-spacing:-.02em">{{ plTotal }}</span><span style="font-family:var(--mono);font-size:11px;color:var(--ink3)"> /mo · {{ plLow }}–{{ plHigh }} range · {{ plPlannedCount }} agents</span></div>
+     <div style="flex:1"></div>
+     <sc-if value="{{ plCantConfirm }}" hint-placeholder-val="{{ true }}">
+      <span style="font-family:var(--mono);font-size:11.5px;color:var(--ochre)">{{ plBlockerCount }} agent(s) to set up first</span>
+      <div style="background:var(--paper3);color:var(--ink3);border-radius:999px;padding:12px 24px;font-size:14px;font-weight:600">Confirm workflow →</div>
+     </sc-if>
+     <sc-if value="{{ plCanConfirm }}" hint-placeholder-val="{{ false }}">
+      <span style="font-size:13px;color:var(--forest);display:flex;align-items:center;gap:7px"><span style="width:16px;height:16px;border-radius:50%;background:var(--forest);color:var(--paper);display:grid;place-items:center;font-size:10px">✓</span>All ready</span>
+      <button onClick="{{ plConfirm }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:12px 26px;font-size:14.5px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)">Confirm workflow →</button>
+     </sc-if>
+    </div>
+   </div>
+  </sc-if>
+
+  <!-- DESIGN -->
+  <sc-if value="{{ onDesign }}" hint-placeholder-val="{{ false }}">
+   <div style="height:100%;display:flex;flex-direction:column;min-height:0">
+    <div style="flex:1;display:grid;grid-template-columns:250px 1fr;min-height:0">
+     <div style="border-right:1px solid var(--line);padding:24px 20px;overflow-y:auto">
+      <div style="font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ember);margin-bottom:6px">Designing</div>
+      <div style="font-family:var(--disp);font-weight:700;font-size:17px;margin-bottom:16px">{{ dAgentName }}</div>
+      <sc-for list="{{ dList }}" as="it" hint-placeholder-count="7">
+       <div onClick="{{ it.jump }}" style="display:flex;gap:9px;align-items:flex-start;padding:7px 9px;border-radius:8px;cursor:pointer;background:{{ it.bg }}" style-hover="background:var(--paper3)"><span style="width:7px;height:7px;border-radius:50%;background:{{ it.dot }};margin-top:5px;flex:none"></span><span style="font-size:12.5px;line-height:1.35;color:var(--ink2)">{{ it.short }}</span></div>
+      </sc-for>
+     </div>
+     <div style="padding:36px 48px;overflow-y:auto;display:flex;flex-direction:column;justify-content:center">
+      <sc-if value="{{ dDone }}" hint-placeholder-val="{{ false }}">
+       <div style="text-align:center;animation:fadeUp .5s ease both;margin:auto">
+        <span style="width:56px;height:56px;border-radius:50%;background:var(--forest);color:var(--paper);display:inline-grid;place-items:center;font-size:26px">✓</span>
+        <h1 style="font-family:var(--disp);font-weight:800;font-size:38px;letter-spacing:-.03em;margin:18px 0 6px">Your agent is designed.</h1>
+        <p style="font-size:16px;color:var(--ink2);max-width:44ch;margin:0 auto">I’ve turned this into an editable AgentSpec — objective, rules, tools, materials and approval gates. It’s ready to build.</p>
+        <button onClick="{{ finishDesign }}" style="margin-top:24px;background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:15px 28px;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)">Back to the plan →</button>
+       </div>
+      </sc-if>
+      <sc-if value="{{ dInProgress }}" hint-placeholder-val="{{ true }}">
+       <div style="width:100%;max-width:620px;margin:0 auto">
+        <div style="display:flex;gap:13px;align-items:flex-start;margin-bottom:22px">
+         <span style="width:36px;height:36px;border-radius:50%;background:var(--ink);color:var(--paper);font-family:var(--disp);font-weight:700;font-size:15px;display:grid;place-items:center;flex:none">M</span>
+         <div style="flex:1"><div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:5px">Margo · custom design</div><div style="font-family:var(--disp);font-weight:700;font-size:23px;line-height:1.22;letter-spacing:-.01em;min-height:56px">{{ dCaption }}<sc-if value="{{ dSpeaking }}" hint-placeholder-val="{{ false }}"><span style="display:inline-block;width:2px;height:21px;background:var(--ember);margin-left:3px;vertical-align:-3px;animation:blink 1s step-end infinite"></span></sc-if></div></div>
+        </div>
+        <div style="border:1.5px solid var(--ember);background:var(--card);border-radius:16px;padding:20px;box-shadow:0 22px 55px -34px rgba(26,23,18,.55)">
+         <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);display:flex;justify-content:space-between;margin-bottom:12px"><span>{{ dCardId }}</span><span>{{ dNum }} / {{ dTotal }}</span></div>
+         <textarea value="{{ dFilledVal }}" onChange="{{ dFill }}" placeholder="{{ dPh }}" style="width:100%;border:none;outline:none;background:transparent;resize:vertical;min-height:70px;font-family:var(--sans);font-size:16px;line-height:1.55;color:var(--ink)"></textarea>
+         <sc-if value="{{ dIsMaterials }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+           <sc-if value="{{ dUploaded }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:9px;background:var(--paper2);border-radius:9px;padding:10px 13px;font-size:13px"><span style="width:20px;height:20px;border-radius:5px;background:var(--forest);color:var(--paper);display:grid;place-items:center;font-size:11px">✓</span>wholesale-price-list.pdf attached</div></sc-if>
+           <sc-if value="{{ dUploaded }}" hint-placeholder-val="{{ true }}"></sc-if>
+           <div onClick="{{ dUpload }}" style="border:1px dashed var(--line2);border-radius:10px;padding:14px;text-align:center;cursor:pointer;font-size:13px;color:var(--ink2)" style-hover="border-color:var(--ink)">⬆ Attach the price list, policy or docs this agent should use</div>
+          </div>
+         </sc-if>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;gap:12px">
+         <button onClick="{{ dSay }}" style="display:flex;align-items:center;gap:9px;background:transparent;border:1px solid var(--line2);border-radius:999px;padding:11px 18px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--ink2)" style-hover="border-color:var(--ink);color:var(--ink)"><span style="width:8px;height:8px;border-radius:50%;background:var(--ember)"></span>Say it out loud</button>
+         <sc-if value="{{ dCanNext }}" hint-placeholder-val="{{ false }}"><button onClick="{{ dNext }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:12px 24px;font-size:14.5px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)">Got it, next →</button></sc-if>
+        </div>
+       </div>
+      </sc-if>
+     </div>
+    </div>
+    <div style="flex:none;border-top:1px solid var(--line);background:var(--paper2);padding:12px 26px;display:flex;align-items:center;gap:18px">
+     <sc-if value="{{ dActive }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:12px;flex:1">
+       <span style="width:38px;height:38px;border-radius:50%;background:var(--ink);color:var(--paper);font-family:var(--disp);font-weight:700;font-size:15px;display:grid;place-items:center;position:relative">M<sc-if value="{{ dSpeaking }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--ember);animation:pulse 1.6s ease-out infinite"></span></sc-if></span>
+       <div><div style="display:flex;align-items:center;gap:8px"><span style="width:7px;height:7px;border-radius:50%;background:var(--forest)"></span><span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--ink2)">DESIGN CALL · {{ dTimer }}</span></div><div style="font-size:12.5px;color:var(--ink3)">{{ dStatus }}</div></div>
+      </div>
+      <button onClick="{{ endDesign }}" style="background:var(--ember);color:var(--paper);border:none;border-radius:999px;padding:11px 20px;font-size:13.5px;font-weight:600;cursor:pointer">End call</button>
+     </sc-if>
+     <sc-if value="{{ dPaused }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;align-items:center;gap:10px"><span style="width:38px;height:38px;border-radius:50%;background:var(--paper3);border:1px solid var(--line2);font-family:var(--disp);font-weight:700;font-size:15px;display:grid;place-items:center">M</span><span style="font-size:13.5px;color:var(--ink2)">Design paused — your answers are saved.</span></div>
+      <button onClick="{{ resumeDesign }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:11px 22px;font-size:13.5px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)">Resume →</button>
+     </sc-if>
+    </div>
+   </div>
+  </sc-if>
+
+  <!-- BUILD -->
+  <sc-if value="{{ onBuild }}">
+   <div style="max-width:1080px;margin:0 auto;padding:44px 40px 90px;animation:fadeUp .45s ease both">
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:start;margin-bottom:26px">
+     <div style="font-family:var(--disp);font-weight:800;font-size:74px;line-height:.8;letter-spacing:-.03em;color:var(--paper3)">05</div>
+     <div>
+      <div style="font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ember)">The agent factory</div>
+      <h1 style="font-family:var(--disp);font-weight:800;font-size:clamp(32px,4.4vw,50px);line-height:.98;letter-spacing:-.03em;margin:10px 0 6px;max-width:20ch">Turning the plan into real files.</h1>
+      <p style="font-size:15.5px;color:var(--ink2);max-width:56ch;margin:0">Each agent is generated asynchronously — prompts, YAML, tests and docs. Leave and come back; the jobs keep running.</p>
+     </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.3fr .9fr;gap:24px;align-items:start">
+     <div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+       <div style="font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Build progress</div>
+       <span style="font-family:var(--mono);font-size:13px;font-weight:700">{{ buildPctLabel }}</span>
+      </div>
+      <div style="height:8px;background:var(--paper3);border-radius:5px;overflow:hidden;margin-bottom:22px"><div style="height:100%;background:var(--ink);border-radius:5px;width:{{ buildPctLabel }};transition:width .2s"></div></div>
+      <sc-for list="{{ buildRows }}" as="r" hint-placeholder-count="4">
+       <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--line)">
+        <div><div style="font-size:14.5px;font-weight:600">{{ r.name }}</div><div style="height:5px;background:var(--paper3);border-radius:3px;overflow:hidden;margin-top:6px;width:220px;max-width:100%"><div style="height:100%;background:{{ r.color }};border-radius:3px;width:{{ r.pct }}%"></div></div></div>
+        <span style="font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:{{ r.color }}">{{ r.statusLabel }}</span>
+       </div>
+      </sc-for>
+
+      <sc-if value="{{ buildIdle }}" hint-placeholder-val="{{ true }}">
+       <button onClick="{{ startBuild }}" style="width:100%;margin-top:22px;background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:14px;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:var(--ember)">Send to the factory →</button>
+      </sc-if>
+      <sc-if value="{{ buildRunning }}" hint-placeholder-val="{{ false }}">
+       <div style="text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-top:22px"><span style="display:inline-block;width:11px;height:11px;border:2px solid var(--line2);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-1px;margin-right:8px"></span>Generating in parallel…</div>
+      </sc-if>
+      <sc-if value="{{ buildDone }}" hint-placeholder-val="{{ false }}">
+       <button onClick="{{ gotoValidate }}" style="width:100%;margin-top:22px;background:var(--forest);color:var(--paper);border:none;border-radius:999px;padding:14px;font-size:15px;font-weight:600;cursor:pointer">All packages built · validate →</button>
+      </sc-if>
+     </div>
+
+     <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:var(--paper2);border:1px solid var(--line);border-radius:16px;padding:20px">
+       <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px">Build waves</div>
+       <sc-for list="{{ buildWaves }}" as="w" hint-placeholder-count="4">
+        <div style="padding:9px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between"><span style="font-weight:600;font-size:13.5px">{{ w.label }}</span><span style="font-family:var(--mono);font-size:10px;color:var(--ink3)">{{ w.w }}</span></div><div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin-top:2px">{{ w.note }}</div></div>
+       </sc-for>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px">
+       <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px">Front Desk · generated files</div>
+       <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <sc-for list="{{ buildFiles }}" as="f" hint-placeholder-count="8"><span style="font-family:var(--mono);font-size:11px;background:var(--paper2);border:1px solid var(--line);border-radius:6px;padding:5px 8px">{{ f }}</span></sc-for>
+       </div>
+       <div style="display:flex;align-items:center;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10.5px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:50%;background:var(--forest)"></span>DOUBLEWORD · async inference · live</div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </sc-if>
+
+  <!-- VALIDATE -->
+  <sc-if value="{{ onValidate }}">
+   <div style="max-width:1080px;margin:0 auto;padding:44px 40px 90px;animation:fadeUp .45s ease both">
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:start;margin-bottom:26px">
+     <div style="font-family:var(--disp);font-weight:800;font-size:74px;line-height:.8;letter-spacing:-.03em;color:var(--paper3)">06</div>
+     <div>
+      <div style="font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ember)">The sandbox</div>
+      <h1 style="font-family:var(--disp);font-weight:800;font-size:clamp(32px,4.4vw,50px);line-height:.98;letter-spacing:-.03em;margin:10px 0 6px;max-width:20ch">Proven safe before it’s live.</h1>
+      <p style="font-size:15.5px;color:var(--ink2);max-width:56ch;margin:0">Every package runs in an isolated Daytona sandbox. Nothing activates until the tests pass and you say go.</p>
+     </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+     <div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><span style="font-family:var(--disp);font-weight:700;font-size:19px">Front Desk</span><span style="font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--forest);border:1px solid var(--forest);border-radius:20px;padding:3px 10px">Validated</span></div>
+      <sc-for list="{{ validateChecks }}" as="c" hint-placeholder-count="6">
+       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line)"><span style="font-size:14px;color:var(--ink2)">{{ c.k }}</span><span style="font-family:var(--mono);font-size:12.5px;color:var(--forest);font-weight:700">✓ {{ c.v }}</span></div>
+      </sc-for>
+     </div>
+     <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="background:var(--paper2);border:1px solid var(--line);border-radius:16px;padding:20px;font-family:var(--mono);font-size:12px;color:var(--ink2);line-height:1.9">
+       <div style="letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);font-size:10px;margin-bottom:8px">Manifest</div>
+       <div>sandbox_id · <span style="color:var(--ink)">dtn_sbx_9f2a</span></div>
+       <div>artifact_hash · <span style="color:var(--ink)">sha256:4c…e1</span></div>
+       <div>tests · <span style="color:var(--forest)">17 passed / 0 failed</span></div>
+       <div>warnings · <span style="color:var(--ink)">none</span></div>
+      </div>
+      <div style="background:var(--ink);color:var(--paper);border-radius:16px;padding:18px;font-size:13px;line-height:1.5"><span style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.6">Guardrail</span><div style="margin-top:6px">No automatic privilege expansion. The sandbox blocked 0 unrequested tools — every permission matches the approved spec.</div></div>
+     </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:22px;background:var(--card);border:1px solid var(--forest);border-radius:16px;padding:20px 24px;flex-wrap:wrap;gap:14px">
+     <div style="display:flex;align-items:center;gap:12px"><span style="width:36px;height:36px;border-radius:50%;background:var(--forest);color:var(--paper);display:grid;place-items:center;font-size:18px">✓</span><div><div style="font-weight:600;font-size:15px">All agents validated in Daytona</div><div style="font-size:13px;color:var(--ink2)">Ready to activate under the approved policy.</div></div></div>
+     <button onClick="{{ activate }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:14px 26px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap" style-hover="background:var(--forest)">Activate the team →</button>
+    </div>
+   </div>
+  </sc-if>
+
+  <!-- WORKSPACE -->
+  <sc-if value="{{ onWorkspace }}">
+   <div style="max-width:1180px;margin:0 auto;padding:36px 40px 90px;animation:fadeUp .45s ease both">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px">
+     <div>
+      <div style="font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ember)">The floor · live</div>
+      <h1 style="font-family:var(--disp);font-weight:800;font-size:clamp(30px,4vw,46px);line-height:.98;letter-spacing:-.03em;margin:8px 0 0">Your crew is working.</h1>
+     </div>
+     <div style="display:flex;gap:26px">
+      <div><div style="font-family:var(--disp);font-weight:700;font-size:30px;letter-spacing:-.02em">{{ roiHours }}h</div><div style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Saved / mo</div></div>
+      <div><div style="font-family:var(--disp);font-weight:700;font-size:30px;letter-spacing:-.02em">{{ roiValue }}</div><div style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Value / mo</div></div>
+      <div><div style="font-family:var(--disp);font-weight:700;font-size:30px;letter-spacing:-.02em">{{ plannedCount }}</div><div style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Active agents</div></div>
+     </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:24px;margin-top:28px;align-items:start">
+     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <sc-for list="{{ plannedRows }}" as="a" hint-placeholder-count="4">
+       <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px" style-hover="border-color:var(--ink)">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="width:8px;height:8px;border-radius:50%;background:var(--forest)"></span><span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--forest)">Active</span></div>
+        <h3 style="font-family:var(--disp);font-weight:700;font-size:19px;margin:12px 0 2px">{{ a.name }}</h3>
+        <div style="font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)">{{ a.role }}</div>
+        <p style="font-size:13px;color:var(--ink2);line-height:1.4;margin:10px 0 14px">{{ a.desc }}</p>
+        <div style="display:flex;gap:6px;font-family:var(--mono);font-size:10.5px">
+         <span style="border:1px solid var(--line2);border-radius:6px;padding:4px 8px;cursor:pointer" style-hover="border-color:var(--ink)">Test</span>
+         <span style="border:1px solid var(--line2);border-radius:6px;padding:4px 8px;cursor:pointer" style-hover="border-color:var(--ink)">Pause</span>
+         <span style="border:1px solid var(--line2);border-radius:6px;padding:4px 8px;cursor:pointer" style-hover="border-color:var(--ink)">Logs</span>
+        </div>
+       </div>
+      </sc-for>
+     </div>
+
+     <div style="background:var(--paper2);border:1px solid var(--line);border-radius:16px;padding:20px;position:sticky;top:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)">Event feed</span><span style="font-family:var(--mono);font-size:10px;color:var(--forest)">● live</span></div>
+      <sc-for list="{{ events }}" as="e" hint-placeholder-count="5">
+       <div style="display:grid;grid-template-columns:auto 1fr;gap:11px;padding:11px 0;border-top:1px solid var(--line)">
+        <span style="width:7px;height:7px;border-radius:50%;background:{{ e.color }};margin-top:6px"></span>
+        <div><div style="display:flex;justify-content:space-between;gap:8px"><span style="font-weight:600;font-size:13px">{{ e.who }}</span><span style="font-family:var(--mono);font-size:10.5px;color:var(--ink3)">{{ e.t }}</span></div><div style="font-size:13px;color:var(--ink2);line-height:1.35;margin-top:2px">{{ e.msg }}</div></div>
+       </div>
+      </sc-for>
+      <button onClick="{{ goApprovals }}" style="width:100%;margin-top:16px;background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:11px;font-size:13.5px;font-weight:600;cursor:pointer" style-hover="background:var(--ember)">2 waiting on your desk →</button>
+     </div>
+    </div>
+   </div>
+  </sc-if>
+
+  <!-- APPROVALS -->
+  <sc-if value="{{ onApprovals }}">
+   <div style="max-width:1180px;margin:0 auto;padding:36px 40px 90px;animation:fadeUp .45s ease both">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:22px">
+     <div>
+      <div style="font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ember)">Your desk</div>
+      <h1 style="font-family:var(--disp);font-weight:800;font-size:clamp(30px,4vw,46px);line-height:.98;letter-spacing:-.03em;margin:8px 0 0">The calls that need you.</h1>
+     </div>
+     <div style="font-family:var(--mono);font-size:12px;color:var(--ink2)"><span style="color:var(--ember);font-weight:700">{{ apNeed }}</span> awaiting decision</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start">
+     <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);padding:0 4px">Queue · by urgency</div>
+      <sc-for list="{{ apRows }}" as="a" hint-placeholder-count="5">
+       <div onClick="{{ a.select }}" style="background:{{ a.bg }};border:1px solid {{ a.bd }};border-radius:12px;padding:14px 15px;cursor:pointer" style-hover="border-color:var(--ink)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)">{{ a.agent }}</span><span style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:50%;background:{{ a.dot }}"></span>{{ a.statusLabel }}</span></div>
+        <div style="font-weight:600;font-size:14.5px;line-height:1.25">{{ a.title }}</div>
+        <div style="font-family:var(--mono);font-size:10.5px;color:var(--ink3);margin-top:6px">{{ a.due }} · risk {{ a.risk }}</div>
+       </div>
+      </sc-for>
+     </div>
+
+     <div style="display:flex;flex-direction:column;gap:18px">
+      <div style="background:var(--card);border:1px solid var(--line2);border-radius:16px;padding:24px">
+       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+        <div><div style="font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ember)">{{ apSel.agent }} proposes</div><h2 style="font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:-.02em;margin:6px 0 0">{{ apSel.title }}</h2></div>
+        <span style="font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;border:1px solid {{ apSel.riskColor }};color:{{ apSel.riskColor }};border-radius:20px;padding:4px 11px;white-space:nowrap">Risk · {{ apSel.risk }}</span>
+       </div>
+       <p style="font-size:15px;color:var(--ink2);line-height:1.55;margin:16px 0">{{ apSel.summary }}</p>
+       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+        <div style="background:var(--paper2);border:1px solid var(--line);border-radius:10px;padding:10px 14px"><div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)">Amount</div><div style="font-weight:600;font-size:15px">{{ apSel.amount }}</div></div>
+        <div style="background:var(--paper2);border:1px solid var(--line);border-radius:10px;padding:10px 14px"><div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)">Due</div><div style="font-weight:600;font-size:15px">{{ apSel.due }}</div></div>
+        <div style="background:var(--paper2);border:1px solid var(--line);border-radius:10px;padding:10px 14px"><div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)">Status</div><div style="font-weight:600;font-size:15px">{{ apSel.statusLabel }}</div></div>
+       </div>
+       <sc-if value="{{ apSel.isOpen }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+         <button onClick="{{ apApprove }}" style="background:var(--ink);color:var(--paper);border:none;border-radius:999px;padding:13px 26px;font-size:14.5px;font-weight:600;cursor:pointer" style-hover="background:var(--forest)">Approve</button>
+         <button style="background:transparent;border:1px solid var(--line2);color:var(--ink);border-radius:999px;padding:13px 22px;font-size:14.5px;font-weight:600;cursor:pointer">Ask agent to revise</button>
+         <button onClick="{{ apReject }}" style="background:transparent;border:1px solid var(--line2);color:var(--ink2);border-radius:999px;padding:13px 22px;font-size:14.5px;font-weight:600;cursor:pointer" style-hover="border-color:var(--ember);color:var(--ember)">Reject</button>
+        </div>
+       </sc-if>
+       <sc-if value="{{ apSelClosed }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:10px;background:var(--paper2);border-radius:10px;padding:12px 16px;font-size:14px;color:var(--ink2)"><span style="width:20px;height:20px;border-radius:50%;background:var(--forest);color:var(--paper);display:grid;place-items:center;font-size:12px">✓</span>Decision recorded — the agent was notified.</div>
+       </sc-if>
+      </div>
+
+      <div style="background:var(--paper2);border:1px solid var(--line);border-radius:16px;padding:22px">
+       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-family:var(--disp);font-weight:700;font-size:18px">{{ calMonth }}</span><span style="font-family:var(--mono);font-size:11px;color:var(--ink3)">Scheduled work &amp; approvals</span></div>
+       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-bottom:6px"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+       <sc-for list="{{ calWeeks }}" as="w" hint-placeholder-count="5">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">
+         <sc-for list="{{ w }}" as="d" hint-placeholder-count="7">
+          <div style="aspect-ratio:1;border-radius:8px;background:{{ d.bg }};color:{{ d.fg }};display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12.5px;position:relative">{{ d.day }}<sc-if value="{{ d.dot }}" hint-placeholder-val="{{ false }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ d.dot }};margin-top:2px"></span></sc-if></div>
+         </sc-for>
+        </div>
+       </sc-for>
+       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--ink2)"><span><span style="width:6px;height:6px;border-radius:50%;background:var(--ember);display:inline-block;margin-right:5px"></span>Needs approval</span><span><span style="width:6px;height:6px;border-radius:50%;background:var(--forest);display:inline-block;margin-right:5px"></span>Approved</span><span><span style="width:6px;height:6px;border-radius:50%;background:var(--ink2);display:inline-block;margin-right:5px"></span>Done</span></div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </sc-if>
+
+  <!--SCREENS-->
+  </div>
+ </main>
+</div>
+</sc-if>
+
+</div>
+
+<!-- grain -->
+<div style="position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:.5;mix-blend-mode:multiply;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.42'/%3E%3C/svg%3E&quot;);background-size:140px"></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:860}}">
+class Component extends DCLogic {
+  state = {
+    screen: 'landing',
+    faqOpen: 0,
+    call: { idx: 0, active: true, phase: 'speaking', typed: '', filled: {}, startedAt: 0 },
+    design: { id: null, name: '', idx: 0, active: true, phase: 'speaking', typed: '', filled: {}, startedAt: 0, uploaded: false },
+    goals: { 'Response time': true, 'Support capacity': true, 'Fewer stockouts': true, 'Reviews & reputation': false, 'Wholesale growth': true, 'Weekly reporting': false },
+    systems: { Shopify: true, Recharge: true, Gorgias: true, Gmail: true, Instagram: false, 'Google Sheets': true, QuickBooks: false, Slack: false },
+    interview: { i: 0, phase: 'idle', draft: '', answers: [] },
+    reportApproved: false,
+    team: [
+      { id: 'frontdesk', name: 'Front Desk', role: 'Customer support', tag: 'Preset', desc: 'Clears the “where’s my order?” pile, drafts replies, escalates the sensitive ones.', price: 180, integ: ['Gorgias', 'Shopify'], approval: 'Draft for approval', covers: 'Repeat customer questions', fit: 'Sized to your ~300/wk support volume', inPlan: true, status: 'needs-config', base: 'needs-config' },
+      { id: 'subs', name: 'Subscriptions', role: 'Retention', tag: 'Preset', desc: 'Pauses, swaps and reschedules coffee subscriptions on request.', price: 140, integ: ['Recharge', 'Shopify'], approval: 'Review after action', covers: 'Subscription changes', fit: 'Direct Recharge integration', inPlan: true, status: 'ready', base: 'needs-config' },
+      { id: 'restock', name: 'Restock Radar', role: 'Inventory', tag: 'Preset', desc: 'Watches green-bean stock, flags low roasts, drafts the reorder.', price: 120, integ: ['Shopify', 'Sheets'], approval: 'Decision required', covers: 'Restock & reorder', fit: 'Reads Shopify stock levels', inPlan: true, status: 'needs-integration', base: 'needs-integration' },
+      { id: 'wholesale', name: 'Wholesale Intake', role: 'Custom agent', tag: 'Custom', desc: 'Qualifies cafe & wholesale leads, preps a pricing sheet, books the call.', price: 210, integ: ['Gmail', 'HubSpot'], approval: 'Decision required', covers: 'Wholesale intake', fit: 'No preset fits — custom-built', inPlan: true, status: 'needs-info', base: 'needs-info' },
+      { id: 'reviews', name: 'Reviews', role: 'Marketing', tag: 'Preset', desc: 'Drafts on-brand replies to reviews and DMs — never posts without you.', price: 90, integ: ['Instagram', 'Trustpilot'], approval: 'Draft for approval', covers: 'Review replies', fit: 'Brand voice is ready', inPlan: false, status: 'recommended', base: 'needs-config' },
+      { id: 'report', name: 'Monday Report', role: 'Reporting', tag: 'Preset', desc: 'Bundles sales, tickets and stock into one Monday-morning readout.', price: 70, integ: ['Shopify', 'Sheets'], approval: 'Inform only', covers: 'Weekly reporting', fit: 'Rolls up the numbers', inPlan: false, status: 'recommended', base: 'needs-config' },
+      { id: 'bookings', name: 'Bookings', role: 'Scheduling', tag: 'Preset', desc: 'Offers slots, books tastings and roastery tours, sends reminders.', price: 110, integ: ['Calendly', 'Gmail'], approval: 'Review after action', covers: 'Appointments', fit: 'For your tasting events', inPlan: false, status: 'recommended', base: 'needs-config' },
+      { id: 'invoices', name: 'Cash Desk', role: 'Finance', tag: 'Preset', desc: 'Preps invoices from approved orders and chases the unpaid ones.', price: 130, integ: ['QuickBooks', 'Shopify'], approval: 'Draft for approval', covers: 'Invoicing', fit: 'Wholesale billing', inPlan: false, status: 'recommended', base: 'needs-config' },
+      { id: 'social', name: 'Social Scheduler', role: 'Marketing', tag: 'Preset', desc: 'Drafts and schedules launch posts from approved brand rules.', price: 95, integ: ['Instagram', 'Buffer'], approval: 'Draft for approval', covers: 'Content', fit: 'Drop announcements', inPlan: false, status: 'recommended', base: 'needs-config' },
+      { id: 'leads', name: 'Lead Qualifier', role: 'Sales', tag: 'Preset', desc: 'Scores inbound leads against your criteria and routes the good ones.', price: 100, integ: ['HubSpot', 'Gmail'], approval: 'Decision required', covers: 'Lead routing', fit: 'Feeds wholesale', inPlan: false, status: 'recommended', base: 'needs-config' },
+      { id: 'faq', name: 'Knowledge Builder', role: 'Ops', tag: 'Preset', desc: 'Turns your docs into an approved answer library the team can trust.', price: 60, integ: ['Notion', 'Sheets'], approval: 'Inform only', covers: 'Knowledge base', fit: 'Feeds Front Desk', inPlan: false, status: 'recommended', base: 'needs-config' },
+    ],
+    pl: { tab: 'workflow', view: 'plan', sel: 'frontdesk', diff: null, ver: 1, nlText: '', custN: 0, cfg: { mode: 'approval', channels: { Email: true, 'Website chat': true }, knowledge: { 'Company brief': true, FAQ: true }, approvals: { Refunds: true, 'Sensitive cases': true }, target: '< 1 hour', hours: 'Business hours', escalation: 'Founder', retry: '3 retries' } },
+        undo: [],
+    nl: '',
+    confirmed: false,
+    build: { running: false, pct: 0, done: false },
+    validated: false,
+    approvalSel: 'a1',
+  };
+
+  order = ['call', 'report', 'planner', 'build', 'validate', 'workspace', 'approvals'];
+  labels = ['The call', 'The brief', 'Build the team', 'The factory', 'The sandbox', 'The floor', 'Your desk'];
+  meta = {
+    call: ['Phase 1', 'Kickoff call with Margo'], report: ['Phase 1', 'The company brief'],
+    design: ['Phase 2', 'Designing a custom agent'],
+    planner: ['Phase 2', 'Build the team'], build: ['Phase 2', 'The agent factory'],
+    validate: ['Phase 2', 'The sandbox'], workspace: ['Live', 'The floor'], approvals: ['Live', 'Your desk'],
+  };
+
+  interviewQs = [
+    { q: 'How many support messages land in a normal week?', why: 'Sets the size of the Front Desk agent and the ROI baseline.', a: 'Maybe 300 a week? Spikes to 500 around a drop. Most are “where’s my order” and grind questions.' },
+    { q: 'Which of those can an agent fully answer vs. only draft?', why: 'Decides where a human approval gate goes.', a: 'Order status and grind advice it can just send. Refunds and anything angry — draft it, I’ll approve.' },
+    { q: 'What kicks off a wholesale inquiry, and who handles it now?', why: 'This is the custom agent — I need the real trigger and owner.', a: 'A cafe emails or DMs us. Right now it sits in my inbox for days until I get to it. I want it qualified fast.' },
+  ];
+
+  reportSecs = [
+    { k: 'Executive summary', body: 'Overtone Coffee is a 12-person specialty roaster selling beans and subscriptions direct-to-consumer, with a growing wholesale side. The owner wants more support capacity and faster wholesale response without hiring.', ev: 'Owner-supplied' },
+    { k: 'Operations overview', body: 'Roughly 300 support messages a week, mostly order-status and grind questions. Subscriptions managed manually in Recharge. Wholesale inquiries stall in the founder’s inbox for days.', ev: 'Interview' },
+    { k: 'Pain points', body: 'Support volume spikes around drops. No one owns wholesale intake. Stockouts on popular roasts because reorder is reactive.', ev: 'Interview' },
+    { k: 'Automation opportunities', body: 'Order-status replies, subscription changes, wholesale qualification, restock alerts and weekly reporting are all repeatable and rules-based.', ev: 'AI-inferred' },
+    { k: 'Constraints & approvals', body: 'Refunds and anything upset must be human-approved. Agents may never touch banking. Brand voice stays warm and plain.', ev: 'Owner-supplied' },
+  ];
+
+  repFacts = [{ k: 'Industry', v: 'Specialty coffee · roaster & DTC' }, { k: 'Team', v: '12 people' }, { k: 'Model', v: 'Bags · subscriptions · wholesale' }, { k: 'Channels', v: 'Shopify · IG · email · cafes' }, { k: 'Founded', v: '2021 · one roastery' }, { k: 'Prepared', v: 'From your call · 19 Jul 2026' }];
+  repProcesses = [
+    { name: 'Order-status replies', trigger: 'Customer message', systems: 'Gorgias · Shopify', freq: '~300/wk', owner: 'Support' },
+    { name: 'Subscription changes', trigger: 'Customer request', systems: 'Recharge', freq: '~60/wk', owner: 'Support' },
+    { name: 'Wholesale intake', trigger: 'Inbound email/DM', systems: 'Gmail', freq: '~8/wk', owner: 'Founder' },
+    { name: 'Bean reordering', trigger: 'Low stock', systems: 'Shopify · Sheets', freq: 'Weekly', owner: 'Ops' },
+    { name: 'Review responses', trigger: 'New review/DM', systems: 'IG · Trustpilot', freq: '~25/wk', owner: 'Marketing' },
+  ];
+  repSystems = [
+    { name: 'Shopify', use: 'Orders, catalog, stock levels', status: 'Connected' },
+    { name: 'Recharge', use: 'Subscription management', status: 'Connected' },
+    { name: 'Gorgias', use: 'Support inbox', status: 'Ready to connect' },
+    { name: 'Gmail', use: 'Wholesale inbox', status: 'Needs auth' },
+    { name: 'Google Sheets', use: 'Reorder tracking', status: 'Connected' },
+    { name: 'Instagram', use: 'DMs & review replies', status: 'Not connected' },
+  ];
+  repPain = [
+    { t: 'Support spikes at drops', detail: 'Volume jumps ~65% during a release; first-response time slips past a day.' },
+    { t: 'Wholesale leads stall', detail: 'Inbound cafe interest sits in the founder’s inbox for days with no clear owner.' },
+    { t: 'Reactive restocking', detail: 'Best-selling roasts sell out because reorder is triggered by memory, not stock levels.' },
+  ];
+  repUseCases = [
+    { name: 'Respond to repeat customer questions', trigger: 'customer.message.received', freq: '~300/wk', risk: 'Medium' },
+    { name: 'Apply a subscription change', trigger: 'customer.request', freq: '~60/wk', risk: 'Low' },
+    { name: 'Qualify a wholesale lead', trigger: 'wholesale.email.received', freq: '~8/wk', risk: 'Medium' },
+    { name: 'Flag and draft a reorder', trigger: 'stock.below_floor', freq: 'Weekly', risk: 'High' },
+    { name: 'Draft on-brand review replies', trigger: 'review.created', freq: '~25/wk', risk: 'Low' },
+  ];
+  repConstraints = [
+    'Refunds, reorders and wholesale pricing always require the owner’s approval.',
+    'Agents may never access banking or move money.',
+    'Brand voice stays warm, plain and never defensive.',
+    'Customer data is shared with providers on a need-to-know basis only.',
+  ];
+  repUnknowns = [
+    { q: 'Exact refund thresholds and edge cases', owner: 'Founder' },
+    { q: 'Wholesale pricing tiers by volume', owner: 'Founder' },
+    { q: 'After-hours coverage expectations', owner: 'Ops lead' },
+  ];
+  repToc = [
+    { n: '01', label: 'Executive summary' }, { n: '02', label: 'Company snapshot' }, { n: '03', label: 'Lean Canvas' },
+    { n: '04', label: 'Operations overview' }, { n: '05', label: 'Systems & data' }, { n: '06', label: 'Pain points' },
+    { n: '07', label: 'Automation opportunities' }, { n: '08', label: 'Constraints & approvals' }, 
+    { n: '09', label: 'Sources & confidence' }, { n: '10', label: 'Phase 2 readiness' },
+  ];
+
+  buildWaves = [
+    { w: 'Wave 0', label: 'Shared contracts', note: 'Event schemas · error model · logging' },
+    { w: 'Wave 1', label: 'Agent packages', note: 'Prompt · spec · tools · unit tests' },
+    { w: 'Wave 2', label: 'Adapters', note: 'Event mappings · approval hooks · integrations' },
+    { w: 'Wave 3', label: 'Workflow tests', note: 'End-to-end · failure paths · approvals' },
+  ];
+  buildFiles = ['agent.yaml', 'workflow.yaml', 'prompt.md', 'tools.yaml', 'permissions.yaml', 'test-cases.yaml', 'required-integrations.json', 'README.md'];
+  validateChecks = [
+    { k: 'Schema validation', v: 'passed' }, { k: 'Secret scan', v: 'passed' },
+    { k: 'Tool allowlist', v: 'passed' }, { k: 'Permission policy', v: 'passed' },
+    { k: 'Unit tests', v: '12 / 12' }, { k: 'Integration tests', v: '5 / 5' },
+  ];
+
+  events = [
+    { t: '2:14pm', who: 'Front Desk', msg: 'Answered order-status question from J. Kwon → sent', tone: 'done' },
+    { t: '2:09pm', who: 'Wholesale Intake', msg: 'Qualified Blue Fox Cafe (score 82) → asked you to approve pricing', tone: 'wait' },
+    { t: '1:51pm', who: 'Restock Radar', msg: 'Ethiopia Guji below 12kg → drafted reorder', tone: 'wait' },
+    { t: '1:38pm', who: 'Subscriptions', msg: 'Paused M. Alvarez subscription for 2 weeks → done', tone: 'done' },
+    { t: '1:20pm', who: 'Front Desk', msg: 'Escalated a damaged-order refund → your desk', tone: 'ember' },
+  ];
+
+  approvals = [
+    { id: 'a1', agent: 'Front Desk', title: 'Refund $48 to M. Alvarez', summary: 'Order #4471 arrived cracked. Customer sent a photo. Proposes a full refund and a $10 credit.', risk: 'Medium', due: 'Today · 4:00pm', status: 'required', amount: '$48.00' },
+    { id: 'a2', agent: 'Wholesale Intake', title: 'Send pricing sheet to Blue Fox Cafe', summary: 'Lead scored 82/100. Proposes tier-2 wholesale pricing and a Thursday call slot.', risk: 'Medium', due: 'Today · 5:30pm', status: 'required', amount: '—' },
+    { id: 'a3', agent: 'Restock Radar', title: 'Reorder 60kg Ethiopia Guji', summary: 'Stock at 11kg, below the 15kg floor. Proposes a reorder from the usual importer.', risk: 'High', due: 'Tomorrow · 9:00am', status: 'required', amount: '$2,340' },
+    { id: 'a4', agent: 'Reviews', title: 'Reply to 3-star review from D. Park', summary: 'Drafted a warm, non-defensive reply acknowledging the late delivery.', risk: 'Low', due: 'Tomorrow · 12:00pm', status: 'approved', amount: '—' },
+    { id: 'a5', agent: 'Monday Report', title: 'Weekly ops digest', summary: 'Auto-compiled. No action needed — informational.', risk: 'Low', due: 'Mon · 8:00am', status: 'done', amount: '—' },
+  ];
+
+  componentWillUnmount() { clearInterval(this._t); clearInterval(this._t2); clearInterval(this._clock); clearTimeout(this._to); }
+
+  go(s) { clearInterval(this._t); clearInterval(this._t2); clearInterval(this._clock); this.setState({ screen: s }); }
+
+  // interview
+  micStart() {
+    this.setState(st => ({ interview: { ...st.interview, phase: 'listening', draft: '' } }));
+    const full = this.interviewQs[this.state.interview.i].a;
+    let n = 0;
+    clearInterval(this._t);
+    this._t = setInterval(() => {
+      n += 2;
+      const txt = full.slice(0, n);
+      this.setState(st => ({ interview: { ...st.interview, draft: txt } }));
+      if (n >= full.length) { clearInterval(this._t); this.setState(st => ({ interview: { ...st.interview, phase: 'review' } })); }
+    }, 45);
+  }
+  setDraft(v) { this.setState(st => ({ interview: { ...st.interview, draft: v } })); }
+  interviewNext() {
+    const iv = this.state.interview;
+    const answers = [...iv.answers, iv.draft];
+    if (iv.i + 1 >= this.interviewQs.length) { this.setState({ interview: { ...iv, answers, phase: 'done' } }); }
+    else { this.setState({ interview: { i: iv.i + 1, phase: 'idle', draft: '', answers } }); }
+  }
+
+  approveReport() { this.setState({ reportApproved: true }); this.go('planner'); }
+
+  // planner
+  pushUndo() { this.setState(st => ({ undo: [...st.undo, JSON.stringify(st.team)] })); }
+  toggleAgent(id) { this.pushUndo(); this.setState(st => ({ team: st.team.map(a => a.id === id ? { ...a, inPlan: !a.inPlan } : a) })); }
+  doUndo() { this.setState(st => { if (!st.undo.length) return {}; const prev = st.undo[st.undo.length - 1]; return { team: JSON.parse(prev), undo: st.undo.slice(0, -1) }; }); }
+  setNl(v) { this.setState({ nl: v }); }
+  runNl() {
+    const v = this.state.nl.toLowerCase();
+    this.pushUndo();
+    this.setState(st => {
+      let team = st.team;
+      if (v.includes('report') || v.includes('monday')) team = team.map(a => a.id === 'report' ? { ...a, inPlan: true } : a);
+      else if (v.includes('review')) team = team.map(a => a.id === 'reviews' ? { ...a, inPlan: true } : a);
+      else if (v.includes('remove') || v.includes('drop') || v.includes('cut')) team = team.map(a => a.id === 'report' ? { ...a, inPlan: false } : a);
+      else team = team.map(a => !a.inPlan ? { ...a, inPlan: true } : a);
+      return { team, nl: '' };
+    });
+  }
+  reorder(id, dir) {
+    this.pushUndo();
+    this.setState(st => {
+      const t = [...st.team]; const i = t.findIndex(a => a.id === id); const j = i + dir;
+      if (j < 0 || j >= t.length) return {};
+      [t[i], t[j]] = [t[j], t[i]]; return { team: t };
+    });
+  }
+  confirmWorkflow() { this.setState({ confirmed: true }); this.go('build'); }
+
+  startBuild() {
+    if (this.state.build.running || this.state.build.done) return;
+    this.setState({ build: { running: true, pct: 0, done: false } });
+    clearInterval(this._t);
+    this._t = setInterval(() => {
+      this.setState(st => {
+        const pct = Math.min(100, st.build.pct + 3);
+        if (pct >= 100) { clearInterval(this._t); return { build: { running: false, pct: 100, done: true } }; }
+        return { build: { ...st.build, pct } };
+      });
+    }, 120);
+  }
+
+  fmt(n) { return '$' + n.toLocaleString(); }
+
+  callCards = [
+    { id: 'profile', chap: 'The basics', short: 'The shop in one line', q: "Hey — thanks for making the time. So I get this right: tell me about the shop. What do you sell, and who's buying it?", type: 'textarea', ph: 'Talk to me like a friend…', sample: "We're a small-batch coffee roaster — single-origin beans and subscriptions, mostly online, plus a little wholesale to cafes." },
+    { id: 'goals', chap: 'The basics', short: 'What to improve', q: "Love that. And if you could wave a wand — what's the one thing you most want off your plate?", type: 'goals' },
+    { id: 'systems', chap: 'The basics', short: 'Your tools', q: "Makes sense. Which tools are you running day to day? I'll plug into whatever you've already got.", type: 'systems' },
+    { id: 'lc_intro', chap: 'Lean Canvas', short: 'Lean Canvas', q: "Okay — now I want to map how the whole thing hangs together, like a Lean Canvas. If you've already got one, upload it and I'll read it. Otherwise let's build it together, one piece at a time.", type: 'canvas-intro' },
+    { id: 'lc_problem', chap: 'Lean Canvas', short: 'Problem', q: "Let's start here: what problem are you really solving for people?", type: 'canvas-q', sample: 'Fresh, genuinely good coffee is a hassle to keep stocked, and most subscriptions are rigid.' },
+    { id: 'lc_segments', chap: 'Lean Canvas', short: 'Customers', q: "And who feels that most — who are your customers?", type: 'canvas-q', sample: 'Home specialty-coffee drinkers, subscription regulars, and independent cafes buying wholesale.' },
+    { id: 'lc_uvp', chap: 'Lean Canvas', short: 'Unique value', q: "If a friend asked why you and not the shop down the road, what would you say?", type: 'canvas-q', sample: 'Single-origin roasted to order, on a subscription that bends to your schedule.' },
+    { id: 'lc_solution', chap: 'Lean Canvas', short: 'Solution', q: "How do you actually deliver that today?", type: 'canvas-q', sample: 'A DTC storefront, flexible subscriptions, and a small hands-on wholesale program.' },
+    { id: 'lc_channels', chap: 'Lean Canvas', short: 'Channels', q: "Where do people usually find you?", type: 'canvas-q', sample: 'Our Shopify store, Instagram, email, and word of mouth between cafes.' },
+    { id: 'lc_revenue', chap: 'Lean Canvas', short: 'Revenue', q: "And how does the money come in?", type: 'canvas-q', sample: 'One-off bags, recurring subscriptions, and wholesale invoices.' },
+    { id: 'lc_cost', chap: 'Lean Canvas', short: 'Costs', q: "What are the big costs on the other side of that?", type: 'canvas-q', sample: 'Green beans, packaging, shipping, fulfillment, and a 12-person team.' },
+    { id: 'lc_metrics', chap: 'Lean Canvas', short: 'Key metrics', q: "What numbers do you actually keep an eye on?", type: 'canvas-q', sample: 'MRR, subscriber churn, first-response time, and stockout days.' },
+    { id: 'lc_advantage', chap: 'Lean Canvas', short: 'Edge', q: "Last one for the canvas — what's genuinely hard for a competitor to copy?", type: 'canvas-q', sample: 'Direct importer relationships and a loyal, vocal subscriber base.' },
+    { id: 'ops', chap: 'Operations', short: 'Weekly work', q: "That's a great picture. Now the day-to-day — walk me through the work that repeats every single week.", type: 'textarea', ph: 'The busywork…', sample: 'Answering order-status questions, changing subscriptions, replying to wholesale emails, reordering beans, and posting review replies.' },
+    { id: 'constraints', chap: 'Operations', short: 'Guardrails', q: "And where do you want a firm hand on the wheel — anything I should never touch, or that always needs your sign-off?", type: 'textarea', ph: 'The guardrails…', sample: 'Never touch banking. Refunds, reorders and wholesale pricing always need my approval.' },
+    { id: 'volume', chap: 'Clarify', short: 'Follow-up', q: "Okay — I think I've got the shape of it now. Just a few things to pin down. You mentioned a lot of support: roughly how many messages land in a normal week?", type: 'text', options: ['Under 100 a week', 'Around 300 a week', '500+ around a drop'], sample: 'Around 300 a week, spiking to 500 around a drop.' },
+    { id: 'autosend', chap: 'Clarify', short: 'Follow-up', q: "Of those, which can an agent just answer on its own, and which should it only draft for you?", type: 'textarea', ph: 'Auto vs draft…', sample: "Order status and grind questions it can send. Refunds or anything upset — draft only, I'll approve." },
+    { id: 'wholesale', chap: 'Clarify', short: 'Follow-up', q: "And that wholesale side you mentioned — when a lead comes in, what happens today, and who owns it?", type: 'textarea', ph: 'The wholesale flow…', sample: 'A cafe emails or DMs, and it sits in my inbox for days. I want it qualified and priced fast.' },
+  ];
+
+  _callSpeak() {
+    const card = this.callCards[this.state.call.idx]; if (!card) return;
+    const full = card.q; let n = 0; clearInterval(this._t);
+    this.setState(st => ({ call: { ...st.call, phase: 'speaking', typed: '' } }));
+    this._t = setInterval(() => { n += 2; this.setState(st => ({ call: { ...st.call, typed: full.slice(0, n) } })); if (n >= full.length) { clearInterval(this._t); this.setState(st => ({ call: { ...st.call, phase: 'listening', typed: full } })); } }, 30);
+  }
+  enterCall(idx = 0, keep = false) {
+    const prev = this.state.call || {};
+    clearInterval(this._t); clearInterval(this._t2); clearInterval(this._clock);
+    this.setState({ screen: 'call', call: { idx, active: true, phase: 'speaking', typed: '', filled: keep ? (prev.filled || {}) : {}, startedAt: (keep && prev.startedAt) ? prev.startedAt : Date.now() } });
+    this._clock = setInterval(() => { if (this.state.screen === 'call' && this.state.call.active) this.forceUpdate(); }, 1000);
+    setTimeout(() => this._callSpeak(), 90);
+  }
+  callFill(id, val) { this.setState(st => ({ call: { ...st.call, filled: { ...st.call.filled, [id]: val } } })); }
+  callSay() {
+    const card = this.callCards[this.state.call.idx]; if (card.type === 'goals' || card.type === 'systems') return;
+    const full = card.sample || ''; let n = 0; clearInterval(this._t2);
+    this.setState(st => ({ call: { ...st.call, phase: 'user-talking' } }));
+    this._t2 = setInterval(() => { n += 2; const t = full.slice(0, n); this.setState(st => ({ call: { ...st.call, filled: { ...st.call.filled, [card.id]: t } } })); if (n >= full.length) { clearInterval(this._t2); this.setState(st => ({ call: { ...st.call, phase: 'listening' } })); } }, 22);
+  }
+  callNext() {
+    const c = this.state.call;
+    if (c.idx + 1 >= this.callCards.length) { clearInterval(this._t); this.setState(st => ({ call: { ...st.call, phase: 'done' } })); return; }
+    this.setState(st => ({ call: { ...st.call, idx: c.idx + 1 } }));
+    setTimeout(() => this._callSpeak(), 80);
+  }
+  callJump(idx) { clearInterval(this._t); clearInterval(this._t2); this.setState(st => ({ screen: 'call', call: { ...st.call, idx } })); setTimeout(() => this._callSpeak(), 80); }
+  endCall() { clearInterval(this._t); clearInterval(this._t2); clearInterval(this._clock); this.setState(st => ({ call: { ...st.call, active: false, phase: 'paused' } })); }
+  resumeCall() { this.setState(st => ({ call: { ...st.call, active: true, phase: 'listening' } })); clearInterval(this._clock); this._clock = setInterval(() => { if (this.state.screen === 'call' && this.state.call.active) this.forceUpdate(); }, 1000); }
+  _lcData() { return { lc_problem: 'Fresh, genuinely good coffee is a hassle to keep stocked, and most subscriptions are rigid.', lc_segments: 'Home specialty-coffee drinkers, subscription regulars, and independent cafes.', lc_uvp: 'Single-origin roasted to order, on a subscription that bends to your schedule.', lc_solution: 'DTC storefront, flexible subscriptions, and a small wholesale program.', lc_channels: 'Shopify store, Instagram, email, and word of mouth.', lc_revenue: 'One-off bags, recurring subscriptions, and wholesale invoices.', lc_cost: 'Green beans, packaging, shipping, fulfillment, and a 12-person team.', lc_metrics: 'MRR, churn, first-response time, and stockout days.', lc_advantage: 'Direct importer relationships and a loyal subscriber base.' }; }
+  callUpload() { const d = this._lcData(); this.setState(st => ({ call: { ...st.call, canvasUp: true, filled: { ...st.call.filled, ...d } } })); const ops = this.callCards.findIndex(c => c.id === 'ops'); setTimeout(() => this.callJump(ops), 40); }
+  callBuild() { this.callNext(); }
+  callAnswerVoice() { const card = this.callCards[this.state.call.idx]; if (!card) return; const s = card.sample || ''; this.setState(st => ({ call: { ...st.call, phase: 'user-talking' } })); clearTimeout(this._ansT); this._ansT = setTimeout(() => { this.callFill(card.id, s); this.callNext(); }, 1100); }
+  callPick(opt) { const card = this.callCards[this.state.call.idx]; if (!card) return; this.callFill(card.id, opt); clearTimeout(this._ansT); this._ansT = setTimeout(() => this.callNext(), 380); }
+  callMute() { this.setState(st => ({ call: { ...st.call, muted: !st.call.muted } })); }
+  callToggleTx() { this.setState(st => ({ call: { ...st.call, txOpen: st.call.txOpen === false ? true : false } })); }
+  callTxTab(t) { this.setState(st => ({ call: { ...st.call, txTab: t } })); }
+  _callVals() {
+    const c = this.state.call;
+    const card = this.callCards[Math.min(c.idx, this.callCards.length - 1)] || this.callCards[0];
+    const filled = c.filled || {};
+    const done = c.phase === 'done';
+    const speaking = c.phase === 'speaking';
+    const userTalking = c.phase === 'user-talking';
+    const listening = !speaking && !userTalking && !done && c.active;
+    const gsel = () => Object.keys(this.state.goals).filter(k => this.state.goals[k]).join(', ') || '(nothing yet)';
+    const ssel = () => Object.keys(this.state.systems).filter(k => this.state.systems[k]).join(', ') || '(nothing yet)';
+    const ansOf = (cc) => cc.type === 'goals' ? gsel() : (cc.type === 'systems' ? ssel() : (cc.type === 'canvas-intro' ? (c.canvasUp ? 'I uploaded our Lean Canvas.' : "Let's build it together.") : (filled[cc.id] || '…')));
+    const tstamp = (n) => '2:' + String(10 + n).padStart(2, '0') + ' PM';
+    const tx = []; let ti = 0;
+    for (let i = 0; i < c.idx; i++) { const cc = this.callCards[i]; if (cc.type === 'canvas-q' && c.canvasUp) continue; tx.push({ who: 'Margo', text: cc.q, time: tstamp(ti++), whoColor: 'var(--ink)' }); tx.push({ who: 'You', text: ansOf(cc), time: tstamp(ti++), whoColor: 'var(--ember)' }); if (cc.type === 'canvas-intro' && c.canvasUp) tx.push({ who: 'Margo', text: 'Perfect — I pulled it all into your canvas.', time: tstamp(ti++), whoColor: 'var(--ink)' }); }
+    if (!done) tx.push({ who: 'Margo', text: card.q, time: tstamp(ti++), whoColor: 'var(--ink)' });
+    const notes = [];
+    if (filled.profile) notes.push(filled.profile);
+    const g = Object.keys(this.state.goals).filter(k => this.state.goals[k]); if (g.length) notes.push('Wants off the plate: ' + g.join(', '));
+    if (c.canvasUp || filled.lc_segments) notes.push('Lean Canvas captured');
+    if (filled.volume) notes.push('Support volume: ' + filled.volume);
+    if (filled.constraints) notes.push('Guardrails: ' + filled.constraints);
+    if (!notes.length) notes.push('Margo is jotting notes as you talk…');
+    const waveBars = Array.from({ length: 34 }, (_, i) => ({ h: 9 + Math.round(30 * Math.exp(-Math.pow((i - 16.5) / 9, 2))), delay: ((i % 7) * 0.09).toFixed(2) + 's' }));
+    const topic = (card.chap === 'Lean Canvas' && card.short !== 'Lean Canvas') ? 'LEAN CANVAS · ' + card.short.toUpperCase() : card.chap.toUpperCase();
+    const isGoals = card.type === 'goals', isSystems = card.type === 'systems', isIntro = card.type === 'canvas-intro', isOptions = !!card.options;
+    const isVoice = !isGoals && !isSystems && !isIntro && !isOptions;
+    const el = c.startedAt ? Math.floor((Date.now() - c.startedAt) / 1000) : 0;
+    const mm = String(Math.floor(el / 60)).padStart(2, '0'), ss = String(el % 60).padStart(2, '0');
+    let big = 'Margo is listening…', sub = 'Tap the mic to reply';
+    if (speaking) { big = 'Margo is talking…'; sub = 'She’s asking you something'; }
+    else if (userTalking) { big = 'Listening…'; sub = 'Capturing your voice'; }
+    else if (isOptions) sub = 'Pick the closest answer';
+    else if (isGoals || isSystems) sub = 'Choose any that fit, then send';
+    else if (isIntro) sub = 'Upload one, or build it together';
+    return {
+      onCall: this.state.screen === 'call',
+      callDone: done, callNotDone: !done, callActive: c.active && !done, callPaused: !c.active && !done,
+      callSpeaking: speaking, callUserTalking: userTalking, callListening: listening,
+      callCaption: speaking ? c.typed : card.q, callTopic: topic,
+      callStatusBig: big, callStatusSub: sub, callTimer: mm + ':' + ss,
+      callTx: tx, callNotes: notes, waveBars,
+      callTxOpen: c.txOpen !== false, callTxTab: c.txTab || 'transcript',
+      txIsTranscript: (c.txTab || 'transcript') === 'transcript', txIsNotes: (c.txTab || 'transcript') === 'notes',
+      callMuted: !!c.muted, muteLabel: c.muted ? 'Unmute' : 'Mute',
+      composeVoice: isVoice && listening, composeOptions: isOptions && listening, composeGoals: isGoals && listening, composeSystems: isSystems && listening, composeIntro: isIntro && listening,
+      showControls: listening || userTalking,
+      optionList: (card.options || []).map(o => ({ label: o, pick: () => this.callPick(o) })),
+      callAnswerVoice: () => this.callAnswerVoice(), callNext: () => this.callNext(),
+      callUpload: () => this.callUpload(), callBuild: () => this.callBuild(),
+      callMute: () => this.callMute(), callToggleTx: () => this.callToggleTx(),
+      txTabTranscript: () => this.callTxTab('transcript'), txTabNotes: () => this.callTxTab('notes'),
+      endCall: () => this.endCall(), resumeCall: () => this.resumeCall(), callToReport: () => this.go('report'),
+    };
+  }
+  plPush() { this.setState(st => ({ undo: [...st.undo, JSON.stringify(st.team)], pl: { ...st.pl, ver: st.pl.ver + 1 } })); }
+  plUndo() { this.setState(st => { if (!st.undo.length) return {}; return { team: JSON.parse(st.undo[st.undo.length - 1]), undo: st.undo.slice(0, -1), pl: { ...st.pl, ver: Math.max(1, st.pl.ver - 1) } }; }); }
+  plTab(t) { this.setState(st => ({ pl: { ...st.pl, tab: t, view: 'plan' } })); }
+  plSelect(id) { this.setState(st => ({ pl: { ...st.pl, sel: id } })); }
+  plToggle(id) { this.plPush(); this.setState(st => ({ team: st.team.map(a => a.id === id ? { ...a, inPlan: !a.inPlan, status: !a.inPlan ? a.base : 'recommended' } : a), pl: { ...st.pl, sel: id } })); }
+  _applyAdd(id) { this.setState(st => ({ team: st.team.map(a => a.id === id ? { ...a, inPlan: true, status: a.base } : a) })); }
+  _applyRemove(id) { this.setState(st => ({ team: st.team.map(a => a.id === id ? { ...a, inPlan: false, status: 'recommended' } : a) })); }
+  _resolveByStatus(a) { if (a.tag === 'Custom') this.enterDesign(a.id); else this.plConfigOpen(a.id); }
+  plConfigOpen(id) { this.setState(st => ({ pl: { ...st.pl, sel: id, view: 'config' } })); }
+  plConfigBack() { this.setState(st => ({ pl: { ...st.pl, view: 'plan' } })); }
+  plConfigSaveNew(id) { this.plPush(); this.setState(st => ({ team: st.team.map(a => a.id === id ? { ...a, status: 'ready' } : a), pl: { ...st.pl, view: 'plan' } })); }
+  plCfgToggle(g, k) { this.setState(st => ({ pl: { ...st.pl, cfg: { ...st.pl.cfg, [g]: { ...st.pl.cfg[g], [k]: !st.pl.cfg[g][k] } } } })); }
+  plCfgSet(fl, v) { this.setState(st => ({ pl: { ...st.pl, cfg: { ...st.pl.cfg, [fl]: v } } })); }
+  renameAgent(id, name) { this.setState(st => ({ team: st.team.map(a => a.id === id ? { ...a, name } : a) })); }
+  addCustom() { this.plPush(); this.setState(st => { const n = st.pl.custN + 1; const id = 'custom_' + n; return { team: [...st.team, { id, name: 'New custom agent', role: 'Custom agent', tag: 'Custom', desc: 'Describe what this agent should do — Margo will design it.', price: 190, integ: ['Gmail'], approval: 'Decision required', covers: 'Custom workflow', fit: 'Built from your design call', inPlan: true, status: 'needs-info', base: 'needs-info' }], pl: { ...st.pl, custN: n, sel: id } }; }); }
+  plSetNl(e) { const v = e.target.value; this.setState(st => ({ pl: { ...st.pl, nlText: v } })); }
+  plPreview() {
+    const v = (this.state.pl.nlText || '').toLowerCase(); let diff;
+    if (/report|monday/.test(v)) diff = { title: 'Add the Monday Report agent', price: '+ $70/mo', risk: 'No new risk — informational only', kind: 'add', id: 'report' };
+    else if (/review/.test(v)) diff = { title: 'Add the Reviews agent', price: '+ $90/mo', risk: 'Low — every reply is held for approval', kind: 'add', id: 'reviews' };
+    else if (/invoice|billing|cash/.test(v)) diff = { title: 'Add the Cash Desk agent', price: '+ $130/mo', risk: 'Drafts invoices for your approval', kind: 'add', id: 'invoices' };
+    else if (/remove|drop|cut/.test(v)) diff = { title: 'Remove Restock Radar', price: '− $120/mo', risk: 'You would lose stock alerts', kind: 'remove', id: 'restock' };
+    else if (/approv|refund/.test(v)) diff = { title: 'Require approval before any refund', price: 'No price change', risk: 'Adds an approval step on Front Desk', kind: 'note', id: '' };
+    else diff = { title: 'Add the recommended agents', price: '+ $160/mo', risk: 'Low', kind: 'addboth', id: '' };
+    this.setState(st => ({ pl: { ...st.pl, diff } }));
+  }
+  plApplyDiff() { const d = this.state.pl.diff; if (!d) return; this.plPush(); if (d.kind === 'add') this._applyAdd(d.id); else if (d.kind === 'remove') this._applyRemove(d.id); else if (d.kind === 'addboth') { this._applyAdd('reviews'); this._applyAdd('report'); } this.setState(st => ({ pl: { ...st.pl, diff: null, nlText: '' } })); }
+  plDiscardDiff() { this.setState(st => ({ pl: { ...st.pl, diff: null } })); }
+  dropCard(id) { const d = this._drag; this._drag = null; if (!d) return; if (d.type === 'add') { this._applyAdd(d.id); return; } if (d.type === 'move' && d.id !== id) { this.plPush(); this.setState(st => { const t = [...st.team]; const from = t.findIndex(a => a.id === d.id); const to = t.findIndex(a => a.id === id); const [m] = t.splice(from, 1); t.splice(to, 0, m); return { team: t }; }); } }
+  dropList() { const d = this._drag; this._drag = null; if (d && d.type === 'add') this._applyAdd(d.id); }
+  _plVals() {
+    const team = this.state.team, pl = this.state.pl, cfg = pl.cfg;
+    const planned = team.filter(a => a.inPlan);
+    const base = 120, sum = planned.reduce((x, a) => x + a.price, 0), total = base + sum;
+    const low = Math.round(total * 0.72 / 10) * 10, high = Math.round(total * 1.4 / 10) * 10;
+    const SM = { 'recommended': { l: 'Recommended', c: 'var(--ink3)' }, 'needs-info': { l: 'Needs design', c: 'var(--ember)' }, 'needs-config': { l: 'Needs setup', c: 'var(--ochre)' }, 'needs-integration': { l: 'Needs integration', c: 'var(--ochre)' }, 'ready': { l: 'Ready to build', c: 'var(--forest)' } };
+    const mkCard = (a) => {
+      const m = SM[a.status] || SM.recommended;
+      let action = ''; if (a.status === 'needs-info') action = 'Design agent →'; else if (a.status === 'needs-integration') action = 'Connect & set up →'; else if (a.status === 'needs-config') action = 'Configure →';
+      return { id: a.id, name: a.name, role: a.role, tag: a.tag, desc: a.desc, covers: a.covers, fit: a.fit, approval: a.approval, isCustom: a.tag === 'Custom',
+        statusLabel: m.l, statusColor: m.c, sel: pl.sel === a.id, isCustom: a.tag === 'Custom', notCustom: a.tag !== 'Custom', cardBd: pl.sel === a.id ? 'var(--ink)' : 'var(--line2)',
+        priceLabel: '$' + a.price + '/mo', integLabel: a.integ.join(' · '), hasAction: !!action, actionLabel: action,
+        resolve: () => this._resolveByStatus(a), select: () => this.plSelect(a.id), remove: () => this.plToggle(a.id),
+        rename: (e) => this.renameAgent(a.id, e.target.value),
+        dragStart: (e) => { this._drag = { type: 'move', id: a.id }; try { e.dataTransfer.setData('text/plain', a.id); } catch (_) {} },
+        drop: (e) => { if (e) e.preventDefault(); this.dropCard(a.id); } };
+    };
+    const teamCards = planned.map(mkCard);
+    const library = team.filter(a => !a.inPlan).map(a => ({ id: a.id, name: a.name, role: a.role, tag: a.tag, priceLabel: '$' + a.price + '/mo', add: () => this._applyAdd(a.id), dragStart: (e) => { this._drag = { type: 'add', id: a.id }; try { e.dataTransfer.setData('text/plain', a.id); } catch (_) {} } }));
+    const cmap = { 'Respond to repeat': 'frontdesk', 'Apply a subscription': 'subs', 'Qualify a wholesale': 'wholesale', 'Flag and draft': 'restock', 'Draft on-brand': 'reviews' };
+    const cover = this.repUseCases.map(u => { let aid = null; Object.keys(cmap).forEach(k => { if (u.name.startsWith(k)) aid = cmap[k]; }); const ag = team.find(a => a.id === aid); const inP = ag && ag.inPlan; const cust = ag && ag.tag === 'Custom'; const cv = cust ? { l: 'Tier 2 · custom', c: 'var(--ember)' } : (inP ? { l: 'Covered', c: 'var(--forest)' } : { l: 'Not yet covered', c: 'var(--ink3)' }); return { name: u.name, trigger: u.trigger, freq: u.freq, agent: ag ? ag.name : '—', covLabel: cv.l, covColor: cv.c }; });
+    const covered = cover.filter(c => c.covLabel !== 'Not yet covered').length;
+    const sel = team.find(a => a.id === pl.sel);
+    const blockers = planned.filter(a => a.status !== 'ready').map(a => ({ name: a.name, why: (SM[a.status] || {}).l }));
+    const canConfirm = planned.length > 0 && blockers.length === 0;
+    const mkMulti = (g, opts) => opts.map(k => ({ label: k, toggle: () => this.plCfgToggle(g, k), bg: cfg[g][k] ? 'var(--ink)' : 'transparent', fg: cfg[g][k] ? 'var(--paper)' : 'var(--ink2)', bd: cfg[g][k] ? 'var(--ink)' : 'var(--line2)' }));
+    const mkSingle = (fl, opts) => opts.map(v => ({ label: v, set: () => this.plCfgSet(fl, v), bg: cfg[fl] === v ? 'var(--ink)' : 'transparent', fg: cfg[fl] === v ? 'var(--paper)' : 'var(--ink2)', bd: cfg[fl] === v ? 'var(--ink)' : 'var(--line2)' }));
+    const creds = sel ? sel.integ.map((s, i) => ({ ref: s.toLowerCase().replace(/[^a-z]/g, '') + '_api', system: s, status: i === 0 ? 'Connect' : 'Connected', color: i === 0 ? 'var(--ochre)' : 'var(--forest)', done: i !== 0 })) : [];
+    return {
+      onPlanner: this.state.screen === 'planner',
+      plView: pl.view, plViewPlan: pl.view === 'plan', plViewConfig: pl.view === 'config',
+      plTabTeam: pl.tab === 'team', plTabUse: pl.tab === 'usecases', plTabFlow: pl.tab === 'workflow',
+      plTabTeamBg: pl.tab === 'team' ? 'var(--ink)' : 'transparent', plTabTeamFg: pl.tab === 'team' ? 'var(--paper)' : 'var(--ink2)',
+      plTabUseBg: pl.tab === 'usecases' ? 'var(--ink)' : 'transparent', plTabUseFg: pl.tab === 'usecases' ? 'var(--paper)' : 'var(--ink2)',
+      plTabFlowBg: pl.tab === 'workflow' ? 'var(--ink)' : 'transparent', plTabFlowFg: pl.tab === 'workflow' ? 'var(--paper)' : 'var(--ink2)',
+      setTeamTab: () => this.plTab('team'), setUseTab: () => this.plTab('usecases'), setFlowTab: () => this.plTab('workflow'),
+      plTeamCards: teamCards, plLibrary: library, plLibEmpty: library.length === 0, plAddCustom: () => this.addCustom(),
+      plCover: cover, plCovered: covered, plUseTotal: cover.length,
+      plNodes: planned.map(a => ({ name: a.name, role: a.role, gate: a.approval, dot: (SM[a.status] || {}).c, open: () => this._resolveByStatus(a), select: () => this.plSelect(a.id) })),
+      plPlannedCount: planned.length, plBase: '$' + base, plTotal: '$' + total, plLow: '$' + low, plHigh: '$' + high,
+      plVer: 'v' + pl.ver, plCanUndo: this.state.undo.length > 0, plUndo: () => this.plUndo(),
+      plNl: pl.nlText || '', plSetNl: (e) => this.plSetNl(e), plPreview: () => this.plPreview(),
+      plDiff: pl.diff, plHasDiff: !!pl.diff, plApply: () => this.plApplyDiff(), plDiscard: () => this.plDiscardDiff(),
+      plConfirm: () => this.confirmWorkflow(), plCanConfirm: canConfirm, plCantConfirm: !canConfirm, plBlockers: blockers, plBlockerCount: blockers.length,
+      plDragOver: (e) => e.preventDefault(), plDropList: () => this.dropList(),
+      cfgName: sel ? sel.name : '', cfgRole: sel ? sel.role : '', cfgApprovalLabel: sel ? sel.approval : '',
+      cfgMode: mkSingle('mode', ['draft', 'routine', 'approval']),
+      cfgModeDraftBd: cfg.mode === 'draft' ? 'var(--ink)' : 'var(--line2)', cfgModeRoutineBd: cfg.mode === 'routine' ? 'var(--ink)' : 'var(--line2)', cfgModeApprovalBd: cfg.mode === 'approval' ? 'var(--ink)' : 'var(--line2)',
+      setCfgDraft: () => this.plCfgSet('mode', 'draft'), setCfgRoutine: () => this.plCfgSet('mode', 'routine'), setCfgApproval: () => this.plCfgSet('mode', 'approval'),
+      cfgChannels: mkMulti('channels', ['Email', 'Website chat', 'Schedule', 'File upload', 'Agent event']),
+      cfgKnowledge: mkMulti('knowledge', ['Company brief', 'FAQ', 'Product catalog', 'Connected system']),
+      cfgApprovals: mkMulti('approvals', ['Refunds', 'Wholesale pricing', 'Publishing', 'Sensitive cases', 'Financial']),
+      cfgTarget: mkSingle('target', ['< 5 min', '< 1 hour', 'Same day']), cfgHours: mkSingle('hours', ['24/7', 'Business hours']),
+      cfgEsc: mkSingle('escalation', ['Founder', 'Support lead', 'Ops']), cfgRetry: mkSingle('retry', ['No retry', '1 retry', '3 retries']),
+      cfgCreds: creds, plConfigBack: () => this.plConfigBack(), plConfigSaveNew: () => sel && this.plConfigSaveNew(sel.id),
+    };
+  }
+
+  designCards = [
+    { id: 'objective', short: 'Objective', q: 'What result should this agent produce, from start to finish?', type: 'textarea', ph: 'The outcome…', sample: "Qualify inbound wholesale leads, send the right pricing tier, and book a call — or escalate if it's out of policy." },
+    { id: 'trigger', short: 'Trigger', q: 'What event kicks this work off?', type: 'textarea', ph: 'The trigger…', sample: 'A cafe emails or DMs us asking about buying wholesale.' },
+    { id: 'inputs', short: 'Inputs & materials', q: 'What information or documents will it need to do the job? Attach anything it should rely on.', type: 'materials', ph: 'What it needs to read…', sample: "Our wholesale price list, the minimum-order policy, and the lead's original message." },
+    { id: 'rules', short: 'Decision rules', q: 'What rules decide the next step, or an exception?', type: 'textarea', ph: 'The logic…', sample: 'Score on volume and region; anything over 200kg/month or outside our area routes to me.' },
+    { id: 'tools', short: 'Tools & permissions', q: 'What may it read, create or send on your behalf?', type: 'textarea', ph: 'Its reach…', sample: 'Read Gmail, draft replies, create a HubSpot deal, and propose a call slot.' },
+    { id: 'forbidden', short: 'Forbidden actions', q: 'What must it never do without your say-so?', type: 'textarea', ph: 'The hard limits…', sample: 'Never send final pricing or commit stock without my written approval.' },
+    { id: 'success', short: 'Success metric', q: 'How will we know it is actually helping?', type: 'textarea', ph: 'The measure…', sample: 'Faster first response, more qualified leads booked, and no mispriced quotes.' },
+  ];
+  enterDesign(id) { const ag = this.state.team.find(a => a.id === id); clearInterval(this._t); clearInterval(this._t2); clearInterval(this._clock); this.setState({ screen: 'design', design: { id, name: ag ? ag.name : 'Custom agent', idx: 0, active: true, phase: 'speaking', typed: '', filled: {}, startedAt: Date.now(), uploaded: false } }); this._clock = setInterval(() => { if (this.state.screen === 'design' && this.state.design.active) this.forceUpdate(); }, 1000); setTimeout(() => this._dSpeak(), 90); }
+  _dSpeak() { const c = this.designCards[this.state.design.idx]; if (!c) return; const full = c.q; let n = 0; clearInterval(this._t); this.setState(st => ({ design: { ...st.design, phase: 'speaking', typed: '' } })); this._t = setInterval(() => { n += 2; this.setState(st => ({ design: { ...st.design, typed: full.slice(0, n) } })); if (n >= full.length) { clearInterval(this._t); this.setState(st => ({ design: { ...st.design, phase: 'listening', typed: full } })); } }, 30); }
+  dFill(id, v) { this.setState(st => ({ design: { ...st.design, filled: { ...st.design.filled, [id]: v } } })); }
+  dSay() { const c = this.designCards[this.state.design.idx]; const full = c.sample || ''; let n = 0; clearInterval(this._t2); this.setState(st => ({ design: { ...st.design, phase: 'user-talking' } })); this._t2 = setInterval(() => { n += 2; this.setState(st => ({ design: { ...st.design, filled: { ...st.design.filled, [c.id]: full.slice(0, n) } } })); if (n >= full.length) { clearInterval(this._t2); this.setState(st => ({ design: { ...st.design, phase: 'listening' } })); } }, 22); }
+  dNext() { const d = this.state.design; if (d.idx + 1 >= this.designCards.length) { clearInterval(this._t); this.setState(st => ({ design: { ...st.design, phase: 'done' } })); return; } this.setState(st => ({ design: { ...st.design, idx: d.idx + 1 } })); setTimeout(() => this._dSpeak(), 80); }
+  dJump(i) { clearInterval(this._t); clearInterval(this._t2); this.setState(st => ({ design: { ...st.design, idx: i } })); setTimeout(() => this._dSpeak(), 80); }
+  endDesign() { clearInterval(this._t); clearInterval(this._t2); clearInterval(this._clock); this.setState(st => ({ design: { ...st.design, active: false, phase: 'paused' } })); }
+  resumeDesign() { this.setState(st => ({ design: { ...st.design, active: true, phase: 'listening' } })); clearInterval(this._clock); this._clock = setInterval(() => { if (this.state.screen === 'design' && this.state.design.active) this.forceUpdate(); }, 1000); }
+  dUpload() { this.setState(st => ({ design: { ...st.design, uploaded: true } })); }
+  finishDesign() { const id = this.state.design.id; this.setState(st => ({ team: st.team.map(a => a.id === id ? { ...a, status: 'ready' } : a), undo: [...st.undo, JSON.stringify(st.team)], pl: { ...st.pl, view: 'plan', tab: 'workflow', sel: id } })); this.go('planner'); }
+  _designVals() {
+    const d = this.state.design; const c = this.designCards[d.idx] || this.designCards[0]; const filled = d.filled || {};
+    const list = this.designCards.map((cc, i) => ({ short: cc.short, jump: () => this.dJump(i), dot: (i < d.idx || d.phase === 'done') ? 'var(--forest)' : (i === d.idx ? 'var(--ink)' : 'var(--line2)'), bg: i === d.idx ? 'var(--card)' : 'transparent' }));
+    const val = filled[c.id] || ''; const el = d.startedAt ? Math.floor((Date.now() - d.startedAt) / 1000) : 0;
+    const mm = String(Math.floor(el / 60)).padStart(2, '0'), ss = String(el % 60).padStart(2, '0');
+    return {
+      onDesign: this.state.screen === 'design', dList: list, dAgentName: d.name || 'custom agent',
+      dDone: d.phase === 'done', dInProgress: d.phase !== 'done', dActive: d.active, dPaused: !d.active, dSpeaking: d.phase === 'speaking',
+      dCaption: d.phase === 'speaking' ? d.typed : c.q, dCardId: c.id.toUpperCase(), dNum: d.idx + 1, dTotal: this.designCards.length,
+      dIsText: c.type === 'textarea', dIsMaterials: c.type === 'materials', dPh: c.ph || '', dFilledVal: val,
+      dFill: (e) => this.dFill(c.id, e.target.value), dSay: () => this.dSay(), dNext: () => this.dNext(), dCanNext: val.trim().length > 0 || c.type === 'materials',
+      endDesign: () => this.endDesign(), resumeDesign: () => this.resumeDesign(), finishDesign: () => this.finishDesign(),
+      dTimer: mm + ':' + ss, dStatus: d.phase === 'speaking' ? 'Margo is talking…' : (d.phase === 'user-talking' ? 'Transcribing your voice…' : (d.phase === 'paused' ? 'Paused' : 'Listening — type or just talk')),
+      dUploaded: d.uploaded, dUpload: () => this.dUpload(),
+    };
+  }
+
+
+  renderVals() {
+    const s = this.state.screen;
+    const planned = this.state.team.filter(a => a.inPlan);
+    const base = 120;
+    const sum = planned.reduce((x, a) => x + a.price, 0);
+    const total = base + sum;
+
+    const journey = this.order.map((sc, i) => {
+      const active = s === sc;
+      const ci = this.order.indexOf(s);
+      const done = i < ci;
+      return {
+        n: String(i + 1).padStart(2, '0'), label: this.labels[i], go: () => (sc === 'call' ? this.enterCall(this.state.call.idx, true) : this.go(sc)),
+        bg: active ? 'var(--ink)' : 'transparent',
+        color: active ? 'var(--paper)' : (done ? 'var(--ink2)' : 'var(--ink)'),
+        numColor: active ? 'rgba(244,238,227,.6)' : 'var(--ink3)',
+        weight: active ? 700 : 500,
+        dot: active ? 'var(--paper)' : (done ? 'var(--forest)' : 'var(--line2)'),
+      };
+    });
+
+    const goalKeys = Object.keys(this.state.goals);
+    const obGoals = goalKeys.map(k => {
+      const on = this.state.goals[k];
+      return { label: k, toggle: () => this.setState(st => ({ goals: { ...st.goals, [k]: !st.goals[k] } })),
+        bg: on ? 'var(--ink)' : 'transparent', fg: on ? 'var(--paper)' : 'var(--ink2)', bd: on ? 'var(--ink)' : 'var(--line2)' };
+    });
+    const sysKeys = Object.keys(this.state.systems);
+    const obSystems = sysKeys.map(k => {
+      const on = this.state.systems[k];
+      return { label: k, toggle: () => this.setState(st => ({ systems: { ...st.systems, [k]: !st.systems[k] } })),
+        bg: on ? 'var(--card)' : 'transparent', fg: on ? 'var(--ink)' : 'var(--ink3)', bd: on ? 'var(--line2)' : 'var(--line)', dot: on ? 'var(--forest)' : 'var(--line2)' };
+    });
+
+    return {
+      onLanding: s === 'landing', inApp: s !== 'landing',
+      onReport: s === 'report', onPlanner: s === 'planner', onBuild: s === 'build',
+      onValidate: s === 'validate', onWorkspace: s === 'workspace', onApprovals: s === 'approvals',
+      enterApp: () => this.enterCall(0, false), toLanding: () => this.go('landing'),
+      goBlueprint: () => this.go('blueprint'),
+      topKicker: (this.meta[s] || ['', ''])[0], topTitle: (this.meta[s] || ['', ''])[1],
+      journey, obGoals, obSystems,
+      heroStats: [{ big: '20 min', label: 'To a drafted team' }, { big: '6', label: 'Agents on tap' }, { big: '100%', label: 'You approve' }],
+      logos: ['Overtone', 'Fernweh', 'Dune Supply', 'Coldspell', 'Kiln&Co'],
+      steps: [
+        { n: '01', title: 'Tell Margo about the shop', body: 'Company basics, goals, the tools you already use. Rough notes are plenty — she reads between the lines.' },
+        { n: '02', title: 'She fills the gaps on a quick call', body: 'A short voice interview asks only what’s missing. You see the transcript and fix it before it’s saved.' },
+        { n: '03', title: 'You approve the brief', body: 'Margo writes a plain-English company report. Edit any line, check the evidence, then approve the source of truth.' },
+        { n: '04', title: 'She drafts the team & the price', body: 'A workflow of preset and custom agents appears, with a live monthly estimate. Add, cut, or reshuffle.' },
+        { n: '05', title: 'Agents get built & stress-tested', body: 'Each agent is generated into real files, then run in an isolated sandbox until the tests pass.' },
+        { n: '06', title: 'You run the floor', body: 'Watch the crew work, read the event feed, and sign off the calls that actually matter.' },
+      ],
+      pillars: [
+        { t: 'Approved, not automatic', b: 'AI drafts. Nothing becomes a decision until you approve the version.' },
+        { t: 'Secrets stay yours', b: 'Agents reference credentials by name. Real keys never touch a prompt or a file.' },
+        { t: 'Every move is on the record', b: 'Who changed what, who approved it, and which version shipped — all logged.' },
+      ],
+      catalog: [
+        { n: '01', name: 'Front Desk', role: 'Customer support', tag: 'Preset', desc: 'FAQs, order status, drafts or sends, clear escalation for the sensitive ones.' },
+        { n: '02', name: 'Subscriptions', role: 'Retention', tag: 'Preset', desc: 'Pauses, swaps and reschedules on request — no ticket needed.' },
+        { n: '03', name: 'Restock Radar', role: 'Inventory', tag: 'Preset', desc: 'Watches stock, flags low roasts, drafts the reorder for approval.' },
+        { n: '04', name: 'Reviews', role: 'Marketing', tag: 'Preset', desc: 'On-brand replies to reviews and DMs, always held for approval.' },
+        { n: '05', name: 'Monday Report', role: 'Reporting', tag: 'Preset', desc: 'One weekly readout across sales, tickets and stock.' },
+        { n: '06', name: 'Wholesale Intake', role: 'Custom-built', tag: 'Custom', desc: 'A focused design cycle builds an agent for a workflow no preset covers.' },
+      ],
+      prices: [
+        { name: 'Solo', price: '$0', unit: '/ 14 days', badge: 'Trial', blurb: 'Meet Margo, build the brief, see your drafted team and price.', features: ['Full onboarding & interview', 'Company brief + plan', 'No card required'], cta: 'Start free', border: 'var(--line2)', bg: 'var(--card)', fg: 'var(--ink)', ctaBg: 'var(--ink)', ctaFg: 'var(--paper)' },
+        { name: 'Studio', price: '$490', unit: '/ mo + agents', badge: 'Most shops', blurb: 'The platform desk plus your active crew, billed per running agent.', features: ['Up to 6 active agents', 'Sandbox validation', 'Approvals + calendar', 'WhatsApp & email alerts'], cta: 'Build my team', border: 'var(--ink)', bg: 'var(--ink)', fg: 'var(--paper)', ctaBg: 'var(--paper)', ctaFg: 'var(--ink)' },
+        { name: 'Warehouse', price: 'Custom', unit: 'managed', badge: 'Scaling', blurb: 'Unlimited agents, priority sandboxes and a human on our side.', features: ['Unlimited agents', 'Batch overnight rebuilds', 'Managed onboarding', 'SSO & audit export'], cta: 'Talk to us', border: 'var(--line2)', bg: 'var(--card)', fg: 'var(--ink)', ctaBg: 'var(--ink)', ctaFg: 'var(--paper)' },
+      ],
+      faqs: this._mkFaqs([
+        { q: 'Does Margo run my business on autopilot?', a: 'No — and that’s the point. She proposes; you approve. Anything risky, financial or irreversible waits for a person.' },
+        { q: 'Do I need to understand APIs or automations?', a: 'Never. You describe the shop in plain words. Margo handles triggers, mappings and error handling behind the glass.' },
+        { q: 'Where do my API keys live?', a: 'In a server-side vault. Generated agent files reference a credential by name — the real secret is never embedded.' },
+        { q: 'What if a task is too weird for a preset?', a: 'That’s a custom agent: a short design interview produces an editable spec, built and tested like any other.' },
+      ]),
+      ...this._ivVals(),
+      ...this._appVals(),
+      ...this._callVals(),
+      ...this._plVals(),
+      ...this._designVals(),
+    };
+  }
+
+  _mkFaqs(arr) { return arr.map((f, i) => ({ ...f, open: this.state.faqOpen === i, rot: this.state.faqOpen === i ? 'rotate(45deg)' : 'none', toggle: () => this.setState(s => ({ faqOpen: s.faqOpen === i ? -1 : i })) })); }
+
+  _ivVals() {
+    const iv = this.state.interview;
+    const q = this.interviewQs[Math.min(iv.i, this.interviewQs.length - 1)];
+    return {
+      ivIdle: iv.phase === 'idle', ivListening: iv.phase === 'listening', ivReview: iv.phase === 'review', ivDone: iv.phase === 'done',
+      ivLive: iv.phase === 'listening' || iv.phase === 'review',
+      ivNum: String(iv.i + 1).padStart(2, '0'), ivTotal: String(this.interviewQs.length).padStart(2, '0'),
+      ivQ: q.q, ivWhy: q.why, ivDraft: iv.draft,
+      ivDots: this.interviewQs.map((_, k) => ({ bg: (k < iv.i || iv.phase === 'done') ? 'var(--forest)' : (k === iv.i ? 'var(--ink)' : 'var(--line2)') })),
+      micStart: () => this.micStart(), setDraft: (e) => this.setDraft(e.target.value),
+      interviewNext: () => this.interviewNext(), goReport: () => this.go('report'),
+      ivAnswered: this.interviewQs.slice(0, iv.i + (iv.phase === 'done' ? 1 : 0)).map((qq, k) => ({ q: qq.q, a: iv.answers[k] || '' })),
+      hasAnswered: (iv.i + (iv.phase === 'done' ? 1 : 0)) > 0,
+    };
+  }
+
+  _appVals() {
+    const team = this.state.team;
+    const planned = team.filter(a => a.inPlan);
+    const base = 120, sum = planned.reduce((x, a) => x + a.price, 0), total = base + sum;
+    const low = Math.round(total * 0.82 / 10) * 10, high = Math.round(total * 1.35 / 10) * 10;
+
+    const teamRows = team.map((a, i) => {
+      const st = a.inPlan ? (a.config ? 'Ready to build' : (a.tag === 'Custom' ? 'Needs interview' : 'Needs setup')) : 'Recommended';
+      const dc = a.inPlan ? (a.config ? 'var(--forest)' : 'var(--ochre)') : 'var(--ink3)';
+      return { ...a, i, statusLabel: st, dot: dc,
+        cardBg: a.inPlan ? 'var(--card)' : 'transparent', cardBd: a.inPlan ? 'var(--line2)' : 'var(--line)',
+        priceLabel: a.inPlan ? ('$' + a.price + '/mo') : ('add · $' + a.price),
+        toggle: () => this.toggleAgent(a.id), up: () => this.reorder(a.id, -1), down: () => this.reorder(a.id, 1),
+        integLabel: a.integ.join(' · '),
+        btnLabel: a.inPlan ? 'Remove' : 'Add', btnBg: a.inPlan ? 'transparent' : 'var(--ink)', btnFg: a.inPlan ? 'var(--ink2)' : 'var(--paper)', btnBd: a.inPlan ? 'var(--line2)' : 'var(--ink)' };
+    });
+
+    const b = this.state.build;
+    const buildRows = planned.map((a, idx) => {
+      const p = Math.max(0, Math.min(100, Math.round((b.pct - idx * 7) * 1.4)));
+      const stt = b.done || p >= 100 ? 'built' : (p > 0 ? 'building' : 'queued');
+      return { name: a.name, pct: p, statusLabel: stt, color: stt === 'built' ? 'var(--forest)' : (stt === 'building' ? 'var(--ink)' : 'var(--ink3)') };
+    });
+
+    const marks = { 19: { today: true }, 20: { c: 'var(--ink2)' }, 21: { c: 'var(--ember)' }, 22: { c: 'var(--ochre)' }, 24: { c: 'var(--forest)' }, 27: { c: 'var(--ember)' } };
+    const cells = []; const startDay = new Date(2026, 6, 1).getDay();
+    for (let i = 0; i < startDay; i++) cells.push({ day: 0 });
+    for (let d = 1; d <= 31; d++) { const m = marks[d] || {}; cells.push({ day: d, today: !!m.today, dot: m.c || null }); }
+    while (cells.length % 7) cells.push({ day: 0 });
+    const calWeeks = []; for (let i = 0; i < cells.length; i += 7) calWeeks.push(cells.slice(i, i + 7).map(c => ({
+      day: c.day || '', muted: !c.day, today: !!c.today, dot: c.dot,
+      bg: c.today ? 'var(--ink)' : 'transparent', fg: c.today ? 'var(--paper)' : (c.day ? 'var(--ink)' : 'transparent'),
+    })));
+
+    const aps = this.state.apStatus || {};
+    const stFor = (a) => aps[a.id] || a.status;
+    const apRows = this.approvals.map(a => {
+      const s = stFor(a);
+      const meta = s === 'required' ? { c: 'var(--ember)', l: 'Needs you' } : (s === 'approved' ? { c: 'var(--forest)', l: 'Approved' } : { c: 'var(--ink3)', l: 'Done' });
+      const sel = a.id === this.state.approvalSel;
+      return { ...a, dot: meta.c, statusLabel: meta.l,
+        bg: sel ? 'var(--card)' : 'transparent', bd: sel ? 'var(--ink)' : 'var(--line)',
+        select: () => this.setState({ approvalSel: a.id }) };
+    });
+    const apSel0 = this.approvals.find(a => a.id === this.state.approvalSel) || this.approvals[0];
+    const apSelStatus = stFor(apSel0);
+    const apNeed = this.approvals.filter(a => stFor(a) === 'required').length;
+
+    return {
+      report: this.reportSecs.map(r => ({ ...r, evColor: r.ev === 'Owner-supplied' ? 'var(--forest)' : (r.ev === 'Interview' ? 'var(--ink2)' : 'var(--ochre)') })),
+      reportApproved: this.state.reportApproved, approveReport: () => this.approveReport(),
+      repFacts: this.repFacts, repProcesses: this.repProcesses, repPain: this.repPain, repConstraints: this.repConstraints, repUnknowns: this.repUnknowns, repToc: this.repToc,
+      repSystems: this.repSystems.map(x => ({ ...x, color: x.status === 'Connected' ? 'var(--forest)' : (x.status === 'Needs auth' ? 'var(--ember)' : (x.status === 'Ready to connect' ? 'var(--ochre)' : 'var(--ink3)')) })),
+      repUseCases: this.repUseCases.map(x => ({ ...x, rc: x.risk === 'High' ? 'var(--ember)' : (x.risk === 'Medium' ? 'var(--ochre)' : 'var(--forest)') })),
+      teamRows, plannedRows: teamRows.filter(r => r.inPlan), plannedCount: planned.length, baseFee: '$' + base, totalLabel: '$' + total, lowLabel: '$' + low, highLabel: '$' + high, buildIdle: !b.running && !b.done,
+      canUndo: this.state.undo.length > 0, doUndo: () => this.doUndo(),
+      nl: this.state.nl, setNl: (e) => this.setNl(e.target.value), runNl: () => this.runNl(),
+      confirmWorkflow: () => this.confirmWorkflow(),
+      mapNodes: planned.map(a => ({ name: a.name, role: a.role })),
+      buildWaves: this.buildWaves, buildFiles: this.buildFiles, buildRows,
+      buildPct: b.pct, buildRunning: b.running, buildDone: b.done, buildPctLabel: b.pct + '%',
+      startBuild: () => this.startBuild(), gotoValidate: () => this.go('validate'),
+      validateChecks: this.validateChecks, validated: this.state.validated,
+      activate: () => { this.setState({ validated: true }); this.go('workspace'); },
+      events: this.events.map(e => ({ ...e, color: e.tone === 'done' ? 'var(--forest)' : (e.tone === 'ember' ? 'var(--ember)' : 'var(--ochre)') })),
+      apRows, apNeed,
+      apSel: { ...apSel0, statusLabel: apSelStatus === 'required' ? 'Awaiting you' : (apSelStatus === 'approved' ? 'Approved' : 'Closed'),
+        riskColor: apSel0.risk === 'High' ? 'var(--ember)' : (apSel0.risk === 'Medium' ? 'var(--ochre)' : 'var(--ink2)'),
+        isOpen: apSelStatus === 'required' },
+      apApprove: () => this.setState(st => ({ apStatus: { ...(st.apStatus || {}), [st.approvalSel]: 'approved' } })),
+      apReject: () => this.setState(st => ({ apStatus: { ...(st.apStatus || {}), [st.approvalSel]: 'done' } })),
+      calWeeks, calMonth: 'July 2026', roiHours: '63', roiValue: '$4,870', roiTickets: '1,240',
+      goInterview: () => this.go('interview'), reportNotApproved: !this.state.reportApproved,
+      goApprovals: () => this.go('approvals'), apSelClosed: apSelStatus !== 'required',
+      canvas: [
+        { label: 'Problem', dot: 'var(--ochre)', body: 'Support spikes at drops, wholesale leads stall for days, restocking is reactive so best-sellers sell out.' },
+        { label: 'Customer segments', dot: 'var(--forest)', body: 'Home specialty drinkers · subscription regulars · independent cafes (wholesale).' },
+        { label: 'Unique value', dot: 'var(--forest)', body: 'Single-origin roasted to order, on a subscription that bends to your schedule.' },
+        { label: 'Solution', dot: 'var(--forest)', body: 'DTC storefront + flexible subscriptions + a small, hands-on wholesale program.' },
+        { label: 'Channels', dot: 'var(--forest)', body: 'Shopify store, Instagram, email, and word-of-mouth between cafes.' },
+        { label: 'Revenue', dot: 'var(--forest)', body: 'One-off bags, recurring subscriptions, and wholesale invoices.' },
+        { label: 'Cost structure', dot: 'var(--forest)', body: 'Green beans, packaging, shipping, fulfillment, and a 12-person team.' },
+        { label: 'Key metrics', dot: 'var(--ochre)', body: 'MRR · subscriber churn · first-response time · stockout days per roast.' },
+        { label: 'Unfair advantage', dot: 'var(--forest)', body: 'Direct importer relationships and a loyal, vocal subscriber base.' },
+      ],
+      ops: [
+        { label: 'Repeated processes', body: 'Order-status replies · subscription edits · wholesale intake · reorders · review responses.' },
+        { label: 'Triggers', body: 'Customer message · stock below floor · new wholesale email · Monday 8:00am.' },
+        { label: 'Systems', body: 'Shopify · Recharge · Gorgias · Gmail · Google Sheets.' },
+        { label: 'Approvals', body: 'Refunds, reorders and wholesale pricing always need a human nod.' },
+      ],
+      history: [
+        { v: 'v3', t: 'You edited “Constraints & approvals”' },
+        { v: 'v2', t: 'Margo added the operations layer' },
+        { v: 'v1', t: 'Draft generated from intake' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
