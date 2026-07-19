@@ -145,6 +145,9 @@ export function callVals(s: AppState) {
     txIsTranscript: c.txTab === "transcript",
     txIsNotes: c.txTab === "notes",
     muteLabel: c.muted ? "Unmute" : "Mute",
+    voiceOn: s.voiceOn,
+    voiceSupported: s.voiceSupported,
+    voiceLabel: s.voiceOn ? "Her voice" : "Voice off",
     recording: c.recording,
     transcribing: c.transcribing,
     generating: s.generating,
@@ -352,6 +355,9 @@ export function designVals(s: AppState) {
         : d.phase === "user-talking" ? "Transcribing your voice…"
           : d.phase === "paused" ? "Paused" : "Listening — type or just talk",
     dUploaded: d.uploaded,
+    voiceOn: s.voiceOn,
+    voiceSupported: s.voiceSupported,
+    voiceLabel: s.voiceOn ? "Her voice" : "Voice off",
   };
 }
 

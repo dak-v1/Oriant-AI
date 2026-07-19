@@ -16,6 +16,7 @@ import { DEFAULT_CONFIG } from "./fixtures";
 import {
   CALL_CARDS, DESIGN_CARDS, DEFAULT_GOALS, DEFAULT_SYSTEMS, LC_UPLOAD_DATA,
 } from "./script";
+import { cancelSpeech, loadVoicePref, primeVoices, saveVoicePref, speak, speechSupported } from "./speech";
 
 export type Screen =
   | "landing" | "call" | "report" | "planner" | "design"
@@ -85,6 +86,10 @@ export interface AppState {
   pl: PlannerUi;
   approvalSel: string;
   drag: { type: "add" | "move"; id: string } | null;
+  /** Margo speaks her questions aloud (browser speech synthesis) */
+  voiceOn: boolean;
+  voiceSupported: boolean;
+  toggleVoice(): void;
 
   /* actions */
   hydrate(): Promise<void>;
@@ -175,6 +180,7 @@ function clearTimers() {
   if (sayT) clearInterval(sayT);
   if (ansT) clearTimeout(ansT);
   speakT = sayT = null; ansT = null;
+  cancelSpeech(); // Margo stops talking the moment the moment passes
 }
 
 function stopClock() {
@@ -252,6 +258,7 @@ export const useApp = create<AppState>((set, get) => {
     const full = card.q;
     let n = 0;
     if (speakT) clearInterval(speakT);
+    if (st.voiceOn) speak(full);
     set((s) => ({ call: { ...s.call, phase: "speaking", typed: "" } }));
     speakT = setInterval(() => {
       n += 2;
@@ -271,6 +278,7 @@ export const useApp = create<AppState>((set, get) => {
     const full = card.q;
     let n = 0;
     if (speakT) clearInterval(speakT);
+    if (st.voiceOn) speak(full);
     set((s) => ({ design: { ...s.design, phase: "speaking", typed: "" } }));
     speakT = setInterval(() => {
       n += 2;
@@ -300,8 +308,20 @@ export const useApp = create<AppState>((set, get) => {
     pl: { tab: "workflow", view: "plan", sel: "frontdesk", diff: null, nlText: "", nlBusy: false, cfg: { ...DEFAULT_CONFIG }, cfgAgentId: null },
     approvalSel: "a1",
     drag: null,
+    voiceOn: true,        // real value read in hydrate (localStorage is client-only)
+    voiceSupported: false,
+
+    toggleVoice() {
+      const on = !get().voiceOn;
+      saveVoicePref(on);
+      if (!on) cancelSpeech();
+      set({ voiceOn: on });
+    },
 
     async hydrate() {
+      // voice preference + voice list are browser-only concerns
+      set({ voiceOn: loadVoicePref(), voiceSupported: speechSupported() });
+      primeVoices();
       const res = await api("/api/state");
       if (res.ok) applyPayload(res.body);
       // resume where the journey left off
@@ -380,6 +400,7 @@ export const useApp = create<AppState>((set, get) => {
       const st = get();
       const card = CALL_CARDS[st.call.idx];
       if (!card || card.type === "goals" || card.type === "systems") return;
+      cancelSpeech(); // the owner is talking now — Margo listens
       const full = card.sample ?? "";
       let n = 0;
       if (sayT) clearInterval(sayT);
@@ -442,6 +463,7 @@ export const useApp = create<AppState>((set, get) => {
       const st = get();
       const card = CALL_CARDS[st.call.idx];
       if (!card || st.call.transcribing) return;
+      cancelSpeech(); // never record Margo's own voice / talk over the owner
 
       const live = !!st.providers?.nosana;
       if (!live) {
@@ -475,20 +497,30 @@ export const useApp = create<AppState>((set, get) => {
             return;
           }
           set((s) => ({ call: { ...s.call, recording: false, transcribing: true } }));
-          const blob = new Blob(recChunks, { type: recorder?.mimeType || "audio/webm" });
-          const form = new FormData();
-          form.append("audio", blob, "answer.webm");
-          const res = await fetch("/api/transcribe", { method: "POST", body: form });
-          const body = (await res.json()) as { ok: boolean; text?: string; error?: string };
-          if (body.ok && body.text) {
-            // the transcript is shown as editable text before submission
+          try {
+            const blob = new Blob(recChunks, { type: recorder?.mimeType || "audio/webm" });
+            const form = new FormData();
+            form.append("audio", blob, "answer.webm");
+            const res = await fetch("/api/transcribe", { method: "POST", body: form });
+            const body = (await res.json()) as { ok: boolean; text?: string; error?: string };
+            if (body.ok && body.text) {
+              // the transcript is shown as editable text before submission
+              set((s) => ({
+                call: { ...s.call, transcribing: false, phase: "review", typedMode: true, draft: body.text! },
+              }));
+            } else {
+              // name the real cause so it reads as "the workload is down",
+              // not "your microphone is broken"
+              set((s) => ({
+                call: { ...s.call, transcribing: false, phase: "review", typedMode: true },
+                error: `Voice transcription unavailable (${body.error ?? "unknown error"}) — type your answer instead.`,
+              }));
+            }
+          } catch {
+            // never strand the call on "Transcribing…" — always fall back to typing
             set((s) => ({
-              call: { ...s.call, transcribing: false, phase: "review", typedMode: true, draft: body.text! },
-            }));
-          } else {
-            set((s) => ({
-              call: { ...s.call, transcribing: false, phase: "listening", typedMode: true },
-              error: "Voice transcription is unavailable — type your answer instead.",
+              call: { ...s.call, transcribing: false, phase: "review", typedMode: true },
+              error: "Couldn’t reach transcription — type your answer instead.",
             }));
           }
         };
@@ -708,6 +740,7 @@ export const useApp = create<AppState>((set, get) => {
     dSay() {
       const card = DESIGN_CARDS[get().design.idx];
       if (!card) return;
+      cancelSpeech();
       const full = card.sample;
       let n = 0;
       if (sayT) clearInterval(sayT);

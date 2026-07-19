@@ -141,6 +141,17 @@ export default function DesignScreen() {
             >
               End call
             </button>
+            {v.voiceSupported && (
+              <span
+                onClick={s.toggleVoice}
+                className="hv-fg"
+                title={v.voiceOn ? "Margo speaks her questions" : "Margo is muted — read the captions"}
+                style={sx({ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: ".06em", textTransform: "uppercase", color: v.voiceOn ? "var(--ink2)" : "var(--ink3)", cursor: "pointer", userSelect: "none", display: "flex", alignItems: "center", gap: 6, "--hv-fg": "var(--ember)" })}
+              >
+                <span style={sx({ width: 7, height: 7, borderRadius: "50%", background: v.voiceOn ? "var(--forest)" : "var(--line2)" })} />
+                {v.voiceLabel}
+              </span>
+            )}
           </>
         )}
         {v.dPaused && (

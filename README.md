@@ -28,6 +28,7 @@ cp .env.example .env.local   # then fill in the keys you have
 |---|---|---|
 | **AI&** | Discovery → company brief, workforce planning, natural-language plan changes (strict JSON-schema outputs) | `AIAND_API_KEY`, `AIAND_BASE_URL`, `AIAND_MODEL` |
 | **Nosana** | Whisper voice transcription on the kickoff call (typed input always works as fallback) | `NOSANA_WHISPER_URL`, `NOSANA_API_KEY` |
+| *(none — browser)* | **Margo's own voice**: she reads her questions aloud via the Web Speech API. Toggle it with the "Her voice" control on the call. No key required. | — |
 | **Doubleword** | Async generation of each agent's package (prompt, YAML, policies, tests, docs) | `DOUBLEWORD_API_KEY`, `DOUBLEWORD_BASE_URL`, `DOUBLEWORD_MODEL` |
 | **Daytona** | Isolated sandbox validation of every generated package before activation | `DAYTONA_API_KEY`, `DAYTONA_API_URL` |
 
@@ -96,5 +97,9 @@ Hard rules enforced server-side (from the blueprint):
 - `POST /api/reset` (or delete `data/db.json`) → clean session for rehearsal.
 - The provider trace is in `data/db.json → providerRuns` — each entry shows
   `provider / operation / status / mode` so you can prove which sponsor did what.
-- Don't run `npm run build` while `npm run dev` is running — they share the
-  `.next` directory and the dev server will 500 until restarted.
+- `npm run dev` and `npm run build` use separate output directories
+  (`.next` vs `.next-build`, via `scripts/next-prod.mjs`), so building while
+  the dev server runs is safe. If you ever do see a stray
+  `__webpack_modules__[moduleId] is not a function`, delete both directories
+  and restart — that error always means stale/mixed build artifacts, never a
+  code fault.

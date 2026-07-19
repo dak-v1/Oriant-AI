@@ -96,7 +96,9 @@ export default function CallScreen() {
                       <span style={sx({ width: 15, height: 15, border: "2px solid var(--paper)", borderTopColor: "transparent", borderRadius: "50%", display: "block", animation: "spin .7s linear infinite" })} />
                     ) : (
                       <span style={sx({ width: 13, height: 19, border: `2px solid ${micColor}`, borderRadius: 8, position: "relative", display: "block" })}>
-                        <span style={sx({ position: "absolute", left: "50%", bottom: -7, transform: "translateX(-50%)", width: 9, height: 5, border: `2px solid ${micColor}`, borderTop: "none", borderRadius: "0 0 7px 7px" })} />
+                        {/* mic stand: a U — per-side borders, never `border` +
+                            `borderTop:none`, which React flags when micColor changes */}
+                        <span style={sx({ position: "absolute", left: "50%", bottom: -7, transform: "translateX(-50%)", width: 9, height: 5, borderLeft: `2px solid ${micColor}`, borderRight: `2px solid ${micColor}`, borderBottom: `2px solid ${micColor}`, borderRadius: "0 0 7px 7px" })} />
                       </span>
                     )}
                     {v.recording ? "Stop" : v.transcribing ? "Transcribing…" : "Tap to answer"}
@@ -202,6 +204,30 @@ export default function CallScreen() {
             </div>
 
             <div style={sx({ display: "flex", alignItems: "center", gap: 24, marginTop: 14 })}>
+              {/* Margo's voice — same control language as the design's row.
+                  Speech is optional and switchable off at any time (§8.5). */}
+              {v.voiceSupported && (
+                <div style={sx({ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 })}>
+                  <button
+                    onClick={s.toggleVoice}
+                    title={v.voiceOn ? "Margo speaks her questions" : "Margo is muted — read the captions"}
+                    className="hv-bd"
+                    style={sx({ width: 50, height: 50, borderRadius: "50%", border: `1px solid ${v.voiceOn ? "var(--ink)" : "var(--line2)"}`, background: v.voiceOn ? "var(--ink)" : "var(--card)", cursor: "pointer", display: "grid", placeItems: "center", "--hv-bd": "var(--ink)" })}
+                  >
+                    <span style={sx({ position: "relative", display: "block", width: 18, height: 14 })}>
+                      {/* speaker cone */}
+                      <span style={sx({ position: "absolute", left: 0, top: 4, width: 5, height: 6, background: v.voiceOn ? "var(--paper)" : "var(--ink)" })} />
+                      <span style={sx({ position: "absolute", left: 4, top: 0, width: 0, height: 0, borderTop: "7px solid transparent", borderBottom: "7px solid transparent", borderRight: `7px solid ${v.voiceOn ? "var(--paper)" : "var(--ink)"}` })} />
+                      {v.voiceOn ? (
+                        <span style={sx({ position: "absolute", right: 0, top: 3, width: 6, height: 8, borderRight: "2px solid var(--paper)", borderTop: "2px solid var(--paper)", borderBottom: "2px solid var(--paper)", borderRadius: "0 8px 8px 0" })} />
+                      ) : (
+                        <span style={sx({ position: "absolute", right: 1, top: 6, width: 8, height: 2, background: "var(--ink)", transform: "rotate(-45deg)" })} />
+                      )}
+                    </span>
+                  </button>
+                  <span style={sx({ fontSize: 11, color: "var(--ink3)" })}>{v.voiceLabel}</span>
+                </div>
+              )}
               <div style={sx({ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 })}>
                 <button
                   onClick={s.callMute}

@@ -41,9 +41,21 @@ export async function transcribe(audio: Blob): Promise<TranscribeResult> {
         body: form,
         signal: AbortSignal.timeout(120_000),
       });
+      const ctype = res.headers.get("content-type") ?? "";
+      const server = res.headers.get("server") ?? "";
+      // A web UI (JupyterLab, a dashboard) answering here means the deployment
+      // isn't an ASR API at all — say so instead of a bare status code.
+      const looksLikeWebUi = ctype.includes("text/html") || /tornado/i.test(server);
       if (!res.ok) {
-        console.error(`[margo] nosana endpoint #${i + 1} returned ${res.status} (${url})`);
-        lastErr = `whisper workload returned ${res.status}`;
+        console.error(`[margo] nosana endpoint #${i + 1} returned ${res.status} (${url}) server=${server || "?"} content-type=${ctype || "?"}`);
+        lastErr = looksLikeWebUi
+          ? `that URL serves a web UI (${server || "HTML"}), not a speech-recognition API — deploy a Whisper job that exposes /v1/audio/transcriptions`
+          : `whisper workload returned ${res.status}`;
+        continue;
+      }
+      if (looksLikeWebUi) {
+        console.error(`[margo] nosana endpoint #${i + 1} returned HTML, not JSON (${url})`);
+        lastErr = "that URL serves a web UI, not a speech-recognition API";
         continue;
       }
       const body = (await res.json()) as { text?: string; transcription?: string };

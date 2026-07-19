@@ -5,8 +5,8 @@
   "description": "Margo — the done-for-you AI workforce. Learns the business, drafts the team, proves it in a sandbox, keeps the owner in control.",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "node scripts/next-prod.mjs build",
+    "start": "node scripts/next-prod.mjs start",
     "lint": "next lint"
   },
   "dependencies": {
