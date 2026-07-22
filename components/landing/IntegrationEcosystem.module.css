@@ -1,0 +1,179 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   IntegrationEcosystem — hub-and-clusters composition (§7.9).
+   Dark hub pill top-centre, faint dashed connections (≥1024px only), six
+   grouped integration cards below. Colors via var(--lp-*) tokens only.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.diagram {
+  --card-gap: 20px;
+  /* Horizontal centre of the first/last grid column (3 equal cols + 2 gaps). */
+  --drop-inset: calc((100% - 2 * var(--card-gap)) / 6);
+}
+
+/* ── Hub pill ── */
+.hubRow {
+  display: flex;
+  justify-content: center;
+}
+
+.hub {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 12px 28px;
+  border-radius: var(--lp-radius-chip);
+  background: var(--lp-ink);
+  color: var(--lp-bg);
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  box-shadow: var(--lp-shadow-nav);
+}
+
+.hubDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lp-accent);
+  /* Static frame (reduced motion / animation end) is the solid dot. */
+  animation: hubPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes hubPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ── Dashed connections (desktop only) ── */
+.connector {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .connector {
+    display: block;
+    position: relative;
+    height: 64px;
+  }
+
+  /* Vertical line: hub → spine → centre top-row card (colinear at 50%). */
+  .connector::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    border-left: 1px dashed var(--lp-border);
+  }
+
+  /* Horizontal spine above the grid. */
+  .connector::after {
+    content: "";
+    position: absolute;
+    top: 32px;
+    left: var(--drop-inset);
+    right: var(--drop-inset);
+    border-top: 1px dashed var(--lp-border);
+  }
+
+  /* Short drops from the spine to the outer top-row cards. */
+  .dropLeft,
+  .dropRight {
+    position: absolute;
+    top: 32px;
+    bottom: 0;
+    border-left: 1px dashed var(--lp-border);
+  }
+
+  .dropLeft {
+    left: var(--drop-inset);
+  }
+
+  .dropRight {
+    right: var(--drop-inset);
+  }
+}
+
+/* ── Group card grid ── */
+.grid {
+  list-style: none;
+  margin: 36px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--card-gap);
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+    margin-top: 0;
+  }
+}
+
+.cell {
+  min-width: 0;
+}
+
+/* Two-class selectors below intentionally out-rank the single-class
+   .lp-card / .lp-chip utilities regardless of stylesheet order. */
+
+.cell .card {
+  height: 100%;
+  border-radius: 24px;
+  padding: 24px;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  transition:
+    transform 0.25s var(--lp-ease),
+    box-shadow 0.25s var(--lp-ease);
+}
+
+.cell .card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--lp-shadow-card-hover);
+}
+
+.card .groupName {
+  margin: 0;
+}
+
+.chipRow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chipItem {
+  display: flex;
+}
+
+.chipRow .chip {
+  padding: 7px 13px;
+  font-size: 13.5px;
+  transition:
+    border-color 0.2s var(--lp-ease),
+    transform 0.2s var(--lp-ease);
+}
+
+.chipRow .chip:hover {
+  border-color: var(--lp-muted);
+  transform: translateY(-1px);
+}

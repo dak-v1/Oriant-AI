@@ -1,0 +1,109 @@
+/* FinalCTA — closing call-to-action panel (§7.11, upper half). */
+
+.panel {
+  position: relative;
+  /* Deliberate oversized one-off radius for the closing panel per the brief
+     (outside the 24-32px card system). */
+  border-radius: 40px;
+  background: linear-gradient(160deg, var(--lp-rose) 0%, #ffffff 70%);
+  border: 1px solid rgba(204, 8, 67, 0.16);
+  padding: clamp(56px, 8vw, 104px) clamp(22px, 8vw, 104px);
+  text-align: center;
+  overflow: hidden;
+}
+
+/* Faint stage-grid wash, fading out toward the bottom of the panel. */
+.gridWash {
+  position: absolute;
+  inset: 0;
+  opacity: 0.55;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(
+    120% 95% at 50% 0%,
+    rgba(0, 0, 0, 0.9),
+    transparent 78%
+  );
+  mask-image: radial-gradient(
+    120% 95% at 50% 0%,
+    rgba(0, 0, 0, 0.9),
+    transparent 78%
+  );
+}
+
+/* Floating accent dots echoing the hero workflow nodes.
+   ctaFloat is declared locally because CSS Modules localises animation
+   names — a global keyframe reference would not resolve. The global
+   reduced-motion block in landing.css still zeroes its duration. */
+@keyframes ctaFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.dot {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--lp-accent);
+  pointer-events: none;
+  animation: ctaFloat 5.5s ease-in-out infinite;
+}
+
+.dotTopRight {
+  width: 12px;
+  height: 12px;
+  top: clamp(28px, 5vw, 52px);
+  right: clamp(30px, 6vw, 64px);
+  box-shadow: 0 0 0 8px rgba(204, 8, 67, 0.08);
+}
+
+.dotBottomLeft {
+  width: 9px;
+  height: 9px;
+  bottom: clamp(26px, 4.5vw, 48px);
+  left: clamp(28px, 5.5vw, 60px);
+  opacity: 0.85;
+  box-shadow: 0 0 0 6px rgba(204, 8, 67, 0.07);
+  animation-duration: 7s;
+  animation-delay: 1.2s;
+}
+
+.content {
+  position: relative;
+  display: grid;
+  gap: 22px;
+  justify-items: center;
+}
+
+.heading {
+  font-size: clamp(38px, 5vw, 68px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.03;
+  margin: 0;
+  text-wrap: balance;
+  max-width: 21ch;
+}
+
+.body {
+  max-width: 52ch;
+  margin-inline: auto;
+}
+
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+/* Larger primary CTA — the compound selector keeps it above .lp-btn. */
+.ctaRow .primaryBtn {
+  min-height: 56px;
+  padding: 0 32px;
+  font-size: 16.5px;
+}

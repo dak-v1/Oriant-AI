@@ -1,0 +1,216 @@
+/* LandingNavbar.module.css — global morphing navigation capsule (§6).
+   The fixed wrapper is pointer-events:none and flex-centres the capsule, so
+   framer-motion layout animations can morph the capsule's width without any
+   CSS transform fighting the centring. */
+
+.wrap {
+  position: fixed;
+  top: 18px;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  display: flex;
+  justify-content: center;
+  padding-inline: 16px;
+  pointer-events: none;
+}
+
+.capsule {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  column-gap: 24px;
+  max-width: 100%;
+  padding: 12px 12px 12px 22px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--lp-border);
+  border-radius: 999px;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  transition:
+    -webkit-backdrop-filter 0.35s var(--lp-ease),
+    backdrop-filter 0.35s var(--lp-ease);
+}
+
+/* The shadow lives on a pseudo-element so its strength can cross-fade with a
+   CSS opacity transition while framer-motion owns the capsule's inline style. */
+.capsule::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow: var(--lp-shadow-nav);
+  opacity: 0.45;
+  transition: opacity 0.35s var(--lp-ease);
+  pointer-events: none;
+}
+
+.capsuleCompact {
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.capsuleCompact::before {
+  opacity: 1;
+}
+
+/* ── Wordmark ── */
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding-block: 10px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--lp-ink);
+  white-space: nowrap;
+}
+
+.wordmarkAi {
+  color: var(--lp-accent);
+}
+
+/* ── Centre links (desktop only) ── */
+.links {
+  display: none;
+  align-items: center;
+  column-gap: 24px;
+  padding-inline: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.navLink {
+  padding-block: 11px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--lp-muted);
+  transition: color 0.2s var(--lp-ease);
+}
+
+/* Outranks `.lp a:hover { color: inherit }` from landing.css. */
+.links .navLink:hover {
+  color: var(--lp-ink);
+}
+
+/* End-state Contact link (desktop only, mounted at scroll progress ≥ 75%) */
+.contactLink {
+  display: none;
+  align-items: center;
+  padding-block: 11px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--lp-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  transition: color 0.2s var(--lp-ease);
+}
+
+.wrap .capsule .contactLink:hover {
+  color: var(--lp-ink);
+}
+
+/* ── Primary CTA ── */
+.cta {
+  flex: none;
+}
+
+/* `.lp a { color: inherit }` in landing.css outranks `.lp-btn--primary`'s
+   specificity, so restate the button's own white label colour here (the same
+   literal the shared utility uses). */
+.wrap .capsule a.cta,
+.wrap .capsule a.cta:hover {
+  color: #ffffff;
+}
+
+.ctaFull {
+  display: none;
+}
+
+.ctaShort {
+  display: inline;
+}
+
+/* ── Mobile menu button ── */
+.menuBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 1px solid var(--lp-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lp-ink);
+  cursor: pointer;
+  transition:
+    border-color 0.2s var(--lp-ease),
+    background 0.2s var(--lp-ease);
+}
+
+.menuBtn:hover {
+  border-color: var(--lp-ink);
+  background: var(--lp-bg-alt);
+}
+
+/* ── Mobile menu panel (below the capsule) ── */
+.panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 16px;
+  right: 16px;
+  pointer-events: auto;
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+  border-radius: 24px;
+}
+
+.panelLink {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: 16px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--lp-ink);
+  transition: background 0.2s var(--lp-ease);
+}
+
+.panel .panelLink:hover {
+  background: var(--lp-bg-alt);
+  color: var(--lp-ink);
+}
+
+/* ── Desktop ≥ 1024px ── */
+@media (min-width: 1024px) {
+  .links {
+    display: flex;
+  }
+
+  .contactLink {
+    display: inline-flex;
+  }
+
+  .menuBtn {
+    display: none;
+  }
+
+  .panel {
+    display: none;
+  }
+
+  .ctaFull {
+    display: inline;
+  }
+
+  .ctaShort {
+    display: none;
+  }
+}

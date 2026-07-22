@@ -4,9 +4,9 @@
  --ink:#1A1712; --ink2:#5B5347; --ink3:#8B8272;
  --line:rgba(26,23,18,.14); --line2:rgba(26,23,18,.28);
  --ember:#B8442A; --forest:#3C6151; --ochre:#A9782A;
- --disp:'Bricolage Grotesque',system-ui,sans-serif;
- --sans:'Instrument Sans',system-ui,sans-serif;
- --mono:'Space Mono',ui-monospace,monospace;
+ --disp:var(--font-bricolage, "Bricolage Grotesque"),system-ui,sans-serif;
+ --sans:var(--font-instrument-sans, "Instrument Sans"),system-ui,sans-serif;
+ --mono:var(--font-space-mono, "Space Mono"),ui-monospace,monospace;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
@@ -16,7 +16,7 @@ a:hover{color:var(--ember)}
 button{font-family:inherit}
 ::selection{background:var(--ink);color:var(--paper)}
 ::-webkit-scrollbar{width:11px;height:11px}
-::-webkit-scrollbar-thumb{background:var(--line2);border-radius:20px;border:3px solid var(--paper)}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:20px;border:3px solid transparent;background-clip:padding-box}
 input,textarea{font-family:inherit}
 [contenteditable]{outline:none}
 

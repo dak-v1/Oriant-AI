@@ -1,0 +1,119 @@
+/* FAQSection — section-specific styles (master brief §7.10). */
+
+.head {
+  max-width: 640px;
+  margin: 0 auto clamp(44px, 5.5vw, 64px);
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  text-align: center;
+}
+
+.accordion {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+/* ── Item card ── */
+.item {
+  background: #ffffff;
+  border: 1px solid var(--lp-border);
+  border-radius: var(--lp-radius-card);
+  margin-bottom: 12px;
+  transition:
+    border-color 0.3s var(--lp-ease),
+    box-shadow 0.3s var(--lp-ease);
+}
+
+.item:last-child {
+  margin-bottom: 0;
+}
+
+.item:hover {
+  border-color: rgba(17, 17, 17, 0.16);
+}
+
+.itemOpen {
+  border-color: rgba(17, 17, 17, 0.2);
+  box-shadow: var(--lp-shadow-card);
+}
+
+.itemHeading {
+  margin: 0;
+}
+
+/* ── Trigger button ── */
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+  min-height: 44px;
+  padding: 22px 26px;
+  background: none;
+  border: 0;
+  border-radius: var(--lp-radius-card);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  text-align: left;
+  color: var(--lp-ink);
+  cursor: pointer;
+}
+
+.question {
+  flex: 1 1 auto;
+}
+
+.icon {
+  flex: none;
+  color: var(--lp-muted);
+  transition:
+    transform 0.35s var(--lp-ease),
+    color 0.2s var(--lp-ease);
+}
+
+.itemOpen .icon {
+  transform: rotate(45deg);
+  color: var(--lp-accent);
+}
+
+/* ── Collapsible panel: grid-rows 0fr → 1fr, no measurement needed ── */
+.panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s var(--lp-ease);
+}
+
+.itemOpen .panel {
+  grid-template-rows: 1fr;
+}
+
+.panelInner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.answer {
+  margin: 0;
+  padding: 0 26px 24px;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--lp-muted);
+}
+
+/* ── Mobile ── */
+@media (max-width: 767px) {
+  .trigger {
+    padding: 18px 20px;
+    font-size: 16px;
+    gap: 14px;
+  }
+
+  .answer {
+    padding: 0 20px 20px;
+    font-size: 15px;
+  }
+}

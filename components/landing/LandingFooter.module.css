@@ -1,0 +1,157 @@
+/* LandingFooter — clean, compact, light contact footer (§7.11 lower half). */
+
+.footer {
+  background: var(--lp-bg-alt);
+  border-top: 1px solid var(--lp-border);
+  padding-block: clamp(56px, 7vw, 88px) 28px;
+}
+
+/* ── Main grid: brand / link columns / contact ── */
+.grid {
+  display: grid;
+  gap: clamp(36px, 5vw, 48px);
+  align-items: start;
+}
+
+/* Tablet: brand across the top, links + contact side by side */
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: clamp(40px, 5vw, 64px);
+  }
+
+  .brand {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Desktop: the three zones sit on one row */
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: clamp(40px, 5vw, 72px);
+  }
+
+  .brand {
+    grid-column: auto;
+  }
+}
+
+/* ── Zone 1: brand ── */
+.wordmark {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  color: var(--lp-ink);
+}
+
+.wordmarkAccent {
+  color: var(--lp-accent);
+}
+
+.descriptor {
+  margin: 14px 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--lp-muted);
+  max-width: 36ch;
+}
+
+/* ── Zone 2: link columns ── */
+.linkColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+  align-items: start;
+}
+
+.linkCol {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.colHead {
+  margin: 0;
+}
+
+.linkList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+/* Compound selectors so these beat the shared `.lp a` colour reset. */
+.footer .link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--lp-muted);
+  transition: color 0.2s var(--lp-ease);
+}
+
+.footer .link:hover {
+  color: var(--lp-ink);
+}
+
+/* ── Zone 3: contact ── */
+.contact {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+  align-content: start;
+}
+
+.contactNote {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--lp-muted);
+  max-width: 34ch;
+}
+
+/* ── Bottom row ── */
+.bottomRow {
+  margin-top: clamp(44px, 6vw, 72px);
+  border-top: 1px solid var(--lp-border);
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+
+.copyright {
+  margin: 0;
+  font-size: 13px;
+  color: var(--lp-muted);
+}
+
+.footer .backToTop {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lp-muted);
+  transition: color 0.2s var(--lp-ease);
+}
+
+.footer .backToTop:hover {
+  color: var(--lp-ink);
+}
+
+.footer .backToTop svg {
+  transition: transform 0.2s var(--lp-ease);
+}
+
+.footer .backToTop:hover svg {
+  transform: translateY(-2px);
+}
