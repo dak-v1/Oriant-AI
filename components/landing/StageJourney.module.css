@@ -1,0 +1,993 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   StageJourney.module.css — pinned 7-stage narrative (brief §10).
+   Desktop: tall runway + 100vh sticky panel; left rail + right visual panel.
+   Mobile/tablet (<1024): ordinary vertical stage cards, no pinning.
+   All @keyframes are declared locally (CSS Modules localise names).
+   Every loop's BASE frame reads as finished (packet parked at destination,
+   pulse ring at full opacity) so the global reduced-motion kill-switch and
+   the module rules below both land on a complete-looking static frame.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.section {
+  background: var(--lp-bg-alt);
+}
+
+/* ── Breakpoint split: runway (desktop) vs vertical cards (mobile) ───────── */
+
+.runway {
+  display: none;
+}
+
+.mobileWrap {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .runway {
+    display: block;
+    /* (stage count + 1.5) × 55vh ≈ 470vh of scroll runway */
+    height: calc((var(--stage-count, 7) + 1.5) * 55vh);
+  }
+
+  .mobileWrap {
+    display: none;
+  }
+}
+
+/* ── Pinned panel ────────────────────────────────────────────────────────── */
+
+.pin {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.pinGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
+  gap: clamp(40px, 4.5vw, 76px);
+  align-items: center;
+  width: 100%;
+}
+
+/* ── Left: heading + stage rail ──────────────────────────────────────────── */
+
+.left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(14px, 2.2vh, 22px);
+  min-width: 0;
+}
+
+.heading {
+  max-width: 460px;
+}
+
+.railWrap {
+  position: relative;
+  align-self: stretch;
+  margin-top: clamp(8px, 2vh, 24px);
+  padding-left: 24px;
+}
+
+.track {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--lp-border-strong);
+  overflow: hidden;
+}
+
+.trackFill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--lp-accent);
+  transform-origin: top center;
+}
+
+.rail {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.railItem {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 14px;
+  align-items: baseline;
+  padding-block: clamp(6px, 1.1vh, 11px);
+}
+
+.railNum {
+  color: var(--lp-muted-strong);
+  transition: color 0.3s var(--lp-ease);
+}
+
+.railItem[data-active="true"] .railNum {
+  color: var(--lp-accent);
+}
+
+.railText {
+  min-width: 0;
+}
+
+/* Inactive titles: 19px/750 in --lp-muted (large bold text — AA-safe).
+   Never 45%-opacity ink (fails contrast). Active title: ink + accent dot. */
+.railTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+  color: var(--lp-muted);
+  transition: color 0.35s var(--lp-ease);
+}
+
+.railItem[data-active="true"] .railTitle {
+  color: var(--lp-ink);
+}
+
+.railDot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lp-accent);
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 0.3s var(--lp-ease),
+    transform 0.3s var(--lp-ease);
+}
+
+.railItem[data-active="true"] .railDot {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* One-line body: only the ACTIVE stage expands (grid-rows 0fr → 1fr). */
+.railBodyWrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s var(--lp-ease);
+}
+
+.railItem[data-active="true"] .railBodyWrap {
+  grid-template-rows: 1fr;
+}
+
+.railBodyInner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.railBody {
+  margin: 5px 0 0;
+  padding-left: 17px; /* aligns with title text (7px dot + 10px gap) */
+  max-width: 46ch;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--lp-muted-strong);
+  opacity: 0;
+  transition: opacity 0.35s var(--lp-ease) 0.08s;
+}
+
+.railItem[data-active="true"] .railBody {
+  opacity: 1;
+}
+
+/* ── Right: the visual stage panel ───────────────────────────────────────── */
+
+.right {
+  min-width: 0;
+}
+
+.panel {
+  position: relative;
+  height: min(78vh, 720px);
+  border-radius: var(--lp-radius-card);
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  box-shadow: var(--lp-shadow-card);
+  overflow: hidden;
+  padding: clamp(26px, 4vh, 48px);
+  display: flex;
+}
+
+.panelWash {
+  position: absolute;
+  inset: 0;
+  opacity: 0.8;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(120% 95% at 50% 40%, #000 55%, transparent 100%);
+  mask-image: radial-gradient(120% 95% at 50% 40%, #000 55%, transparent 100%);
+}
+
+.panelGlow {
+  position: absolute;
+  width: 460px;
+  height: 460px;
+  right: -140px;
+  bottom: -160px;
+  pointer-events: none;
+}
+
+.stageViewport {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Only this inner layer is animated (mask-crossfade) — never the panel. */
+.stageLayer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.stageTag {
+  color: var(--lp-muted-strong);
+  letter-spacing: 0.14em;
+}
+
+.visHolder {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* ── Shared visual base ──────────────────────────────────────────────────── */
+
+.vis {
+  width: 100%;
+  max-width: 560px;
+  margin-inline: auto;
+}
+
+/* ── Flow diagram (discover + connected) ─────────────────────────────────── */
+
+.flow {
+  position: relative;
+  aspect-ratio: 560 / 340;
+}
+
+.flowSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.flowDots {
+  fill: none;
+  stroke: var(--lp-border-strong);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 0.2 7;
+}
+
+/* Packet: short dash travelling via stroke-dashoffset (pathLength = 100).
+   BASE frame parks the dash at the destination (91–100) — reads delivered. */
+.flowComet {
+  fill: none;
+  stroke: var(--lp-accent);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-dasharray: 9 91;
+  stroke-dashoffset: -91;
+}
+
+.flow[data-anim="on"] .flowComet {
+  animation: sj-comet-travel 3s linear infinite;
+}
+
+@keyframes sj-comet-travel {
+  from {
+    stroke-dashoffset: 9;
+  }
+  to {
+    stroke-dashoffset: -91;
+  }
+}
+
+.flowChip {
+  position: absolute;
+  left: 10px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border-radius: var(--lp-radius-chip);
+  border: 1px solid var(--lp-border);
+  background: var(--lp-surface);
+  box-shadow: var(--lp-shadow-card);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--lp-ink);
+  white-space: nowrap;
+}
+
+.flowChip svg {
+  color: var(--lp-muted-strong);
+}
+
+.flow[data-reverse="true"] .flowChip {
+  left: auto;
+  right: 10px;
+}
+
+.flowTarget {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--lp-border);
+  background: var(--lp-soft-blue);
+  box-shadow: var(--lp-shadow-card);
+}
+
+.flow[data-reverse="true"] .flowTarget {
+  right: auto;
+  left: 10px;
+}
+
+/* Human node reads visually distinct from agents (teal surface). */
+.flowTarget[data-tone="human"] {
+  background: var(--lp-soft-teal);
+}
+
+.flowTargetIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  color: var(--lp-accent-dark);
+}
+
+.flowTarget[data-tone="human"] .flowTargetIcon {
+  color: var(--lp-teal-deep);
+}
+
+.flowTargetText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.flowTargetLabel {
+  font-size: 13.5px;
+  font-weight: 750;
+  color: var(--lp-ink);
+  white-space: nowrap;
+}
+
+/* ── Plan ────────────────────────────────────────────────────────────────── */
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.planCols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+}
+
+.planCol {
+  border: 1px dashed var(--lp-border-strong);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.planColChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ghostChip {
+  display: inline-flex;
+  padding: 5px 11px;
+  border-radius: var(--lp-radius-chip);
+  border: 1px dashed var(--lp-border-strong);
+  color: var(--lp-muted-strong);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.planArrow {
+  color: var(--lp-muted-strong);
+}
+
+.planRow {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 0;
+}
+
+.planLine {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 50%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--lp-border-strong);
+  transform-origin: left center;
+}
+
+.planChip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: var(--lp-radius-chip);
+  border: 1px solid var(--lp-border);
+  background: var(--lp-soft-blue);
+  color: var(--lp-accent-dark);
+  font-size: 11.5px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+/* Tier is labelled by the tiny T1/T2 tag — never colour alone. */
+.planChip[data-tier="T2"] {
+  background: var(--lp-soft-teal);
+  color: var(--lp-teal-deep);
+}
+
+.tierTag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  padding: 1px 4px;
+}
+
+/* ── Approve ─────────────────────────────────────────────────────────────── */
+
+.approve {
+  display: grid;
+  place-items: center;
+}
+
+.approveCard {
+  width: 100%;
+  max-width: 400px;
+  background: var(--lp-soft-teal);
+  border: 1px solid var(--lp-border);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--lp-shadow-card);
+}
+
+.approveHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.approveGlyph {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  color: var(--lp-teal-deep);
+}
+
+.approveTitles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.approveName {
+  font-size: 14.5px;
+  font-weight: 750;
+  color: var(--lp-ink);
+}
+
+.badgeSlot {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  justify-content: flex-end;
+  min-width: 88px;
+}
+
+.approveNote {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--lp-muted-strong);
+}
+
+.approveActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mockPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 14px;
+  border-radius: var(--lp-radius-chip);
+  border: 1px solid var(--lp-border-strong);
+  background: var(--lp-surface);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--lp-ink);
+}
+
+.mockPillPrimary {
+  background: var(--lp-ink);
+  border-color: var(--lp-ink);
+  color: var(--lp-bg);
+}
+
+/* ── Build ───────────────────────────────────────────────────────────────── */
+
+.build {
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fileCard {
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: var(--lp-shadow-card);
+}
+
+.fileHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--lp-muted-strong);
+}
+
+.fileName {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lp-ink);
+}
+
+.fileTag {
+  margin-left: auto;
+  color: var(--lp-teal-deep);
+  letter-spacing: 0.1em;
+}
+
+.fileLines {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+/* Rows "type in" via scaleX from the left (transform-only, never width). */
+.fileLine {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--lp-soft-blue);
+  transform-origin: left center;
+}
+
+.fileLines .fileLine:nth-child(even) {
+  background: var(--lp-soft-teal);
+}
+
+/* ── Deploy ──────────────────────────────────────────────────────────────── */
+
+.deploy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.deployGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--lp-radius-chip);
+  border: 1.5px dashed var(--lp-border-strong);
+  color: var(--lp-muted-strong);
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.deployArrow {
+  flex: none;
+  color: var(--lp-muted-strong);
+}
+
+.sandbox {
+  position: relative;
+  border: 1.5px solid var(--lp-border-strong);
+  border-radius: 18px;
+  padding: 16px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--lp-bg);
+}
+
+.sandboxHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--lp-muted-strong);
+}
+
+.deployPill {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--lp-radius-chip);
+  border: 1px solid var(--lp-border);
+  background: var(--lp-soft-blue);
+  color: var(--lp-accent-dark);
+  font-size: 12.5px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.sandboxStatus {
+  align-self: flex-start;
+}
+
+/* ── Manage ──────────────────────────────────────────────────────────────── */
+
+.manage {
+  position: relative;
+  padding-top: 18px;
+}
+
+.manageGrid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 14px;
+}
+
+.manageCard {
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--lp-shadow-card);
+}
+
+.manageHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--lp-muted-strong);
+}
+
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.calCell {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 5px;
+  background: var(--lp-bg-alt);
+}
+
+.calCell[data-on="true"] {
+  background: var(--lp-soft-blue);
+  border: 1px solid var(--lp-border);
+}
+
+.calCell[data-today="true"] {
+  background: var(--lp-accent);
+}
+
+/* Pulse loop = opacity only, on an ::after overlay (motion doctrine).
+   BASE frame: ring fully visible — complete-looking when frozen. */
+.calCell[data-today="true"]::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 8px;
+  border: 2px solid var(--lp-accent);
+  opacity: 0.85;
+}
+
+.manage[data-anim="on"] .calCell[data-today="true"]::after {
+  animation: sj-today-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes sj-today-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feedRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feedDot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lp-teal);
+}
+
+.feedRow[data-tone="blue"] .feedDot {
+  background: var(--lp-accent);
+}
+
+.feedBarA,
+.feedBarB {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+}
+
+.feedBarA {
+  background: var(--lp-border-strong);
+  opacity: 0.55;
+}
+
+.feedBarB {
+  background: var(--lp-border);
+}
+
+.approvalsChip {
+  position: absolute;
+  top: 0;
+  right: 10px;
+  transform: translateY(-40%);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border-radius: var(--lp-radius-chip);
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  box-shadow: var(--lp-shadow-nav);
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--lp-ink);
+}
+
+.approvalsChip svg {
+  color: var(--lp-teal-deep);
+}
+
+.approvalsCount {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: var(--lp-radius-chip);
+  background: var(--lp-accent);
+  color: var(--lp-surface);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* ── Mobile / tablet vertical cards ──────────────────────────────────────── */
+
+.cardList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(40px, 8vw, 64px);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.cardNum {
+  color: var(--lp-accent);
+  font-size: 12px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: clamp(20px, 4.6vw, 24px);
+  font-weight: 750;
+  letter-spacing: -0.015em;
+  color: var(--lp-ink);
+}
+
+.cardBody {
+  margin: 0;
+  max-width: 56ch;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--lp-muted-strong);
+}
+
+/* Smaller stage box for each card's visual (recomposed, not shrunk). */
+.cardVisual {
+  margin-top: 8px;
+  background-color: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  border-radius: 20px;
+  padding: clamp(16px, 4vw, 26px);
+  overflow: hidden;
+}
+
+/* ── Narrow-viewport recomposition (visuals inside mobile cards) ─────────── */
+
+@media (max-width: 620px) {
+  .flowChip {
+    gap: 5px;
+    padding: 6px 9px;
+    font-size: 11px;
+  }
+
+  .flowTarget {
+    gap: 8px;
+    padding: 9px 11px;
+  }
+
+  .flowTargetIcon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .flowTargetLabel {
+    font-size: 12px;
+  }
+
+  /* Workflow row wraps; the single connector line no longer applies. */
+  .planLine {
+    display: none;
+  }
+
+  .deploy {
+    flex-direction: column;
+  }
+
+  .deployArrow {
+    transform: rotate(90deg);
+  }
+
+  .manageGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Short desktop viewports: keep the whole rail + heading on screen ────── */
+
+@media (min-width: 1024px) and (max-height: 740px) {
+  .left .heading {
+    font-size: clamp(1.7rem, 2.3vw, 2.3rem);
+  }
+
+  .railTitle {
+    /* 17px/750 sits below the large-text cutoff — needs the stronger muted. */
+    font-size: 17px;
+    color: var(--lp-muted-strong);
+  }
+
+  .railItem {
+    padding-block: 4px;
+  }
+
+  .railBody {
+    font-size: 13.5px;
+  }
+
+  .panel {
+    height: 84vh;
+  }
+}
+
+/* ── Reduced motion: park every loop at its complete base frame ──────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .flowComet {
+    animation: none;
+    stroke-dashoffset: -91; /* packet parked at its destination */
+  }
+
+  .calCell[data-today="true"]::after {
+    animation: none;
+    opacity: 0.85; /* ring fully visible */
+  }
+
+  .railNum,
+  .railTitle,
+  .railDot,
+  .railBody,
+  .railBodyWrap {
+    transition: none; /* rail state changes apply instantly */
+  }
+}

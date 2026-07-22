@@ -1,15 +1,18 @@
 import "./landing.css";
+import SmoothScroll from "@/components/landing/SmoothScroll";
 import LandingMotionProvider from "@/components/landing/LandingMotionProvider";
 import LandingNavbar from "@/components/landing/LandingNavbar";
 import HeroSection from "@/components/landing/HeroSection";
-import IntegrationMarquee from "@/components/landing/IntegrationMarquee";
-import ProductDemoVideo from "@/components/landing/ProductDemoVideo";
-import ProblemSolutionSection from "@/components/landing/ProblemSolutionSection";
-import JourneySection from "@/components/landing/JourneySection";
-import FeatureBento from "@/components/landing/FeatureBento";
-import ApprovalChannelsSection from "@/components/landing/ApprovalChannelsSection";
-import LearningLoopSection from "@/components/landing/LearningLoopSection";
-import IntegrationEcosystem from "@/components/landing/IntegrationEcosystem";
+import VideoRevealSection from "@/components/landing/VideoRevealSection";
+import ManifestoSection from "@/components/landing/ManifestoSection";
+import ProblemSolutionEditorial from "@/components/landing/ProblemSolutionEditorial";
+import StageJourney from "@/components/landing/StageJourney";
+import CapabilityComposition from "@/components/landing/CapabilityComposition";
+import TriplePlatformMarquee from "@/components/landing/TriplePlatformMarquee";
+import WorkflowShowcases from "@/components/landing/WorkflowShowcases";
+import ApprovalsDark from "@/components/landing/ApprovalsDark";
+import ImprovementLoop from "@/components/landing/ImprovementLoop";
+import TechStack from "@/components/landing/TechStack";
 import FAQSection from "@/components/landing/FAQSection";
 import FinalCTA from "@/components/landing/FinalCTA";
 import LandingFooter from "@/components/landing/LandingFooter";
@@ -17,18 +20,21 @@ import LandingFooter from "@/components/landing/LandingFooter";
 export default function Page() {
   return (
     <div className="lp">
+      <SmoothScroll />
       <LandingMotionProvider>
         <LandingNavbar />
         <main id="top">
           <HeroSection />
-          <IntegrationMarquee />
-          <ProductDemoVideo />
-          <ProblemSolutionSection />
-          <JourneySection />
-          <FeatureBento />
-          <ApprovalChannelsSection />
-          <LearningLoopSection />
-          <IntegrationEcosystem />
+          <VideoRevealSection />
+          <ManifestoSection />
+          <ProblemSolutionEditorial />
+          <StageJourney />
+          <CapabilityComposition />
+          <TriplePlatformMarquee />
+          <WorkflowShowcases />
+          <ApprovalsDark />
+          <ImprovementLoop />
+          <TechStack />
           <FAQSection />
           <FinalCTA />
         </main>

@@ -1,237 +1,281 @@
 "use client";
 /**
- * LandingNavbar — the global morphing navigation capsule (master brief §6).
+ * LandingNavbar — two-state navigation (redesign brief §5).
  *
- * A fixed, centred floating pill with three scroll-keyed states:
- *  - default:  wordmark · five NAV_LINKS · primary CTA
- *  - compact:  after ~120px scroll — tighter padding/gap, stronger blur+shadow
- *  - end:      desktop only, scroll progress ≥ 75% — centre links collapse
- *              away and a Contact link takes their place
- * Mobile (<1024px) swaps the centre links for a Menu button that opens a
- * card panel below the capsule. The primary CTA is never hidden.
+ * STATE 1 (hero on screen): full-width transparent row on the hero surface —
+ * wordmark left, six links centred, primary CTA right (~72px tall).
+ * STATE 2 (past ~85% of the viewport): the row contracts into a horizontally
+ * centred floating capsule (translucent surface, blur, border, nav shadow)
+ * holding wordmark + Contact + CTA + menu button.
+ *
+ * PRIMARY MOTION CONCEPT: the integrated-row → floating-capsule contraction,
+ * driven by a framer-motion layout animation (~0.4s, shared EASE). The header
+ * is position: fixed, so the page never jumps; leaving/entering content
+ * crossfades via AnimatePresence popLayout while the capsule morphs.
+ *
+ * Hydration: server + first client render are always state 1 (compact=false,
+ * menu closed); scroll/media effects only update state after mount. Reduced
+ * motion is handled without any render branching: <MotionConfig
+ * reducedMotion="user"> disables the layout/transform animations and the
+ * global landing.css kill-switch zeroes the CSS transitions, so the state
+ * switch is instant while the tree stays identical.
+ *
+ * Focus safety: if focus is inside the desktop link row (or the menu panel)
+ * when a state morph or breakpoint flip removes it, focus moves to the
+ * wordmark link with { preventScroll: true }. Escape closes the menu and
+ * refocuses the toggle. The scroll listener is rAF-throttled and passive.
  */
-import { useEffect, useRef, useState } from "react";
+
 import Link from "next/link";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { CTA, NAV_LINKS } from "@/lib/landing-content";
-import { LP_EASE } from "./SectionReveal";
+import { DUR, EASE } from "./motion";
 import styles from "./LandingNavbar.module.css";
 
-const COMPACT_SCROLL_PX = 120;
-const END_STATE_PROGRESS = 0.75;
-const MOBILE_MENU_ID = "lp-mobile-menu";
+/** Capsule morph duration (assignment: ~0.4s with the shared easing). */
+const MORPH = 0.4;
+const morphLayout = { layout: { duration: MORPH, ease: EASE } };
 
 export default function LandingNavbar() {
-  const reduced = useReducedMotion();
   const [compact, setCompact] = useState(false);
-  const [atEnd, setAtEnd] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuBtnRef = useRef<HTMLButtonElement>(null);
+
   const wordmarkRef = useRef<HTMLAnchorElement>(null);
-  const navLinksRef = useRef<HTMLElement>(null);
-  const contactRef = useRef<HTMLAnchorElement>(null);
-  const panelRef = useRef<HTMLElement>(null);
-  const ticking = useRef(false);
+  const linksRowRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const prevCompactRef = useRef(false);
 
-  /* Latest-value mirror so the media-query listener can read menu state
-     without re-subscribing. */
-  const menuOpenRef = useRef(menuOpen);
-  menuOpenRef.current = menuOpen;
-
-  /* One rAF-throttled scroll/resize listener drives both thresholds. */
+  /* rAF-throttled scroll listener: capsule past ~85% of the viewport height,
+     back to the integrated row below ~78% (small hysteresis, no flicker). */
   useEffect(() => {
-    const measure = () => {
-      ticking.current = false;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
       const y = window.scrollY;
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      setCompact(y > COMPACT_SCROLL_PX);
-      setAtEnd(max > 0 && y / max >= END_STATE_PROGRESS);
+      const vh = window.innerHeight;
+      setCompact((prev) => (prev ? y > vh * 0.78 : y > vh * 0.85));
     };
-    const onScroll = () => {
-      if (ticking.current) return;
-      ticking.current = true;
-      window.requestAnimationFrame(measure);
+    const request = () => {
+      if (raf === 0) raf = window.requestAnimationFrame(update);
     };
-    measure();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    update();
+    window.addEventListener("scroll", request, { passive: true });
+    window.addEventListener("resize", request);
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("scroll", request);
+      window.removeEventListener("resize", request);
+      if (raf !== 0) window.cancelAnimationFrame(raf);
     };
   }, []);
 
-  /* Gate the end-state morph to desktop; close the panel if we leave mobile.
-     The panel and menu button are display:none on desktop, so if focus is in
-     either when the viewport crosses 1024px it would silently drop to <body>
-     — rescue it onto the always-visible wordmark first. */
+  /* Focus safety on the state morph: if focus sits inside UI that the morph
+     removes (desktop link row, menu panel), park it on the wordmark link. */
+  useEffect(() => {
+    if (prevCompactRef.current === compact) return;
+    prevCompactRef.current = compact;
+    const active = document.activeElement;
+    const inLinks =
+      linksRowRef.current !== null && linksRowRef.current.contains(active);
+    const inPanel =
+      panelRef.current !== null && panelRef.current.contains(active);
+    setMenuOpen(false);
+    if (inLinks || inPanel) {
+      wordmarkRef.current?.focus({ preventScroll: true });
+    }
+  }, [compact]);
+
+  /* A desktop/mobile breakpoint flip closes the panel; if focus was inside,
+     it moves to the wordmark link (the toggle may no longer be visible). */
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
-    const update = () => {
-      setIsDesktop(mq.matches);
-      if (!mq.matches) return;
-      if (menuOpenRef.current) {
-        const active = document.activeElement;
-        if (
-          (panelRef.current && active && panelRef.current.contains(active)) ||
-          active === menuBtnRef.current
-        ) {
-          wordmarkRef.current?.focus({ preventScroll: true });
-        }
+    const onChange = () => {
+      if (
+        panelRef.current !== null &&
+        panelRef.current.contains(document.activeElement)
+      ) {
+        wordmarkRef.current?.focus({ preventScroll: true });
       }
       setMenuOpen(false);
     };
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
   }, []);
 
-  /* Escape closes the mobile menu and returns focus to the toggle. */
+  /* While the menu is open: Escape closes and refocuses the toggle;
+     pointer-down outside the panel/toggle dismisses. */
   useEffect(() => {
     if (!menuOpen) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-        menuBtnRef.current?.focus();
-      }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setMenuOpen(false);
+      toggleRef.current?.focus({ preventScroll: true });
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (panelRef.current !== null && panelRef.current.contains(target)) return;
+      if (toggleRef.current !== null && toggleRef.current.contains(target)) return;
+      setMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
   }, [menuOpen]);
 
-  const showEndState = isDesktop && atEnd;
-
-  /* When the end-state morph swaps the centre links for the Contact link (or
-     back), AnimatePresence unmounts the outgoing element after its exit
-     animation — keyboard focus inside it would silently drop to <body>.
-     The exiting element is still mounted when this effect runs, so the
-     containment check is reliable; rescue focus onto the always-mounted
-     wordmark. preventScroll avoids fighting the in-progress scroll. */
-  const prevShowEndState = useRef(showEndState);
-  useEffect(() => {
-    if (prevShowEndState.current === showEndState) return;
-    prevShowEndState.current = showEndState;
-    const outgoing = showEndState ? navLinksRef.current : contactRef.current;
-    const active = document.activeElement;
-    if (outgoing && active && outgoing.contains(active)) {
-      wordmarkRef.current?.focus({ preventScroll: true });
-    }
-  }, [showEndState]);
-
-  const morph = reduced
-    ? { duration: 0 }
-    : { duration: 0.35, ease: LP_EASE };
-
   return (
-    <header className={styles.wrap}>
-      <motion.div
-        layout={!reduced}
-        className={`${styles.capsule} ${compact ? styles.capsuleCompact : ""}`}
-        animate={{
-          paddingTop: compact ? 8 : 12,
-          paddingBottom: compact ? 8 : 12,
-          columnGap: compact ? 16 : 24,
-        }}
-        transition={morph}
-      >
-        <Link ref={wordmarkRef} href="/" className={styles.wordmark}>
-          Oriant<span className={styles.wordmarkAi}>.ai</span>
-        </Link>
+    <motion.header
+      layoutRoot
+      className={styles.root}
+      data-compact={compact ? "" : undefined}
+    >
+      <nav aria-label="Main" className={`lp-container ${styles.inner}`}>
+        <motion.div
+          layout
+          className={styles.shell}
+          style={{ borderRadius: 999 }}
+          transition={morphLayout}
+        >
+          <motion.div
+            layout="position"
+            transition={morphLayout}
+            className={styles.wordmarkWrap}
+          >
+            <Link href="/" ref={wordmarkRef} className={styles.wordmark}>
+              <span className={styles.wordmarkText}>Oriant</span>
+              <span className={styles.wordmarkAi}>.ai</span>
+            </Link>
+          </motion.div>
 
+          {/* Desktop link row — unmounts into the capsule state. */}
+          <AnimatePresence initial={false} mode="popLayout">
+            {!compact && (
+              <motion.div
+                key="links"
+                ref={linksRowRef}
+                className={styles.linksWrap}
+                layout="position"
+                initial={{ opacity: 0 }}
+                animate={{
+                  opacity: 1,
+                  transition: { duration: DUR.micro, delay: 0.1, ease: EASE },
+                }}
+                exit={{ opacity: 0, transition: { duration: 0.12, ease: EASE } }}
+                transition={morphLayout}
+              >
+                {NAV_LINKS.map((link) => (
+                  <a key={link.href} href={link.href} className={styles.navLink}>
+                    {/* CSS-only y-swap: two stacked copies in a clipped span */}
+                    <span className={styles.swap}>
+                      <span className={styles.swapLine}>{link.label}</span>
+                      <span className={styles.swapClone} aria-hidden="true">
+                        {link.label}
+                      </span>
+                    </span>
+                  </a>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <motion.div
+            layout="position"
+            transition={morphLayout}
+            className={styles.rightZone}
+          >
+            {/* Contact link joins the capsule (desktop only). */}
+            <AnimatePresence initial={false} mode="popLayout">
+              {compact && (
+                <motion.div
+                  key="contact"
+                  className={styles.contactWrap}
+                  initial={{ opacity: 0 }}
+                  animate={{
+                    opacity: 1,
+                    transition: { duration: DUR.micro, delay: 0.12, ease: EASE },
+                  }}
+                  exit={{
+                    opacity: 0,
+                    transition: { duration: 0.12, ease: EASE },
+                  }}
+                >
+                  <a href={CTA.contact.href} className={styles.contactLink}>
+                    <span className={styles.contactLabel}>
+                      {CTA.contact.label}
+                    </span>
+                  </a>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <a
+              href={CTA.primary.href}
+              className="lp-btn lp-btn--primary lp-btn--sm"
+            >
+              <span className={styles.ctaFull}>{CTA.primary.label}</span>
+              <span className={styles.ctaShort}>Start Free</span>
+            </a>
+
+            <div className={styles.menuWrap}>
+              <button
+                ref={toggleRef}
+                type="button"
+                className={styles.menuBtn}
+                aria-label="Menu"
+                aria-expanded={menuOpen}
+                aria-controls="lp-nav-menu"
+                onClick={() => setMenuOpen((open) => !open)}
+              >
+                {menuOpen ? (
+                  <X size={18} strokeWidth={2} aria-hidden="true" />
+                ) : (
+                  <Menu size={18} strokeWidth={2} aria-hidden="true" />
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+
+        {/* Menu panel: full-width surface sheet on mobile, centred dropdown
+            under the capsule on desktop. */}
         <AnimatePresence initial={false}>
-          {!showEndState ? (
-            <motion.nav
-              key="nav-links"
-              ref={navLinksRef}
-              aria-label="Primary"
-              className={styles.links}
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: "auto" }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={morph}
+          {menuOpen && (
+            <motion.div
+              key="panel"
+              id="lp-nav-menu"
+              ref={panelRef}
+              className={styles.panel}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                transition: { duration: DUR.micro, ease: EASE },
+              }}
+              exit={{
+                opacity: 0,
+                y: -6,
+                transition: { duration: 0.15, ease: EASE },
+              }}
             >
               {NAV_LINKS.map((link) => (
-                <a key={link.href} href={link.href} className={styles.navLink}>
-                  {link.label}
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className={styles.panelLink}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span className={styles.panelLabel}>{link.label}</span>
                 </a>
               ))}
-            </motion.nav>
-          ) : (
-            <motion.a
-              key="contact-link"
-              ref={contactRef}
-              href={CTA.contact.href}
-              className={styles.contactLink}
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: "auto" }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={morph}
-            >
-              {CTA.contact.label}
-            </motion.a>
+            </motion.div>
           )}
         </AnimatePresence>
-
-        <Link
-          href={CTA.primary.href}
-          className={`lp-btn lp-btn--primary lp-btn--sm ${styles.cta}`}
-        >
-          <span className={styles.ctaFull}>{CTA.primary.label}</span>
-          <span className={styles.ctaShort}>Start Free</span>
-        </Link>
-
-        <button
-          ref={menuBtnRef}
-          type="button"
-          className={styles.menuBtn}
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen}
-          aria-controls={MOBILE_MENU_ID}
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          {menuOpen ? (
-            <X size={18} strokeWidth={2} aria-hidden="true" />
-          ) : (
-            <Menu size={18} strokeWidth={2} aria-hidden="true" />
-          )}
-        </button>
-      </motion.div>
-
-      <AnimatePresence>
-        {menuOpen ? (
-          <motion.nav
-            key="mobile-menu"
-            ref={panelRef}
-            id={MOBILE_MENU_ID}
-            aria-label="Mobile"
-            className={`lp-card ${styles.panel}`}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={morph}
-          >
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className={styles.panelLink}
-                onClick={() => setMenuOpen(false)}
-              >
-                {link.label}
-              </a>
-            ))}
-            <a
-              href={CTA.contact.href}
-              className={styles.panelLink}
-              onClick={() => setMenuOpen(false)}
-            >
-              {CTA.contact.label}
-            </a>
-          </motion.nav>
-        ) : null}
-      </AnimatePresence>
-    </header>
+      </nav>
+    </motion.header>
   );
 }

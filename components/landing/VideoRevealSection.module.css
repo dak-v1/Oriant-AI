@@ -1,0 +1,353 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   VideoRevealSection — product-video scroll reveal (brief §7).
+   Mobile-first: ordinary flow. ≥768px: 140vh section + 100vh sticky panel
+   (a brief ~0.4-viewport pin); the scroll choreography itself lives in
+   inline motion values (TSX) and never fully stops while pinned.
+   No CSS animation loops in this module — the base frame IS the settled
+   state (radius 20px, full opacity), so reduced-motion snapshots read as
+   finished, and a prefers-reduced-motion block at the end returns the
+   pinned sequence to plain document flow.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.section {
+  position: relative;
+}
+
+.panel {
+  padding-block: clamp(72px, 16vw, 112px);
+}
+
+.inner {
+  width: 100%;
+}
+
+/* ── Centred statement block ── */
+.statement {
+  max-width: 700px;
+  margin-inline: auto;
+  text-align: center;
+  display: grid;
+  gap: 18px;
+  margin-bottom: clamp(34px, 5vh, 56px);
+}
+
+/* ── Stage: glow + browser frame ── */
+.stage {
+  position: relative;
+  max-width: 1020px;
+  margin-inline: auto;
+}
+
+.glow {
+  position: absolute;
+  top: -6%;
+  bottom: -10%;
+  left: -10%;
+  right: -10%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.frameIntro {
+  position: relative;
+  z-index: 1;
+}
+
+.frame {
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border-strong);
+  /* Settled radius; the scroll sequence interpolates 32px → 20px inline. */
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.05),
+    0 24px 48px -28px rgba(16, 24, 40, 0.28),
+    0 64px 120px -48px rgba(16, 24, 40, 0.32);
+}
+
+/* ── Browser chrome bar ── */
+.chrome {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, auto) 1fr;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding-inline: 16px;
+  background: var(--lp-bg);
+  border-bottom: 1px solid var(--lp-border);
+}
+
+.dots {
+  display: flex;
+  gap: 7px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--lp-border-strong);
+}
+
+.address {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 28px;
+  padding-inline: 14px;
+  border-radius: var(--lp-radius-chip);
+  background: var(--lp-bg-alt);
+  border: 1px solid var(--lp-border);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--lp-muted-strong);
+  white-space: nowrap;
+}
+
+.addressIcon {
+  color: var(--lp-muted-strong);
+  flex: none;
+}
+
+/* ── 16:9 stage ── */
+.screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--lp-bg-alt);
+}
+
+/* ── Designed placeholder (permanent underlay) ── */
+.placeholder {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.wash {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    155deg,
+    var(--lp-soft-blue) 0%,
+    var(--lp-surface) 52%,
+    var(--lp-soft-teal) 100%
+  );
+}
+
+.gridLayer {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: radial-gradient(
+    ellipse 72% 64% at 50% 40%,
+    #000 28%,
+    transparent 74%
+  );
+  mask-image: radial-gradient(
+    ellipse 72% 64% at 50% 40%,
+    #000 28%,
+    transparent 74%
+  );
+}
+
+.previewContent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 2.6vw, 26px);
+  padding: clamp(14px, 3vw, 28px);
+}
+
+.playBadge {
+  width: clamp(44px, 5.4vw, 62px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border-strong);
+  box-shadow: var(--lp-shadow-card);
+  color: var(--lp-accent);
+}
+
+.journey {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 1vw, 10px);
+}
+
+.journeyStep {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(6px, 1vw, 10px);
+}
+
+.jChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: var(--lp-radius-chip);
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  box-shadow: 0 12px 24px -18px rgba(16, 24, 40, 0.4);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--lp-ink);
+  white-space: nowrap;
+}
+
+.jIconAccent {
+  color: var(--lp-accent);
+  flex: none;
+}
+
+.jIconTeal {
+  color: var(--lp-teal-deep);
+  flex: none;
+}
+
+.jArrow {
+  display: grid;
+  place-items: center;
+  color: var(--lp-muted-strong);
+  flex: none;
+}
+
+/* Fallback note — sibling of the aria-hidden placeholder (not inside it)
+   so assistive tech announces it; pinned to the same bottom position and
+   covered by .videoLayer (later positioned sibling) when the video mounts. */
+.note {
+  position: absolute;
+  inset-inline: 0;
+  bottom: clamp(8px, 1.6vw, 16px);
+  margin: 0;
+  text-align: center;
+  padding-inline: 16px;
+  color: var(--lp-muted-strong);
+  pointer-events: none;
+}
+
+/* ── Video layer ── */
+.videoLayer {
+  position: absolute;
+  inset: 0;
+}
+
+.video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Transparent until frames paint so a missing poster never shows broken —
+     the designed placeholder reads through instead. */
+  background: transparent;
+}
+
+/* ── Mobile recompose (<560px): 2×2 journey, no arrows, slimmer chrome ── */
+@media (max-width: 559px) {
+  .journey {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .journeyStep {
+    display: contents;
+  }
+
+  .jArrow {
+    display: none;
+  }
+
+  .jChip {
+    padding: 7px 12px;
+    font-size: 11.5px;
+  }
+
+  .chrome {
+    height: 38px;
+    padding-inline: 12px;
+  }
+
+  .address {
+    height: 24px;
+    font-size: 11px;
+    padding-inline: 11px;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+  }
+}
+
+/* Keep the mobile glow well inside the viewport story (the page clips
+   overflow-x, but small screens should not rely on it) */
+@media (max-width: 767px) {
+  .glow {
+    left: -4%;
+    right: -4%;
+  }
+}
+
+/* ── Sticky scroll sequence (≥768px) ── */
+@media (min-width: 768px) {
+  .section {
+    /* Short pin: 100vh approach + ~0.4 viewport pinned — long enough for
+       the settle + drift to read, short enough to never feel like a hang. */
+    height: 140vh;
+  }
+
+  .panel {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-block: 0;
+  }
+
+  .inner {
+    margin-inline: auto;
+  }
+
+  .stage {
+    /* Keep statement + frame fully inside a 100vh panel on short viewports:
+       available frame width = (100vh − statement/chrome budget) × 16⁄9,
+       floored so extreme landscape viewports never collapse the frame, and
+       capped at 880px so the composition clears 1440×900 AND 1280×800 with
+       comfortable breathing room (nothing clips top or bottom while pinned). */
+    max-width: min(880px, max(360px, calc((100vh - 340px) * 16 / 9)));
+  }
+}
+
+/* ── Reduced motion: the pinned sequence returns to plain document flow
+      (the frame is already parked at its settled state by the conditional
+      useTransform ranges in the TSX). Placed last so it wins the cascade
+      over the ≥768px sticky block at equal specificity. ── */
+@media (prefers-reduced-motion: reduce) {
+  .section {
+    height: auto;
+  }
+
+  .panel {
+    position: static;
+    height: auto;
+    display: block;
+    padding-block: clamp(72px, 16vw, 112px);
+  }
+
+  .stage {
+    max-width: 1020px;
+  }
+}

@@ -1,0 +1,172 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   ManifestoSection.module.css — editorial manifesto + system principles
+   (brief §9). Tokens only; all colour comes from landing.css variables.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.section {
+  position: relative;
+  background: var(--lp-bg);
+}
+
+/* Scroll-driven surface shift: a bg-alt wash whose opacity is bound to
+   scroll progress in the component (animated property: opacity only).
+   Enter-only — it resolves to 1 as the section arrives and holds, so the
+   section rests on bg-alt as the page's tonal band. */
+.bgShift {
+  position: absolute;
+  inset: 0;
+  background: var(--lp-bg-alt);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Statement ── */
+
+.statement {
+  /* .lp-h2 supplies scale/weight/leading; rows stack as block masks. */
+  display: block;
+}
+
+/* Clip-mask shell: overflow hidden so the inner span slides up into view.
+   The tiny padding/negative-margin pair keeps descenders and the italic
+   serif glyphs from being shaved by the clip at tight line-heights, while
+   staying small enough that the 112% offset still hides the row fully. */
+.maskRow {
+  display: block;
+  overflow: hidden;
+  padding-block: 0.09em;
+  margin-block: -0.09em;
+}
+
+.maskInner {
+  display: inline-block;
+}
+
+/* Optical compensation: Instrument Serif italic runs small next to
+   Manrope at display sizes. line-height 1 keeps the row box stable. */
+.serifWord {
+  font-size: 1.05em;
+  line-height: 1;
+}
+
+/* .inner compound: must beat `.lp-h2-sm { margin: 0 }` from landing.css
+   whatever the stylesheet injection order ends up being. */
+.inner .support {
+  margin-top: clamp(28px, 4vw, 56px);
+  color: var(--lp-ink);
+}
+
+@media (min-width: 768px) {
+  /* Editorial indent: line 2 answers line 1 from a shifted margin. */
+  .inner .support {
+    margin-left: clamp(48px, 9vw, 130px);
+  }
+}
+
+.accentPhrase {
+  color: var(--lp-accent);
+}
+
+/* ── Principles: typographic index row (NOT cards) ── */
+
+.principles {
+  list-style: none;
+  margin: clamp(72px, 9vw, 150px) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(32px, 3vw, 48px);
+}
+
+/* Thin editorial index rule over each column. */
+.principle {
+  border-top: 1px solid var(--lp-border);
+  padding-top: 22px;
+  display: flex;
+  flex-direction: column;
+}
+
+.numeral {
+  font-size: clamp(3rem, 5vw, 5.5rem);
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--lp-ink);
+  opacity: 0.18;
+}
+
+.keyword {
+  font-size: 20px;
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--lp-ink);
+  margin: 14px 0 0;
+}
+
+.caption {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--lp-muted-strong);
+  margin: 6px 0 0;
+}
+
+/* ── Responsive recomposition ── */
+
+@media (max-width: 1279px) {
+  .principles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 48px;
+  }
+}
+
+@media (max-width: 767px) {
+  .principles {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 36px;
+    margin-top: clamp(64px, 14vw, 96px);
+  }
+}
+
+/* ── Reduced motion: static bg-alt surface, everything visible in place.
+   These beat framer's inline styles so masked rows, delayed accent marks,
+   staggered principles, and the scroll-driven wash all park at their
+   finished frame — the statement is always present in the static render. ── */
+@media (prefers-reduced-motion: reduce) {
+  .bgShift {
+    opacity: 1 !important;
+  }
+  .maskInner {
+    transform: none !important;
+  }
+  .serifWord,
+  .accentPhrase {
+    opacity: 1 !important;
+  }
+  .principle {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ── No-JS safety: framer serialises the "hidden" variant into the SSR
+   HTML as inline transform/opacity. Without scripting nothing would ever
+   resolve them, so force the finished frame — the manifesto must never
+   render blank. (Inert when scripting is available.) ── */
+@media (scripting: none) {
+  .bgShift {
+    opacity: 1 !important;
+  }
+  .maskInner {
+    transform: none !important;
+  }
+  .serifWord,
+  .accentPhrase {
+    opacity: 1 !important;
+  }
+}

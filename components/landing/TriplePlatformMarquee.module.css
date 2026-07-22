@@ -1,0 +1,226 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   TriplePlatformMarquee.module.css — three counter-flowing platform rows
+   (brief §12). Tokens only; local @keyframes (module animation names do not
+   resolve across the module boundary); reduced motion unwraps the marquee
+   into a static centred flex-wrap grid.
+
+   Seamless-loop maths: each track holds SIX pixel-identical copies of the
+   chip list (1 visible + 5 aria-hidden). Every copy ends with padding-right
+   equal to the inter-chip gap, so copy width W = chips + (n-1) gaps + 1 gap.
+   Track width = 6W; translateX(calc(-100% / 6)) = exactly W (calc, not a
+   rounded percentage, so the wrap seam stays pixel-exact) → the wrap point
+   is invisible, and the wrap gap equals the inter-chip gap. Pixel speed is
+   identical to the canonical two-copy translateX(-50%) loop (one W per
+   cycle). Coverage invariant: the track must stay wider than the viewport
+   plus one copy width throughout the cycle, i.e. (copies − 1) × W ≥ widest
+   supported viewport (~3840px covered).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.section {
+  background: var(--lp-bg);
+  overflow: hidden; /* full-bleed max-content tracks must never scroll the page */
+}
+
+/* ── Centred head ── */
+.head {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 18px;
+  max-width: 780px;
+  margin: 0 auto clamp(44px, 5.5vw, 72px);
+}
+
+.disclaimer {
+  margin: 0;
+  max-width: 560px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--lp-muted-strong);
+}
+
+/* ── Rows (full-bleed; decorative soft edge fades ~96px) ── */
+.rows {
+  --edge: clamp(40px, 8vw, 96px);
+  display: grid;
+  gap: 14px;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--edge),
+    #000 calc(100% - var(--edge)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--edge),
+    #000 calc(100% - var(--edge)),
+    transparent
+  );
+}
+
+.row {
+  --chip-gap: 14px;
+  overflow: hidden;
+}
+
+/* Three speeds; +30% (slower) on mobile below */
+.rowA { --dur: 46s; }
+.rowB { --dur: 38s; }
+.rowC { --dur: 54s; }
+
+/* Base frame is translateX(0) — a complete row of chips — so the global
+   reduced-motion kill-switch freezes on a finished-looking frame. */
+.track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: flowLeft var(--dur, 46s) linear infinite;
+}
+
+/* Row 2: reversed keyframe (negative offset → 0) = rightward flow */
+.rowRight .track {
+  animation-name: flowRight;
+}
+
+.group {
+  display: flex;
+  gap: var(--chip-gap);
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--chip-gap) 0 0; /* trailing gap == inter-chip gap: seamless */
+}
+
+.chip {
+  flex: none;
+}
+
+/* 22px rounded-square monogram (decorative, aria-hidden in markup) */
+.monogram {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 7px;
+  background: var(--lp-soft-blue);
+  color: var(--lp-accent-dark);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.rowTeal .monogram {
+  background: var(--lp-soft-teal);
+  color: var(--lp-teal-deep);
+}
+
+/* ── Pause states (play-state only — duration changes mid-animation jump) ── */
+.isPaused .track {
+  animation-play-state: paused;
+}
+
+@media (hover: hover) {
+  .row:hover .track {
+    animation-play-state: paused;
+  }
+}
+
+/* ── Pause/play control (44px, quiet ghost, icon-only + aria-label) ── */
+.controlWrap {
+  display: flex;
+  justify-content: center;
+  margin-top: clamp(28px, 4vw, 44px);
+}
+
+.control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: var(--lp-radius-chip);
+  border: 1px solid var(--lp-border-strong);
+  background: transparent;
+  color: var(--lp-muted-strong);
+  cursor: pointer;
+  transition:
+    border-color 0.22s var(--lp-ease),
+    color 0.22s var(--lp-ease);
+}
+
+.control:hover {
+  border-color: var(--lp-ink);
+  color: var(--lp-ink);
+}
+
+/* ── Local keyframes ── */
+@keyframes flowLeft {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-100% / 6)); }
+}
+
+@keyframes flowRight {
+  from { transform: translateX(calc(-100% / 6)); }
+  to { transform: translateX(0); }
+}
+
+/* ── Mobile: chips slightly smaller, durations +30% (slower) ── */
+@media (max-width: 767px) {
+  .rowA { --dur: 59.8s; }
+  .rowB { --dur: 49.4s; }
+  .rowC { --dur: 70.2s; }
+
+  .row { --chip-gap: 10px; }
+
+  .group .chip {
+    gap: 7px;
+    padding: 8px 14px;
+    font-size: 13.5px;
+  }
+
+  .monogram {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    font-size: 9.5px;
+  }
+}
+
+/* ── Reduced motion: kill the loops; unwrap to a static three-row centred
+      flex-wrap grid (duplicates hidden, wrapping allowed, control hidden) ── */
+@media (prefers-reduced-motion: reduce) {
+  .rows {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .row {
+    padding-inline: clamp(20px, 4.4vw, 48px);
+  }
+
+  .track,
+  .rowRight .track {
+    animation: none;
+    display: block;
+    width: auto;
+    will-change: auto;
+  }
+
+  .group {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding-right: 0;
+  }
+
+  .dup {
+    display: none;
+  }
+
+  .controlWrap {
+    display: none;
+  }
+}

@@ -1,0 +1,272 @@
+/* ════════════════════════════════════════════════════════════════════════
+   TechStack.module.css — §16 operating-stack section (on --lp-bg-alt).
+   Five raised layer bars joined by centred connector arrows. After the
+   assembly reveal, an accent packet drips down the invisible centre path
+   every 5s and the connector circles pulse a ::after glow in downward
+   sequence on the same 5s period — both are `animation-play-state: paused`
+   unless the TSX applies `.running` (near view via useInView no-once AND
+   document visible, FinalCTA's pattern), so nothing animates offscreen or
+   on a hidden tab. Base frames are complete: packet and glows hidden. The
+   teal "Safe validation" edge is a framer scaleY draw-in (one-shot).
+   Hover: bars lift 2px + border darkens + partner tag slides 4px — on the
+   static inner .layer, never the framer-animated wrapper.
+   Doctrine: loops animate ONLY transform / opacity; hover border-color is
+   a one-shot transition, never looped. Keyframes are local to this module.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.stackWrap {
+  position: relative;
+}
+
+.stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.layerItem {
+  display: block;
+  margin: 0;
+}
+
+/* ── Layer bars ──
+   Desktop grid: layer name 24% / weight 750 · partner tag · role 15px
+   muted-strong. The empty tag column on the partnerless first bar keeps the
+   role text column-aligned across all five bars.
+   .layerMotion is the framer wrapper (inline transforms land here);
+   .layer is the static visual + hover surface. */
+
+.layerMotion {
+  position: relative;
+  z-index: 2; /* above the packet path — the packet surfaces only at the gaps */
+}
+
+.layer {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 24%) minmax(124px, auto) minmax(0, 1fr);
+  column-gap: clamp(16px, 2.4vw, 32px);
+  align-items: center;
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: var(--lp-shadow-card);
+  transition:
+    transform 0.22s var(--lp-ease),
+    border-color 0.22s var(--lp-ease);
+}
+
+/* Desktop-only hover: lift 2px, darken border, nudge the partner tag 4px. */
+@media (hover: hover) {
+  .layer:hover {
+    transform: translateY(-2px);
+    border-color: var(--lp-border-strong);
+  }
+  .layer:hover .layerTag {
+    transform: translateX(4px);
+  }
+}
+
+.layerName {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.014em;
+  line-height: 1.25;
+}
+
+.layerTag {
+  grid-column: 2;
+  justify-self: start;
+  transition: transform 0.22s var(--lp-ease);
+}
+
+.layerRole {
+  grid-column: 3;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--lp-muted-strong);
+}
+
+/* Safety-emphasised layer: teal left edge, drawn in by framer (scaleY 0 → 1
+   from the top) as the section assembles. Inset from the bar's rounded
+   corners; decorative (aria-hidden) — the ShieldCheck + name carry meaning. */
+.safeEdge {
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--lp-teal);
+  transform-origin: top;
+  pointer-events: none;
+}
+
+.shield {
+  color: var(--lp-teal);
+  flex: none;
+}
+
+/* ── Connector arrows between bars ── */
+
+.connector {
+  position: relative;
+  z-index: 0; /* beneath the packet, so the packet sweeps across each circle */
+  display: flex;
+  justify-content: center;
+  padding: 9px 0;
+}
+
+.connectorCircle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--lp-soft-blue);
+  color: var(--lp-accent-dark);
+}
+
+/* Soft downward-sequence pulse: an accent wash (::after, opacity-only)
+   peaking as the packet passes this gap. --ad is set inline per connector;
+   the animation shares the packet's paused/running timeline, so pulse and
+   packet stay in sync across pause/resume cycles. Base frame = hidden. */
+.connectorCircle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--lp-accent);
+  opacity: 0; /* base frame = hidden */
+  pointer-events: none;
+  animation: techArrowGlow 5s linear infinite;
+  animation-play-state: paused;
+  animation-delay: var(--ad, 0s);
+}
+.running .connectorCircle::after {
+  animation-play-state: running;
+}
+
+/* Peak 0.4s after the delayed start (8% of 5s), gone by 1s (20%). */
+@keyframes techArrowGlow {
+  0% {
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.22;
+  }
+  20% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ── Accent packet: drips down the invisible centre path every 5s ──
+   The path spans the stack behind the bars; the packet is only revealed in
+   the connector gaps, reading as context flowing down through the layers.
+   It travels during the first half of each 5s period and rests hidden for
+   the second half. Base frame is opacity: 0, so the global reduced-motion
+   kill switch (which parks CSS animations at their base frame) and the
+   paused state both leave it hidden — invisible in every frozen state. */
+
+.packetPath {
+  position: absolute;
+  top: 30px;
+  bottom: 30px;
+  left: 50%;
+  width: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.packet {
+  position: absolute;
+  top: 0;
+  left: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--lp-accent);
+  box-shadow: 0 0 0 6px var(--lp-soft-blue);
+  opacity: 0; /* base frame = hidden */
+}
+
+.packetRun {
+  animation: techPacket 5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  animation-play-state: paused;
+}
+.running .packetRun {
+  animation-play-state: running;
+}
+
+@keyframes techPacket {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  46% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(var(--packet-travel, 0px));
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(var(--packet-travel, 0px));
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .packet {
+    display: none;
+  }
+  .connectorCircle::after {
+    animation: none;
+  }
+}
+
+/* ── Tablet: widen the name column so long layer names breathe ── */
+
+@media (max-width: 1023px) and (min-width: 768px) {
+  .layer {
+    grid-template-columns: minmax(0, 30%) minmax(110px, auto) minmax(0, 1fr);
+  }
+}
+
+/* ── Mobile: bars stack their own content; partner tag wraps under the
+      name; connectors stay centred; zero horizontal overflow ── */
+
+@media (max-width: 767px) {
+  .layer {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 10px;
+    padding: 20px;
+  }
+
+  .layerName,
+  .layerTag,
+  .layerRole {
+    grid-column: 1;
+  }
+
+  .layerName {
+    font-size: 16.5px;
+  }
+}

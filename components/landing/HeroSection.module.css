@@ -1,102 +1,165 @@
-/* HeroSection — section-specific styles (master brief §7.1). */
+/* ══════════════════════════════════════════════════════════════════════════
+   HeroSection.module.css — editorial hero (brief §6), centred composition.
+   The text block (eyebrow / two display lines / lead / CTAs / supporting
+   word-dots) is centred at the top; the orchestrator field is a WIDE BAND
+   below it — full container width plus a slight bleed past the container
+   edges, cropped by the section's overflow clip. Nothing overlaps the text.
+   Total hero height lands around 110–125vh; it still reads as ONE
+   composition (the band grows out of the headline's glow, shares the
+   entrance clock, and both move together on scroll-out).
+   Compact-cluster recomposition below 768px; zero horizontal overflow at 390.
+   No CSS animations live here — motion is framer-driven in the component.
+   ══════════════════════════════════════════════════════════════════════════ */
 
 .hero {
-  padding-top: clamp(140px, 16vh, 190px);
-  padding-bottom: clamp(72px, 9vw, 128px);
+  position: relative;
+  min-height: 100vh;
+  padding-top: clamp(104px, 13vh, 128px); /* the fixed nav overlaps this band */
+  padding-bottom: clamp(40px, 6vh, 72px);
+  overflow: hidden;
+  overflow: clip; /* crops the band's intentional left/right edge bleed */
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: clamp(44px, 5vw, 72px);
-  align-items: center;
+.inner {
+  position: relative;
+  width: 100%;
 }
 
-.grid > * {
-  min-width: 0;
+/* Ambient light at the seam between text and band — subtle lighting only
+   (brief §3); the field adds its own local glows deeper in the band. */
+.glow {
+  position: absolute;
+  top: clamp(140px, 20vh, 260px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(58vw, 780px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* ── Left column ── */
-
+/* ── Centred headline block ── */
 .copy {
-  display: grid;
-  justify-items: start;
-  gap: 22px;
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  margin-inline: auto;
+}
+
+.eyebrow {
+  margin: 0 0 clamp(18px, 2.6vh, 26px);
+}
+
+/* Sized so "Your AI Operations Consultant" holds a single centred row at
+   every desktop width (the raw .lp-display clamp is too large for this
+   copy inside the 1280px container — see integrator note). */
+.copy .heading {
+  font-size: clamp(3rem, 6vw, 5.25rem);
+  margin: 0 0 clamp(22px, 3.2vh, 34px);
+}
+
+/* Clip mask per headline line: the inner span slides up through it.
+   Padding + negative margin keep descenders unclipped at rest. */
+.lineMask {
+  display: block;
+  overflow: hidden;
+  padding-block: 0.06em 0.14em;
+  margin-block: -0.06em -0.14em;
+}
+
+.lineInner {
+  display: block;
 }
 
 .lead {
-  max-width: 54ch;
+  max-width: 56ch;
+  margin: 0 auto clamp(26px, 3.6vh, 38px);
 }
 
 .ctaRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 14px;
-  margin-top: 6px;
+  margin: 0 0 clamp(28px, 4vh, 44px);
 }
 
-.microcopy {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 2px 0 0;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--lp-muted);
-}
-
-.microIcon {
-  flex: none;
-  color: var(--lp-accent);
-}
-
-/* ── Right column: visual stage ── */
-
-.stageWrap {
-  width: 100%;
-}
-
-.stage {
-  position: relative;
-  border: 1px solid var(--lp-border);
-  border-radius: 32px;
-  min-height: auto;
-  padding: 20px;
+/* Quiet supporting strip: five words separated by small accent dots. */
+.supporting {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Overflow stays visible so floating pieces of the workflow
-     visual never clip against the stage edge. */
-  overflow: visible;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 0;
 }
 
-.glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(560px, 92%);
-  aspect-ratio: 1 / 1;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 0;
+/* .lp-micro uses --lp-muted; at this size AA requires the stronger tone. */
+.supportWord {
+  color: var(--lp-muted-strong);
 }
 
-.stageInner {
+.dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--lp-accent);
+  flex: none;
+}
+
+/* ── Orchestrator field: wide band below the text, orchestrator at the
+     horizontal centre, bleeding slightly past the container edges so the
+     outermost nodes crop against the section (they fade via masks in the
+     field's own module — never a mid-word truncation) ── */
+.fieldLayer {
+  --band-bleed: clamp(24px, 3.5vw, 60px);
   position: relative;
   z-index: 1;
-  width: 100%;
+  width: calc(100% + 2 * var(--band-bleed));
+  margin-inline: calc(-1 * var(--band-bleed));
+  margin-top: clamp(34px, 5.5vh, 56px);
+  /* scroll-out scale (1 → 1.12) grows the band down/outward, keeping the
+     seam with the headline visually anchored */
+  transform-origin: 50% 30%;
 }
 
-/* ── Desktop two-column (≥1024px) ── */
+/* Full-hero overlay crossfading toward the video-section backdrop during
+   scroll-out. Driven purely by a framer opacity binding (0 at rest). */
+.exitVeil {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: var(--lp-bg);
+  pointer-events: none;
+}
 
-@media (min-width: 1024px) {
-  .grid {
-    grid-template-columns: 48fr 52fr;
+/* ── Tablet (768–1023): same centred column, tighter rhythm, no scroll-out
+     (the component also zeroes its scroll transforms below 1024px) ── */
+@media (max-width: 1023px) {
+  .hero {
+    min-height: 0;
+    padding-top: clamp(92px, 13vh, 110px);
   }
 
-  .stage {
-    min-height: 560px;
-    padding: 36px;
+  .glow {
+    display: none;
+  }
+
+  .fieldLayer {
+    margin-top: clamp(36px, 7vw, 56px);
+  }
+}
+
+/* ── Mobile (<768): centred text over the compact cluster — no bleed ── */
+@media (max-width: 767px) {
+  .copy .heading {
+    /* "Consultant" must fit unbroken at 390/375 — zero horizontal overflow */
+    font-size: clamp(2.55rem, 10.5vw, 3rem);
+  }
+
+  .fieldLayer {
+    --band-bleed: 0px;
   }
 }

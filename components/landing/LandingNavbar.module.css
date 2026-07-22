@@ -1,150 +1,242 @@
-/* LandingNavbar.module.css — global morphing navigation capsule (§6).
-   The fixed wrapper is pointer-events:none and flex-centres the capsule, so
-   framer-motion layout animations can morph the capsule's width without any
-   CSS transform fighting the centring. */
+/* ═══════════════════════════════════════════════════════════════════════════
+   LandingNavbar.module.css — two-state navigation (brief §5).
 
-.wrap {
+   Geometry (width / padding / position) is animated by framer-motion layout
+   animations, so this file NEVER transitions layout properties — only paint:
+   background, border-color, box-shadow, backdrop-filter, color, and the
+   CSS-only label y-swap transform. Under prefers-reduced-motion the global
+   landing.css kill-switch zeroes every transition here (instant switch).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.root {
   position: fixed;
-  top: 18px;
+  top: 0;
   left: 0;
   right: 0;
-  z-index: 90;
-  display: flex;
-  justify-content: center;
-  padding-inline: 16px;
+  z-index: 200;
+  /* The header itself never eats clicks — only shell + panel do. */
   pointer-events: none;
 }
 
-.capsule {
+.inner {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.root[data-compact] .inner {
+  align-items: center;
+  padding-top: 12px; /* snaps; framer animates the shell's resulting move */
+}
+
+/* ── Shell: integrated row ⇄ floating capsule ─────────────────────────────
+   border-radius lives inline on the motion element (scale correction). */
+.shell {
   pointer-events: auto;
   position: relative;
   display: flex;
   align-items: center;
-  column-gap: 24px;
-  max-width: 100%;
-  padding: 12px 12px 12px 22px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid var(--lp-border);
-  border-radius: 999px;
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 0;
+  border: 1px solid transparent;
+  background: transparent;
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
   transition:
-    -webkit-backdrop-filter 0.35s var(--lp-ease),
-    backdrop-filter 0.35s var(--lp-ease);
+    background 0.4s var(--lp-ease),
+    border-color 0.4s var(--lp-ease),
+    box-shadow 0.4s var(--lp-ease),
+    -webkit-backdrop-filter 0.4s var(--lp-ease),
+    backdrop-filter 0.4s var(--lp-ease);
 }
 
-/* The shadow lives on a pseudo-element so its strength can cross-fade with a
-   CSS opacity transition while framer-motion owns the capsule's inline style. */
-.capsule::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
+/* Desktop integrated row: true-centred link column via 1fr auto 1fr grid. */
+@media (min-width: 1024px) {
+  .root:not([data-compact]) .shell {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    column-gap: 24px;
+  }
+  .root:not([data-compact]) .wordmarkWrap {
+    grid-column: 1;
+    justify-self: start;
+  }
+  .root:not([data-compact]) .linksWrap {
+    grid-column: 2;
+    justify-self: center;
+  }
+  .root:not([data-compact]) .rightZone {
+    grid-column: 3;
+    justify-self: end;
+  }
+}
+
+/* Capsule state: width fits content; translucent surface + blur + border +
+   nav shadow (rgba(250,250,247,.85) expressed from the surface token). */
+.root[data-compact] .shell {
+  width: auto;
+  min-height: 0;
+  gap: 12px;
+  padding: 8px 8px 8px 18px;
+  background: color-mix(in srgb, var(--lp-surface) 85%, transparent);
+  border-color: var(--lp-border);
   box-shadow: var(--lp-shadow-nav);
-  opacity: 0.45;
-  transition: opacity 0.35s var(--lp-ease);
-  pointer-events: none;
-}
-
-.capsuleCompact {
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
-}
-
-.capsuleCompact::before {
-  opacity: 1;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 
 /* ── Wordmark ── */
+.wordmarkWrap {
+  display: flex;
+  align-items: center;
+}
 .wordmark {
   display: inline-flex;
   align-items: center;
-  flex: none;
-  padding-block: 10px;
+  min-height: 44px;
   font-size: 19px;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
-  color: var(--lp-ink);
   white-space: nowrap;
 }
-
+.root[data-compact] .wordmark {
+  font-size: 17px; /* compact wordmark — snaps under the morph */
+}
+.wordmarkText {
+  color: var(--lp-ink);
+}
 .wordmarkAi {
   color: var(--lp-accent);
 }
 
-/* ── Centre links (desktop only) ── */
-.links {
+/* ── Desktop link row with CSS-only label y-swap ── */
+.linksWrap {
   display: none;
-  align-items: center;
-  column-gap: 24px;
-  padding-inline: 4px;
-  overflow: hidden;
-  white-space: nowrap;
+}
+@media (min-width: 1024px) {
+  .linksWrap {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
 }
 
 .navLink {
-  padding-block: 11px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--lp-muted);
-  transition: color 0.2s var(--lp-ease);
-}
-
-/* Outranks `.lp a:hover { color: inherit }` from landing.css. */
-.links .navLink:hover {
-  color: var(--lp-ink);
-}
-
-/* End-state Contact link (desktop only, mounted at scroll progress ≥ 75%) */
-.contactLink {
-  display: none;
+  display: inline-flex;
   align-items: center;
-  padding-block: 11px;
+  min-height: 44px;
+  padding: 0 13px;
   font-size: 15px;
   font-weight: 600;
-  color: var(--lp-muted);
+  border-radius: var(--lp-radius-chip);
   white-space: nowrap;
-  overflow: hidden;
-  transition: color 0.2s var(--lp-ease);
 }
 
-.wrap .capsule .contactLink:hover {
+/* Two stacked copies of the label inside a clipped span; hover/focus slides
+   both up one line: muted-strong exits, ink enters. Colours live on the
+   spans (not the anchor) so the `.lp a` reset cannot override them, and the
+   transform never touches a framer-animated element. */
+.swap {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  line-height: 1.5;
+}
+.swapLine,
+.swapClone {
+  display: block;
+  transition: transform 0.3s var(--lp-ease);
+}
+.swapLine {
+  color: var(--lp-muted-strong);
+}
+.swapClone {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  white-space: nowrap;
+  color: var(--lp-ink);
+}
+.navLink:hover .swapLine,
+.navLink:focus-visible .swapLine,
+.navLink:hover .swapClone,
+.navLink:focus-visible .swapClone {
+  transform: translateY(-100%);
+}
+
+/* ── Right cluster: Contact (capsule, desktop) + CTA + menu button ── */
+.rightZone {
+  position: relative; /* popLayout anchor for the exiting Contact link */
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.contactWrap {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .contactWrap {
+    display: block;
+  }
+}
+.contactLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+.contactLabel {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--lp-muted-strong);
+  transition: color 0.2s var(--lp-ease);
+}
+.contactLink:hover .contactLabel,
+.contactLink:focus-visible .contactLabel {
   color: var(--lp-ink);
 }
 
-/* ── Primary CTA ── */
-.cta {
-  flex: none;
-}
-
-/* `.lp a { color: inherit }` in landing.css outranks `.lp-btn--primary`'s
-   specificity, so restate the button's own white label colour here (the same
-   literal the shared utility uses). */
-.wrap .capsule a.cta,
-.wrap .capsule a.cta:hover {
-  color: #ffffff;
-}
-
+/* CTA label: full copy on desktop, "Start Free" below 1024 — the visible
+   span carries the accessible name at each breakpoint. */
 .ctaFull {
   display: none;
 }
-
 .ctaShort {
   display: inline;
 }
+@media (min-width: 1024px) {
+  .ctaFull {
+    display: inline;
+  }
+  .ctaShort {
+    display: none;
+  }
+}
 
-/* ── Mobile menu button ── */
+/* ── Menu toggle: always on mobile; capsule-state only on desktop ── */
+.menuWrap {
+  display: block;
+}
+@media (min-width: 1024px) {
+  .root:not([data-compact]) .menuWrap {
+    display: none;
+  }
+}
 .menuBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 44px;
   height: 44px;
-  flex: none;
-  border: 1px solid var(--lp-border);
-  border-radius: 999px;
+  padding: 0;
+  border-radius: var(--lp-radius-chip);
+  border: 1px solid var(--lp-border-strong);
   background: transparent;
   color: var(--lp-ink);
   cursor: pointer;
@@ -152,65 +244,66 @@
     border-color 0.2s var(--lp-ease),
     background 0.2s var(--lp-ease);
 }
-
 .menuBtn:hover {
   border-color: var(--lp-ink);
-  background: var(--lp-bg-alt);
+  background: color-mix(in srgb, var(--lp-surface) 55%, transparent);
 }
 
-/* ── Mobile menu panel (below the capsule) ── */
+/* ── Menu panel: surface sheet (mobile) / centred dropdown (desktop) ── */
 .panel {
-  position: absolute;
-  top: calc(100% + 12px);
-  left: 16px;
-  right: 16px;
   pointer-events: auto;
-  display: grid;
+  align-self: stretch;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
   gap: 2px;
   padding: 10px;
-  border-radius: 24px;
+  background: color-mix(in srgb, var(--lp-surface) 94%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--lp-border);
+  border-radius: 22px;
+  box-shadow: var(--lp-shadow-nav);
+  max-height: calc(100vh - 110px);
+  overflow: auto;
+}
+@media (min-width: 1024px) {
+  .panel {
+    align-self: center;
+    min-width: 300px;
+  }
 }
 
 .panelLink {
   display: flex;
   align-items: center;
   min-height: 44px;
-  padding-inline: 16px;
+  padding: 0 16px;
   border-radius: 14px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--lp-ink);
   transition: background 0.2s var(--lp-ease);
 }
-
-.panel .panelLink:hover {
-  background: var(--lp-bg-alt);
+.panelLink:hover,
+.panelLink:focus-visible {
+  background: var(--lp-soft-blue);
+}
+.panelLabel {
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--lp-muted-strong);
+  transition: color 0.2s var(--lp-ease);
+}
+.panelLink:hover .panelLabel,
+.panelLink:focus-visible .panelLabel {
   color: var(--lp-ink);
 }
 
-/* ── Desktop ≥ 1024px ── */
-@media (min-width: 1024px) {
-  .links {
-    display: flex;
+/* ── Very narrow screens (≤400px): keep the capsule inside the viewport ── */
+@media (max-width: 400px) {
+  .root[data-compact] .shell {
+    gap: 8px;
+    padding-left: 14px;
   }
-
-  .contactLink {
-    display: inline-flex;
-  }
-
-  .menuBtn {
-    display: none;
-  }
-
-  .panel {
-    display: none;
-  }
-
-  .ctaFull {
-    display: inline;
-  }
-
-  .ctaShort {
-    display: none;
+  .root[data-compact] .inner {
+    padding-top: 8px;
   }
 }

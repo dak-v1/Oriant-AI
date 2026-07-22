@@ -1,109 +1,233 @@
-/* FinalCTA — closing call-to-action panel (§7.11, upper half). */
+/*
+  FinalCTA.module.css — dark closing statement (redesign brief §19).
+  Ambient loops (drift + offset-path packets) are paused by default and
+  resumed only while the component sets `.running` on the section
+  (near-view via useInView AND document visible), so nothing animates
+  offscreen or on a hidden tab. Everything moving is neutralised in the
+  reduced-motion block at the bottom: drift parks at its complete base
+  frame, packets are hidden.
+*/
 
-.panel {
+.section {
   position: relative;
-  /* Deliberate oversized one-off radius for the closing panel per the brief
-     (outside the 24-32px card system). */
-  border-radius: 40px;
-  background: linear-gradient(160deg, var(--lp-rose) 0%, #ffffff 70%);
-  border: 1px solid rgba(204, 8, 67, 0.16);
-  padding: clamp(56px, 8vw, 104px) clamp(22px, 8vw, 104px);
-  text-align: center;
   overflow: hidden;
+  display: grid;
+  align-items: center;
+  min-height: 80vh;
 }
 
-/* Faint stage-grid wash, fading out toward the bottom of the panel. */
-.gridWash {
+/* ── Ambient workflow layer (decorative, aria-hidden) ── */
+
+.bg {
   position: absolute;
   inset: 0;
-  opacity: 0.55;
+  width: 100%;
+  height: 100%;
+  display: block;
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(
-    120% 95% at 50% 0%,
-    rgba(0, 0, 0, 0.9),
-    transparent 78%
-  );
-  mask-image: radial-gradient(
-    120% 95% at 50% 0%,
-    rgba(0, 0, 0, 0.9),
-    transparent 78%
-  );
 }
 
-/* Floating accent dots echoing the hero workflow nodes.
-   ctaFloat is declared locally because CSS Modules localises animation
-   names — a global keyframe reference would not resolve. The global
-   reduced-motion block in landing.css still zeroes its duration. */
-@keyframes ctaFloat {
+.path {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1.5;
+}
+
+.node {
+  fill: rgba(255, 255, 255, 0.16);
+}
+
+.nodeHalo {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 1;
+}
+
+.packet {
+  /* base frame: hidden — the circles carry no cx/cy, so without
+     offset-path support they would otherwise sit visible at the SVG
+     origin. Opacity is ramped by the travel keyframes below. */
+  opacity: 0;
+  fill: rgba(255, 255, 255, 0.38);
+}
+
+@keyframes fctaPacket {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  86% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+/* Guarded so unsupported browsers keep packets at opacity 0 instead of
+   blinking in place. Both paths duplicate EXACTLY the inline `d`
+   strings in FinalCTA.tsx — keep them in sync. */
+@supports (offset-path: path("M0 0 L1 1")) {
+  .packetA {
+    offset-path: path(
+      "M -60 180 C 260 90 520 250 780 190 C 1040 130 1240 240 1500 160"
+    );
+    animation: fctaPacket 16s linear infinite;
+  }
+  .packetB {
+    offset-path: path(
+      "M -60 706 C 300 640 560 786 860 712 C 1140 648 1320 764 1500 692"
+    );
+    animation: fctaPacket 22s linear infinite;
+  }
+}
+
+/* Packet loops pause offscreen / on hidden tab (`.running` set from JS).
+   Higher specificity than the @supports rules, so the pause wins. */
+.section:not(.running) .packet {
+  animation-play-state: paused;
+}
+
+/* Very slow ambient drift — transform-only, ±14px max, desynced starts.
+   Keyframes are local to this module (names do not cross the boundary).
+   Paused by default; `.running` (set from JS) resumes them. */
+.driftA {
+  animation: fctaDrift 36s ease-in-out infinite;
+  animation-play-state: paused;
+}
+.driftB {
+  animation: fctaDriftAlt 40s ease-in-out infinite;
+  animation-delay: -14s;
+  animation-play-state: paused;
+}
+.driftC {
+  animation: fctaDrift 31s ease-in-out infinite;
+  animation-delay: -7s;
+  animation-play-state: paused;
+}
+.running .driftA,
+.running .driftB,
+.running .driftC {
+  animation-play-state: running;
+}
+
+@keyframes fctaDrift {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate(0, 0);
   }
   50% {
-    transform: translateY(-5px);
+    transform: translate(10px, -14px);
   }
 }
 
-.dot {
+@keyframes fctaDriftAlt {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-12px, 12px);
+  }
+}
+
+/* Faint brand glow behind the heading */
+.glow {
   position: absolute;
-  border-radius: 50%;
-  background: var(--lp-accent);
+  left: 50%;
+  top: 9%;
+  width: min(780px, 92vw);
+  height: min(520px, 58vh);
+  transform: translateX(-50%);
   pointer-events: none;
-  animation: ctaFloat 5.5s ease-in-out infinite;
 }
 
-.dotTopRight {
-  width: 12px;
-  height: 12px;
-  top: clamp(28px, 5vw, 52px);
-  right: clamp(30px, 6vw, 64px);
-  box-shadow: 0 0 0 8px rgba(204, 8, 67, 0.08);
-}
+/* ── Content ── */
 
-.dotBottomLeft {
-  width: 9px;
-  height: 9px;
-  bottom: clamp(26px, 4.5vw, 48px);
-  left: clamp(28px, 5.5vw, 60px);
-  opacity: 0.85;
-  box-shadow: 0 0 0 6px rgba(204, 8, 67, 0.07);
-  animation-duration: 7s;
-  animation-delay: 1.2s;
-}
-
-.content {
+.container {
   position: relative;
+  width: 100%;
+}
+
+.inner {
   display: grid;
-  gap: 22px;
   justify-items: center;
+  text-align: center;
+  gap: clamp(26px, 4vw, 40px);
 }
 
-.heading {
-  font-size: clamp(38px, 5vw, 68px);
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1.03;
-  margin: 0;
-  text-wrap: balance;
-  max-width: 21ch;
+/* Display heading, scaled down from the hero (brief §19) */
+.section .heading {
+  font-size: clamp(3rem, 6vw, 6.5rem);
 }
 
-.body {
-  max-width: 52ch;
-  margin-inline: auto;
+/* Overflow clip mask per heading line (hero-style reveal).
+   Padding widens the clip window for serif descenders and italic
+   overhang; the negative margins cancel it so leading stays tight.
+   Masks are transparent, so the slight overlap is invisible. */
+.lineMask {
+  display: block;
+  overflow: hidden;
+  padding: 0.1em 0.14em 0.14em;
+  margin: -0.1em -0.14em -0.14em;
+}
+
+.line {
+  display: block;
+  will-change: transform;
+}
+
+.section .body {
+  max-width: 58ch;
+  color: var(--lp-dark-muted);
 }
 
 .ctaRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
   justify-content: center;
-  margin-top: 12px;
+  gap: 14px;
+  margin-top: 6px;
 }
 
-/* Larger primary CTA — the compound selector keeps it above .lp-btn. */
-.ctaRow .primaryBtn {
-  min-height: 56px;
-  padding: 0 32px;
-  font-size: 16.5px;
+.section .btn {
+  min-height: 58px;
+  padding-inline: 30px;
+  font-size: 16px;
+}
+
+/* ── Mobile recomposition: heading clamps down further, buttons stack
+      full-width, zero horizontal overflow at 390/375 ── */
+@media (max-width: 560px) {
+  .section .heading {
+    font-size: clamp(2.1rem, 9vw, 3rem);
+  }
+  .ctaRow {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 340px;
+  }
+}
+
+/* ── Reduced motion: park ambience at a complete static frame ──
+   The global landing.css kill-switch freezes CSS animations at their
+   base frame (which reads as finished here: translate(0,0)); this rule
+   makes that explicit and removes the packets entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .driftA,
+  .driftB,
+  .driftC {
+    animation: none;
+  }
+  .packet {
+    display: none;
+  }
+  .line {
+    will-change: auto;
+  }
 }

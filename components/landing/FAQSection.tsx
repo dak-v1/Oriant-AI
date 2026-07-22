@@ -1,97 +1,140 @@
 "use client";
 /**
- * FAQSection — accessible single-open FAQ accordion (master brief §7.10).
- * Open/close uses the CSS grid-template-rows 0fr→1fr technique so no JS
- * measurement is needed and reduced motion collapses to instant via the
- * global reduced-motion block in landing.css.
+ * FAQSection — accessible single-open FAQ accordion (redesign brief §18).
+ * Primary motion concept: the grid-template-rows 0fr→1fr open/close itself,
+ * now with entrance rhythm — the ten items stagger into view individually
+ * (whileInView once, 0.05s stagger) sliding in from alternating ±16px x
+ * offsets instead of one block reveal. The open item gets an accent bar
+ * sliding down its left edge (scaleY, 0.3s), the answer text fades up 8px
+ * as the panel opens, and the Plus icon rotates with a slight overshoot.
+ * No loops anywhere; MotionConfig reducedMotion="user" collapses the x
+ * slides to fades and the global kill in landing.css makes every transition
+ * instant. First item open by default so the server HTML reads complete.
+ * Keyboard: native button semantics plus APG accordion
+ * ArrowUp/ArrowDown/Home/End focus movement — behaviour unchanged.
  */
-import { useId, useState } from "react";
+
+import { useId, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
+import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
-import SectionReveal from "./SectionReveal";
 import { FAQS } from "@/lib/landing-content";
+import SectionReveal from "./SectionReveal";
+import { DUR, EASE } from "./motion";
 import styles from "./FAQSection.module.css";
 
-function FAQItem({
-  question,
-  answer,
-  open,
-  onToggle,
-  buttonId,
-  panelId,
-}: {
-  question: string;
-  answer: string;
-  open: boolean;
-  onToggle: () => void;
-  buttonId: string;
-  panelId: string;
-}) {
-  return (
-    <div className={open ? `${styles.item} ${styles.itemOpen}` : styles.item}>
-      <h3 className={styles.itemHeading}>
-        <button
-          type="button"
-          id={buttonId}
-          className={styles.trigger}
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={onToggle}
-        >
-          <span className={styles.question}>{question}</span>
-          <Plus
-            size={18}
-            strokeWidth={2}
-            aria-hidden="true"
-            className={styles.icon}
-          />
-        </button>
-      </h3>
-      <div
-        role="region"
-        id={panelId}
-        aria-labelledby={buttonId}
-        className={styles.panel}
-      >
-        <div className={styles.panelInner}>
-          <p className={styles.answer}>{answer}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
+/** Entrance rhythm: 0.05s between items, alternating ±16px x offsets. */
+const ITEM_STAGGER = 0.05;
+const ITEM_OFFSET = 16;
 
 export default function FAQSection() {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
   const baseId = useId();
+  const [openIndex, setOpenIndex] = useState<number>(0);
+  const triggersRef = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const onTriggerKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    const count = FAQS.length;
+    let target: number;
+    switch (event.key) {
+      case "ArrowDown":
+        target = (index + 1) % count;
+        break;
+      case "ArrowUp":
+        target = (index - 1 + count) % count;
+        break;
+      case "Home":
+        target = 0;
+        break;
+      case "End":
+        target = count - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    triggersRef.current[target]?.focus();
+  };
 
   return (
-    <SectionReveal>
-      <section id="faq" className="lp-section">
-        <div className="lp-container">
+    <section id="faq" className={`lp-section ${styles.section}`}>
+      <div className="lp-container">
+        <SectionReveal y={24}>
           <div className={styles.head}>
             <span className="lp-eyebrow">FAQ</span>
-            <h2 className="lp-h2">
+            <h2 className="lp-h2-sm">
               Questions, <span className="lp-serif">answered</span>.
             </h2>
           </div>
+        </SectionReveal>
 
-          <div className={styles.accordion}>
-            {FAQS.map((faq, i) => (
-              <FAQItem
-                key={faq.q}
-                question={faq.q}
-                answer={faq.a}
-                open={openIndex === i}
-                onToggle={() =>
-                  setOpenIndex((current) => (current === i ? null : i))
+        <div className={styles.accordion}>
+          {FAQS.map((item, i) => {
+            const isOpen = openIndex === i;
+            const buttonId = `${baseId}-faq-btn-${i}`;
+            const panelId = `${baseId}-faq-panel-${i}`;
+            return (
+              <motion.div
+                key={item.q}
+                className={
+                  isOpen ? `${styles.item} ${styles.itemOpen}` : styles.item
                 }
-                buttonId={`${baseId}-faq-q-${i}`}
-                panelId={`${baseId}-faq-a-${i}`}
-              />
-            ))}
-          </div>
+                initial={{
+                  opacity: 0,
+                  x: i % 2 === 0 ? -ITEM_OFFSET : ITEM_OFFSET,
+                }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "0px 0px -60px 0px" }}
+                transition={{
+                  duration: DUR.card,
+                  delay: i * ITEM_STAGGER,
+                  ease: EASE,
+                }}
+              >
+                {/* Accent bar sliding down the open item's left edge */}
+                <span className={styles.accentBar} aria-hidden="true" />
+                <h3 className={styles.question}>
+                  <button
+                    type="button"
+                    id={buttonId}
+                    ref={(el) => {
+                      triggersRef.current[i] = el;
+                    }}
+                    className={styles.trigger}
+                    aria-expanded={isOpen}
+                    aria-controls={panelId}
+                    onClick={() =>
+                      setOpenIndex((prev) => (prev === i ? -1 : i))
+                    }
+                    onKeyDown={(event) => onTriggerKeyDown(event, i)}
+                  >
+                    <span className={styles.questionText}>{item.q}</span>
+                    <span className={styles.icon} aria-hidden="true">
+                      <Plus size={18} strokeWidth={2} aria-hidden="true" />
+                    </span>
+                  </button>
+                </h3>
+                <div
+                  id={panelId}
+                  role="region"
+                  aria-labelledby={buttonId}
+                  className={
+                    isOpen
+                      ? `${styles.panel} ${styles.panelOpen}`
+                      : styles.panel
+                  }
+                >
+                  <div className={styles.panelClip}>
+                    <p className={styles.answer}>{item.a}</p>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
-      </section>
-    </SectionReveal>
+      </div>
+    </section>
   );
 }

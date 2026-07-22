@@ -1,0 +1,947 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   WorkflowShowcases.module.css — brief §13, revised per owner review.
+
+   Desktop ≥1024px: ONE PINNED SEQUENCE — a 330vh .track with a 100vh sticky
+   .sticky panel (overflow hidden). The .stage surface swaps showcases in
+   place (AnimatePresence in the TSX) and re-themes light ⇄ dark via the
+   global lp-dark class with a one-off background-color transition (0.45s,
+   brand ease). A 3-label progress row marks the sequence. The sticky panel
+   has NO transformed ancestor (.section/.track carry no transforms).
+
+   Mobile/tablet <1024px: the original stacked panels — masked visual
+   scale-reveal (clip-path inset open + scale 1.06 → 1 over 1.1s) with copy
+   stagger. The two trees are gated purely by the media queries below.
+
+   One loop per visual: the held card's ::after outline pulses opacity;
+   play-state gated by .isLive (paused offscreen); base frame reads complete.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.section {
+  overflow-x: clip;
+}
+
+/* ── Desktop-pinned vs mobile-stacked gate ──────────────────────────────── */
+
+.track {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  /* Doubled class beats .lp-section regardless of stylesheet order. */
+  .section.section {
+    padding-block: 0;
+  }
+  .track {
+    display: block;
+    height: 330vh;
+  }
+  .stackedWrap {
+    display: none;
+  }
+}
+
+/* ── Pinned sequence (≥1024px; .track is display:none below) ────────────── */
+
+.sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.stickyInner {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  /* Top padding clears the fixed compact navbar capsule. */
+  padding-top: clamp(88px, 11vh, 112px);
+  padding-bottom: clamp(16px, 3vh, 36px);
+}
+
+/* Compacted section head inside the sticky panel. */
+.sticky .stickyHead {
+  flex: none;
+  max-width: none;
+  gap: 10px;
+  margin-bottom: clamp(14px, 2.4vh, 28px);
+}
+
+.sticky .headTitle {
+  font-size: clamp(1.9rem, 2.7vw, 2.75rem);
+}
+
+/* 3-label progress indicator — shows there are three showcases. */
+.progress {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.progressItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--lp-muted-strong);
+  transition: color 0.24s var(--lp-ease);
+}
+
+.progressDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--lp-border-strong);
+  background: transparent;
+  flex: none;
+  transition:
+    background-color 0.24s var(--lp-ease),
+    border-color 0.24s var(--lp-ease),
+    transform 0.24s var(--lp-ease);
+}
+
+.progressActive {
+  color: var(--lp-accent);
+}
+
+.progressActive .progressDot {
+  background: var(--lp-accent);
+  border-color: var(--lp-accent);
+  transform: scale(1.2);
+}
+
+/* The one showcase surface. Light by default; the global lp-dark class swap
+   (finance) re-maps every token, and background-color transitions between
+   the two fills — a one-off transition, never a loop. */
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  border-radius: 36px;
+  padding: clamp(28px, 3vw, 52px);
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  box-shadow: var(--lp-shadow-card);
+  overflow: hidden;
+  transition:
+    background-color 0.45s var(--lp-ease),
+    border-color 0.45s var(--lp-ease);
+}
+
+/* Explicit token-based fill on both ends of the transition. */
+.stage:global(.lp-dark) {
+  background: var(--lp-dark-bg);
+}
+
+.stageGrid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: clamp(30px, 3.6vw, 60px);
+  align-items: center;
+}
+
+/* Compacted copy inside the pinned stage so a full showcase fits 100vh.
+   (.stageGrid only exists in the pinned tree — stacked panels keep the
+   original scale.) All small text stays on --lp-muted-strong / ink. */
+.stageGrid .copyCol {
+  gap: 12px;
+}
+
+.stageGrid .title {
+  font-size: clamp(1.5rem, 2vw, 2.2rem);
+}
+
+.stageGrid .problem {
+  font-size: clamp(14.5px, 1.15vw, 16.5px);
+  line-height: 1.55;
+  max-width: 44ch;
+}
+
+.stageGrid .metaList {
+  gap: 13px;
+  margin-top: 4px;
+}
+
+.stageGrid .metaBlock {
+  gap: 7px;
+}
+
+.stageGrid .chip {
+  padding: 6px 12px;
+  font-size: 12.5px;
+}
+
+.stageGrid .approvalCallout {
+  padding: 11px 14px;
+  border-radius: 14px;
+}
+
+.stageGrid .approvalCallout p {
+  font-size: 13.5px;
+}
+
+.stageGrid .resultRow p {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.stageGrid .quietChip {
+  padding: 4px 10px;
+  font-size: 11.5px;
+}
+
+.pinnedVisual {
+  position: relative;
+  min-width: 0;
+}
+
+/* Shorter frame body than the stacked panels — must share 100vh with copy. */
+.stage .frameBody {
+  min-height: clamp(280px, 40vh, 500px);
+}
+
+/* Short desktop viewports: tighten the whole pinned stack further. */
+@media (min-width: 1024px) and (max-height: 860px) {
+  .stickyInner {
+    padding-top: 80px;
+    padding-bottom: 14px;
+  }
+  .sticky .stickyHead {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .sticky .headTitle {
+    font-size: clamp(1.55rem, 2.1vw, 1.9rem);
+  }
+  .stage {
+    padding: clamp(20px, 2.3vw, 34px);
+    border-radius: 28px;
+  }
+  .stageGrid {
+    gap: clamp(24px, 3vw, 44px);
+  }
+  .stageGrid .copyCol {
+    gap: 9px;
+  }
+  .stageGrid .metaList {
+    gap: 9px;
+  }
+  .stageGrid .problem {
+    font-size: 14px;
+  }
+  .stage .frameBody {
+    min-height: clamp(230px, 34vh, 380px);
+  }
+}
+
+/* ── Stacked panels (mobile/tablet <1024px) ─────────────────────────────── */
+
+.panel {
+  border-radius: 36px;
+  padding: clamp(40px, 6vw, 88px);
+  margin-block: 8vh;
+  display: grid;
+  align-items: center;
+  overflow: hidden; /* rounded clipping + hard overflow guard at 390px */
+}
+
+.panelLight {
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  box-shadow: var(--lp-shadow-card);
+}
+
+/* Background/colour/token remaps come from the global .lp-dark class. */
+.panelDark {
+  border: 1px solid var(--lp-border);
+  box-shadow: var(--lp-shadow-card);
+}
+
+.panelGrid {
+  display: grid;
+  gap: clamp(36px, 5vw, 72px);
+  align-items: center;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .panel {
+    min-height: 90vh;
+  }
+  .panelGrid {
+    /* copy 40% / visual 60% */
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+}
+
+/* ── Copy column (shared by both trees) ─────────────────────────────────── */
+
+.copyCol {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  align-content: center;
+  justify-items: start;
+}
+
+.title {
+  margin-top: 4px;
+}
+
+.problem {
+  max-width: 46ch;
+}
+
+/* Structured meta rows as a real definition list (dt label / dd content). */
+.metaList {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  margin: 10px 0 0;
+  width: 100%;
+  min-width: 0;
+}
+
+.metaBlock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  justify-items: start;
+  min-width: 0;
+}
+
+.metaBlock dd {
+  margin: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.metaLabel {
+  color: var(--lp-muted-strong);
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--lp-border);
+  border-radius: var(--lp-radius-chip);
+  background: var(--lp-bg);
+  padding: 8px 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--lp-ink);
+  white-space: nowrap;
+}
+
+/* On dark surfaces, lift agent chips onto the raised dark surface. The
+   pinned .stage re-themes via lp-dark, so target both containers. */
+.panelDark .chip,
+.stage:global(.lp-dark) .chip {
+  background: var(--lp-surface);
+}
+
+.chipDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lp-accent-bright);
+  flex: none;
+}
+
+/* Human variant: soft teal + UserCheck — visibly not an agent. */
+.chipHuman {
+  border-color: var(--lp-teal);
+  background: var(--lp-soft-teal);
+}
+
+.panelDark .chipHuman,
+.stage:global(.lp-dark) .chipHuman {
+  background: var(--lp-soft-teal);
+}
+
+.chipHumanIcon {
+  color: var(--lp-teal);
+  flex: none;
+}
+
+.approvalCallout {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid var(--lp-border-strong);
+  border-radius: 16px;
+  padding: 15px 18px;
+  width: 100%;
+  max-width: 52ch;
+}
+
+.approvalCallout p {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--lp-ink);
+}
+
+.approvalIcon {
+  color: var(--lp-teal);
+  flex: none;
+  margin-top: 1px;
+}
+
+.resultRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 52ch;
+}
+
+.resultRow p {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--lp-ink);
+}
+
+.resultIcon {
+  color: var(--lp-teal);
+  flex: none;
+  margin-top: 2px;
+}
+
+.quietChip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--lp-border);
+  border-radius: var(--lp-radius-chip);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--lp-muted-strong);
+  white-space: nowrap;
+}
+
+/* ── Visual column: masked scale-reveal (stacked tree only) ─────────────── */
+
+.visualCol {
+  position: relative;
+  min-width: 0;
+}
+
+.visualGlow {
+  position: absolute;
+  inset: -6% -10%;
+  pointer-events: none;
+}
+
+.visualMask {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  /* masked base frame — opens on .isRevealed (DUR.mask = 1.1s, EASE) */
+  clip-path: inset(12% 8% 12% 8% round 24px);
+  transition: clip-path 1.1s var(--lp-ease);
+}
+
+.visualInner {
+  transform: scale(1.06);
+  transform-origin: center;
+  transition: transform 1.1s var(--lp-ease);
+}
+
+.isRevealed .visualMask {
+  clip-path: inset(0 0 0 0 round 24px);
+}
+
+.isRevealed .visualInner {
+  transform: scale(1);
+}
+
+/* ── Workspace frame ────────────────────────────────────────────────────────
+   Deliberately NOT browser chrome (no traffic dots / address pill) — the
+   page's single browser-chrome device is VideoRevealSection. This bar is a
+   product-workspace header with an .lp-micro-style label. */
+
+.frame {
+  background: var(--lp-bg);
+  border: 1px solid var(--lp-border);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--lp-shadow-card);
+}
+
+.frameBar {
+  display: flex;
+  align-items: center;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--lp-border);
+  background: var(--lp-surface);
+}
+
+/* Mirrors the global .lp-micro spec (10.5px / 800 / 0.12em uppercase). */
+.frameLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lp-muted-strong);
+}
+
+.frameBody {
+  padding: clamp(18px, 2.6vw, 30px);
+  min-height: clamp(420px, 52vh, 600px);
+  display: grid;
+  align-content: center;
+}
+
+/* ── Shared mock-UI pieces ──────────────────────────────────────────────── */
+
+.laneHead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lp-muted-strong);
+  margin-bottom: 12px;
+}
+
+.lane {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.laneStack {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.laneArrow {
+  align-self: center;
+  display: inline-flex;
+  color: var(--lp-muted-strong);
+}
+
+.miniCard {
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.cardMicro {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lp-muted-strong);
+}
+
+.cardTitle {
+  font-size: 13.5px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardNote {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lp-muted-strong);
+}
+
+.skelBar {
+  height: 7px;
+  border-radius: 4px;
+  background: var(--lp-border);
+}
+
+.skelShort {
+  width: 64%;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.taskFoot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--lp-muted-strong);
+}
+
+/* Held-card outline pulse — the ONE loop per visual. Animates ::after opacity
+   only; paused until .isLive; base frame (0%) is the complete resting state. */
+.pulseCard {
+  position: relative;
+}
+
+.pulseCard::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 18px;
+  border: 1.5px solid var(--lp-pending-border);
+  opacity: 0.5;
+  pointer-events: none;
+  animation: wsHoldPulse 2.4s ease-in-out infinite;
+  animation-play-state: paused;
+}
+
+.pulseBlue::after {
+  border-color: var(--lp-review);
+}
+
+.isLive .pulseCard::after {
+  animation-play-state: running;
+}
+
+@keyframes wsHoldPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ── Customer ops: three horizontal lanes ───────────────────────────────── */
+
+.customerLanes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.inboxRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  border-radius: 12px;
+  padding: 9px 11px;
+}
+
+.inboxDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lp-accent-bright);
+  opacity: 0.7;
+}
+
+.inboxText {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.inboxTitle {
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inboxSnippet {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--lp-muted-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inboxTime {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--lp-muted-strong);
+}
+
+/* ── Finance ops: vertical pipeline ─────────────────────────────────────── */
+
+.financeFlow {
+  display: grid;
+  gap: 12px;
+  align-content: center;
+  min-width: 0;
+}
+
+.flowArrow {
+  justify-self: center;
+  display: inline-flex;
+  color: var(--lp-muted-strong);
+}
+
+.docChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.docChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  border-radius: 10px;
+  padding: 7px 11px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.docIcon {
+  color: var(--lp-accent-bright);
+  flex: none;
+}
+
+.fieldTable {
+  display: grid;
+  gap: 6px;
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr);
+  gap: 10px;
+  align-items: center;
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.fieldHead {
+  background: transparent;
+  border-color: transparent;
+  padding-block: 0;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lp-muted-strong);
+}
+
+.fieldCell {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cellNum {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Marketing ops: board + calendar strip ──────────────────────────────── */
+
+.marketingBoard {
+  display: grid;
+  gap: 18px;
+  align-content: center;
+  min-width: 0;
+}
+
+.boardTop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.noteCard {
+  background: var(--lp-soft-blue);
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calSlot {
+  border: 1px dashed var(--lp-border-strong);
+  border-radius: 12px;
+  min-height: 88px;
+  padding: 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.calFilled {
+  border-style: solid;
+  border-color: var(--lp-border);
+  background: var(--lp-surface);
+}
+
+.calDay {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lp-muted-strong);
+}
+
+.calTitle {
+  font-size: 11.5px;
+  font-weight: 750;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Tablet & mobile recomposition ──────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .panel {
+    border-radius: 28px;
+    padding: clamp(26px, 7vw, 40px);
+    margin-block: 6vh;
+  }
+
+  .frameBody {
+    min-height: 0;
+  }
+
+  .hideMobile {
+    display: none;
+  }
+
+  /* Customer lanes stack vertically; connector arrows removed. */
+  .customerLanes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .laneArrow {
+    display: none;
+  }
+
+  /* Finance table drops the Due column. */
+  .fieldRow {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .cellDue {
+    display: none;
+  }
+
+  /* Marketing board stacks; calendar becomes compact day rows. */
+  .boardTop {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .calGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .calSlot {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    min-height: 0;
+    padding: 9px 12px;
+  }
+
+  /* No clip choreography on mobile — simple fade-rise instead. */
+  .visualMask {
+    clip-path: none;
+    transition: none;
+  }
+  .isRevealed .visualMask {
+    clip-path: none;
+  }
+  .visualInner {
+    transform: none;
+    opacity: 0;
+    translate: 0 24px;
+    transition: opacity 0.7s var(--lp-ease), translate 0.7s var(--lp-ease);
+  }
+  .isRevealed .visualInner {
+    transform: none;
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* ── Reduced motion: park everything at the complete frame ──────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .visualMask,
+  .isRevealed .visualMask {
+    clip-path: none;
+    transition: none;
+  }
+  .visualInner,
+  .isRevealed .visualInner {
+    transform: none;
+    translate: none;
+    opacity: 1;
+    transition: none;
+  }
+  .pulseCard::after {
+    animation: none; /* static ring at its complete base opacity */
+  }
+  /* Pinned sequence: instant theme swap + static progress indicator. The
+     sticky panel itself keeps working (CSS position only, no motion). */
+  .stage {
+    transition: none;
+  }
+  .progressItem,
+  .progressDot {
+    transition: none;
+  }
+}
