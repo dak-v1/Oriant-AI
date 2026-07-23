@@ -5,7 +5,7 @@
       "name": "oriant-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "C:\\Users\\mango\\Claude\\Oriant\\Oriant",
+      "cwd": "C:\\Users\\mango\\Claude\\Korea\\Margo",
       "port": 3000
     }
   ]

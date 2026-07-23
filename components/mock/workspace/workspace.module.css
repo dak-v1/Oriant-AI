@@ -1,0 +1,800 @@
+/* Workspace — owner operations overview, notifications and agent roster
+   (spec §17, §19.2, §19.3, §20 "Workspace" row). Layout only; all generic
+   styling comes from .oa-* primitives. */
+
+/* ── Page header ────────────────────────────────────────────────────────── */
+
+.head {
+  margin-bottom: 20px;
+}
+.headTitles {
+  display: grid;
+  gap: 6px;
+}
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bellWrap {
+  position: relative;
+  flex: none;
+}
+.bellBadge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-red);
+  color: var(--oa-on-blue);
+  font-size: 10.5px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--oa-bg);
+  pointer-events: none;
+}
+
+/* ── Team tabline ───────────────────────────────────────────────────────── */
+
+.tabline {
+  margin: 2px 0 20px;
+}
+.tabLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+}
+
+/* ── Today summary strip ────────────────────────────────────────────────── */
+
+.todayCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 18px 22px;
+  margin-bottom: 16px;
+}
+.todayDate {
+  display: grid;
+  gap: 3px;
+  min-width: 200px;
+}
+.todayDay {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.todayTiles {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.statTile {
+  display: grid;
+  gap: 1px;
+  align-content: center;
+  min-width: 116px;
+  padding: 10px 16px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+}
+.statNum {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.statLabel {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+
+/* ── Command bar moment ─────────────────────────────────────────────────── */
+
+.cmdCard {
+  background: var(--oa-soft-blue);
+  margin-bottom: 16px;
+}
+.cmdInputBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--oa-surface);
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-chip);
+  padding: 13px 20px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--oa-muted);
+  cursor: text;
+  transition: border-color 0.2s var(--oa-ease), box-shadow 0.2s var(--oa-ease);
+}
+.cmdInputBtn:hover {
+  border-color: var(--oa-blue);
+}
+.cmdInputText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmdKbd {
+  flex: none;
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--oa-muted-strong);
+  background: var(--oa-bg-alt);
+  border: 1px solid var(--oa-border);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+/* ── Overview grid ──────────────────────────────────────────────────────── */
+
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.col {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.card {
+  padding: 20px 22px;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.cardIcon {
+  color: var(--oa-muted-strong);
+  flex: none;
+}
+.countTag {
+  font-variant-numeric: tabular-nums;
+}
+
+.linkArrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--oa-blue-dark);
+  white-space: nowrap;
+  border-radius: 8px;
+  transition: gap 0.2s var(--oa-ease);
+}
+.linkArrow:hover {
+  gap: 8px;
+}
+
+.rows {
+  display: grid;
+  gap: 8px;
+}
+.emptyNote {
+  padding: 10px 2px;
+}
+
+/* ── Approval rows ──────────────────────────────────────────────────────── */
+
+.approvalRow {
+  padding: 12px 14px;
+  align-items: flex-start;
+}
+.rowMain {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.rowTitle {
+  font-size: 14px;
+  font-weight: 720;
+  line-height: 1.35;
+  color: var(--oa-ink);
+}
+.rowTitle:hover {
+  color: var(--oa-blue-dark);
+}
+.rowSub {
+  font-size: 12.5px;
+  color: var(--oa-muted);
+  line-height: 1.45;
+}
+.rowMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.rowSide {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  flex: none;
+}
+
+.risk {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--oa-r-chip);
+  padding: 3px 9px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.riskHigh {
+  background: var(--oa-soft-red);
+  color: var(--oa-red-ink);
+}
+.riskMedium {
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+}
+.riskLow {
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+}
+
+.due {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+.dueToday {
+  color: var(--oa-amber-ink);
+}
+
+/* ── Scheduled work rows ────────────────────────────────────────────────── */
+
+.schedRow {
+  padding: 12px 14px;
+}
+.timeBlock {
+  flex: none;
+  width: 64px;
+  display: grid;
+  gap: 1px;
+}
+.timeMain {
+  font-size: 13.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+.timeSub {
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+  white-space: nowrap;
+}
+
+/* ── Agents & workflows rows ────────────────────────────────────────────── */
+
+.agentRow {
+  padding: 14px;
+  align-items: flex-start;
+}
+.wfChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.wfChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--oa-r-chip);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+
+/* ── Activity feed ──────────────────────────────────────────────────────── */
+
+.activityList {
+  display: grid;
+}
+.activityRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--oa-border);
+}
+.activityRow:last-child {
+  border-bottom: none;
+}
+.activityIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  margin-top: 1px;
+}
+.toneDone {
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+}
+.toneWait {
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+}
+.toneInfo {
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+}
+.toneAlert {
+  background: var(--oa-soft-red);
+  color: var(--oa-red-ink);
+}
+.activityBody {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.activityMsg {
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin: 0;
+}
+.activityMeta {
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--oa-muted);
+  margin: 0;
+}
+
+/* ── Weekly outcome snapshot ────────────────────────────────────────────── */
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
+}
+.metricTile {
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+  padding: 12px 14px;
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+.metricLabel {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+}
+.metricValue {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.metricNote {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--oa-muted);
+}
+.highlights {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.highlight {
+  display: flex;
+  gap: 9px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.highlightIcon {
+  color: var(--oa-teal-deep);
+  flex: none;
+  margin-top: 3px;
+}
+
+/* ── Daily digest ───────────────────────────────────────────────────────── */
+
+.digestGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.digestBlock {
+  display: grid;
+  gap: 7px;
+  align-content: start;
+}
+.digestHead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+}
+.digestList {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.digestItem {
+  display: flex;
+  gap: 8px;
+  font-size: 12.8px;
+  line-height: 1.5;
+}
+.digestDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--oa-border-strong);
+  flex: none;
+  margin-top: 7px;
+}
+
+/* ── Notifications drawer ───────────────────────────────────────────────── */
+
+.notifStack {
+  display: grid;
+  gap: 18px;
+}
+.notifRows {
+  display: grid;
+  gap: 8px;
+}
+.notifRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+  transition: border-color 0.2s var(--oa-ease), box-shadow 0.2s var(--oa-ease);
+}
+.notifRow:hover {
+  border-color: var(--oa-border-strong);
+  box-shadow: var(--oa-shadow-card);
+}
+.notifIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+  display: grid;
+  place-items: center;
+  flex: none;
+  margin-top: 1px;
+}
+
+.pushCard {
+  border: 1px solid var(--oa-border);
+  border-radius: 16px;
+  background: var(--oa-bg-alt);
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+}
+.pushTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pushIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--oa-teal-deep);
+  color: var(--oa-on-teal);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.pushTitle {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+.pushApp {
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+}
+.pushTime {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--oa-muted);
+  flex: none;
+  align-self: flex-start;
+}
+.pushBody {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+.sendRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.sendStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+}
+.sendStatusDelivered {
+  color: var(--oa-teal-deep);
+}
+
+.waPanel {
+  border: 1px solid var(--oa-border);
+  border-radius: 16px;
+  background: var(--oa-bg-alt);
+  padding: 14px 16px 16px;
+  display: grid;
+  gap: 10px;
+}
+.waPanelHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+}
+.waBubble {
+  background: var(--oa-surface);
+  border: 1px solid var(--oa-border);
+  border-radius: 14px 14px 14px 4px;
+  box-shadow: var(--oa-shadow-card);
+  max-width: 94%;
+  overflow: hidden;
+}
+.waBubbleBody {
+  padding: 12px 14px 8px;
+  display: grid;
+  gap: 6px;
+}
+.waText {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--oa-ink);
+  margin: 0;
+}
+.waMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 650;
+  color: var(--oa-muted);
+}
+.waTicks {
+  color: var(--oa-teal);
+}
+.waActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--oa-border);
+}
+.waBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 11px 10px;
+  font-size: 13.5px;
+  font-weight: 750;
+  color: var(--oa-teal-deep);
+  transition: background 0.18s var(--oa-ease);
+}
+.waBtn:hover:not(:disabled) {
+  background: var(--oa-bg-alt);
+}
+.waBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.waBtn + .waBtn {
+  border-left: 1px solid var(--oa-border);
+}
+
+/* ── Agent roster page ──────────────────────────────────────────────────── */
+
+.rosterGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+.agentCard {
+  padding: 22px;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+.agentHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.agentTitles {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.agentName {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  margin: 0;
+}
+.section {
+  display: grid;
+  gap: 8px;
+}
+.configList {
+  display: grid;
+  gap: 7px;
+}
+.configRow {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.configIcon {
+  color: var(--oa-muted-strong);
+  flex: none;
+  margin-top: 3px;
+}
+.configKey {
+  font-weight: 750;
+}
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.price {
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.agentFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--oa-border);
+  padding-top: 14px;
+}
+
+/* ── Responsive (spec §21: 1440 / 1024 / 768 / 390) ─────────────────────── */
+
+@media (max-width: 1023px) {
+  .cols {
+    grid-template-columns: 1fr;
+  }
+  .rosterGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .todayCard {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .todayTiles {
+    justify-content: flex-start;
+  }
+  .statTile {
+    flex: 1;
+    min-width: 100px;
+  }
+  .digestGrid {
+    grid-template-columns: 1fr;
+  }
+  .rowSide {
+    justify-items: start;
+  }
+  .approvalRow {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 16px;
+  }
+  .agentCard {
+    padding: 18px 16px;
+  }
+  .cmdKbd {
+    display: none;
+  }
+  .waBubble {
+    max-width: 100%;
+  }
+}

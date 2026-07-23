@@ -1,0 +1,514 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Automation Calendar — layout module (spec §18.2).
+   Colours come exclusively from --oa-* tokens; generic elements use .oa-*
+   primitives in the components. This file owns grid geometry, event-pill
+   treatments (shared with legend swatches) and the day-timeline drawer.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page header / toolbar ─────────────────────────────────────────────── */
+
+.monthNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.monthLabel {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.012em;
+  min-width: 104px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px 24px;
+  flex-wrap: wrap;
+  margin: 20px 0 14px;
+}
+.teamChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.chipCount {
+  font-size: 11px;
+  font-weight: 800;
+  opacity: 0.6;
+}
+
+/* ── Legend (doubles as the accessible state explanation) ──────────────── */
+
+.legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+.legendSwatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+/* ── Month grid ────────────────────────────────────────────────────────── */
+
+.calCard {
+  padding: 14px;
+}
+.gridOuter {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--oa-border);
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  overflow: hidden;
+}
+.weekday {
+  background: var(--oa-bg-alt);
+  padding: 8px 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+  text-align: center;
+}
+
+.cell {
+  position: relative;
+  background: var(--oa-surface);
+  min-height: 134px;
+}
+.cellOut {
+  background: var(--oa-bg);
+}
+.cellSelected {
+  box-shadow: inset 0 0 0 2px var(--oa-blue);
+}
+.cellHit {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0;
+}
+.cellHit:focus-visible {
+  outline-offset: -3px;
+}
+.dayNum {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 12.5px;
+  font-weight: 750;
+  color: var(--oa-muted-strong);
+  font-variant-numeric: tabular-nums;
+}
+.dayNumToday {
+  background: var(--oa-blue);
+  color: var(--oa-on-blue);
+  font-weight: 800;
+}
+.dayNumOut {
+  color: var(--oa-muted);
+  opacity: 0.55;
+}
+.todayTag {
+  position: absolute;
+  top: 13px;
+  left: 40px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--oa-blue-dark);
+}
+
+/* Pills sit above the day-select hit area; gaps fall through to the cell. */
+.pills {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 3px;
+  margin: 36px 6px 8px;
+  pointer-events: none;
+  min-width: 0;
+}
+.pill,
+.pillSlim {
+  pointer-events: auto;
+}
+
+.pill {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 4px 7px 5px;
+  cursor: pointer;
+  transition: transform 0.18s var(--oa-ease), box-shadow 0.18s var(--oa-ease);
+}
+.pill:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--oa-shadow-card);
+}
+.pill:focus-visible {
+  outline-offset: 1px;
+}
+.pillHead {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.pillHead svg {
+  flex: none;
+}
+.pillTime {
+  flex: none;
+  font-size: 10px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.92;
+}
+.pillTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pillState {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.82;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 16px;
+}
+
+.pillSlim {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.pillSlim svg {
+  flex: none;
+}
+.more {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--oa-muted-strong);
+  padding: 0 2px;
+}
+
+/* State treatments (spec §18.2 table) — shared by pills + legend swatches. */
+.stPending {
+  background: var(--oa-surface);
+  border-color: var(--oa-amber-border);
+  color: var(--oa-amber-ink);
+}
+.stApproved {
+  background: var(--oa-dark);
+  border-color: var(--oa-dark);
+  color: var(--oa-on-blue);
+}
+.stCompleted {
+  background: var(--oa-teal-deep);
+  border-color: var(--oa-teal-deep);
+  color: var(--oa-on-teal);
+}
+.stChanges {
+  background: var(--oa-surface);
+  border-color: var(--oa-blue);
+  color: var(--oa-blue-dark);
+}
+.stFailed {
+  background: var(--oa-soft-red);
+  border-color: var(--oa-red);
+  color: var(--oa-red-ink);
+}
+
+/* Compact variant (approvals split view + ≤768px) */
+.gridCompact .cell {
+  min-height: 74px;
+}
+.gridCompact .pills {
+  margin: 28px 4px 6px;
+  gap: 2px;
+}
+.gridCompact .dayNum {
+  top: 5px;
+  left: 5px;
+  min-width: 20px;
+  height: 20px;
+  font-size: 11px;
+}
+
+/* ── Day timeline (drawer) ─────────────────────────────────────────────── */
+
+.daySummary {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  margin: 0 0 16px;
+}
+.timeline {
+  display: grid;
+}
+.hourRow {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.hourLabel {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--oa-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-align: right;
+  padding-top: 2px;
+}
+.hourSlot {
+  min-width: 0;
+  border-top: 1px dashed var(--oa-border);
+  padding: 8px 0 10px;
+  display: grid;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.block {
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+  overflow: hidden;
+  transition: border-color 0.2s var(--oa-ease), box-shadow 0.2s var(--oa-ease);
+}
+.blockExpanded {
+  border-color: var(--oa-border-strong);
+  box-shadow: var(--oa-shadow-card);
+}
+.blockHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.blockHead:hover {
+  background: var(--oa-bg);
+}
+.blockTime {
+  display: grid;
+  gap: 1px;
+  flex: none;
+  min-width: 52px;
+}
+.blockTimeMain {
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.blockTimeSub {
+  font-size: 10.5px;
+  color: var(--oa-muted);
+  font-weight: 650;
+}
+.blockMain {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.blockTitle {
+  font-size: 13.5px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.blockAgent {
+  font-size: 11.5px;
+  color: var(--oa-muted-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.blockChevron {
+  flex: none;
+  color: var(--oa-muted);
+  transition: transform 0.2s var(--oa-ease);
+}
+.blockChevronOpen {
+  transform: rotate(180deg);
+}
+.blockDetailWrap {
+  overflow: hidden;
+}
+.blockDetail {
+  border-top: 1px dashed var(--oa-border);
+  margin: 0 14px;
+  padding: 12px 0 14px;
+  display: grid;
+  gap: 12px;
+}
+.detailText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.approvalPanel {
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+.approvalTitle {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+.approvalActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.actionsBlock {
+  display: grid;
+  gap: 8px;
+}
+.feedNote {
+  margin: 18px 2px 0;
+  font-size: 12px;
+  color: var(--oa-muted);
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+}
+.feedNote svg {
+  flex: none;
+  margin-top: 2px;
+}
+.emptyDay {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 40px 16px;
+  text-align: center;
+  border: 1px dashed var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  color: var(--oa-muted-strong);
+  font-size: 13px;
+}
+
+/* ── Responsive (spec §21: 1440 / 1024 / 768 / 390) ────────────────────── */
+
+@media (max-width: 1024px) {
+  .cell {
+    min-height: 118px;
+  }
+  .pillState {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .calCard {
+    padding: 8px;
+  }
+  .toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .hourRow {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 8px;
+  }
+  .blockHead {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .blockDetail {
+    margin: 0 12px;
+  }
+}
+
+@media (max-width: 430px) {
+  .weekday {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    padding: 6px 2px;
+  }
+  .monthLabel {
+    min-width: 0;
+  }
+  .legend {
+    gap: 5px 10px;
+  }
+  .legendItem {
+    font-size: 11px;
+  }
+}

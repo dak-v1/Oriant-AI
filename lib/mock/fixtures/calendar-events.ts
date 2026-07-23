@@ -1,0 +1,392 @@
+/**
+ * lib/mock/fixtures/calendar-events.ts — Automation Calendar events + actions
+ * (spec §17, §18.2). The eight CAL.* events mirror their APPROVAL.* items
+ * (pending → pending_approval, review_requested → needs_changes,
+ * approved → approved). Fifteen standalone events fill out July 2026 with
+ * recurring Friday invoice/reminder runs and Monday content planning; every
+ * CalendarEventState appears, including one failed run with a recovery hint.
+ */
+
+import type { CalendarEvent } from "../types";
+import {
+  AGENT,
+  AGENT_NAME,
+  APPROVAL,
+  CAL,
+  DEMO_MONTH,
+  DEMO_TODAY,
+  WF,
+  WF_NAME,
+} from "./ids";
+
+export const CALENDAR_EVENTS: Record<string, CalendarEvent> = {
+  /* ── Events linked to approvals (states mirror approval status) ── */
+
+  [CAL.refund]: {
+    id: CAL.refund,
+    date: DEMO_TODAY,
+    time: "14:30",
+    durationMin: 30,
+    title: "Refund decision — Daniel Tan ($180)",
+    agentId: AGENT.recovery,
+    agentName: AGENT_NAME[AGENT.recovery],
+    workflowName: WF_NAME[WF.complaintResolution],
+    team: "customer_care",
+    state: "pending_approval",
+    approvalId: APPROVAL.refund,
+    detail:
+      "Refund and apology message are drafted and held. Once approved, the refund is filed and Mr Tan is notified immediately.",
+  },
+
+  [CAL.reminder]: {
+    id: CAL.reminder,
+    date: DEMO_TODAY,
+    time: "14:00",
+    durationMin: 45,
+    title: "Payment reminder batch — 12 invoices",
+    agentId: AGENT.finance,
+    agentName: AGENT_NAME[AGENT.finance],
+    workflowName: WF_NAME[WF.paymentReminders],
+    team: "finance",
+    state: "approved",
+    approvalId: APPROVAL.reminder,
+    detail:
+      "Approved at 09:20. Twelve reminders ($4,310 outstanding) send at 14:00 via email and WhatsApp.",
+  },
+
+  [CAL.complaint]: {
+    id: CAL.complaint,
+    date: DEMO_TODAY,
+    time: "12:00",
+    durationMin: 45,
+    title: "Resolution plan — Mrs Wong",
+    agentId: AGENT.recovery,
+    agentName: AGENT_NAME[AGENT.recovery],
+    workflowName: WF_NAME[WF.complaintResolution],
+    team: "customer_care",
+    state: "pending_approval",
+    approvalId: APPROVAL.complaint,
+    detail:
+      "Goodwill visit Monday 10:00 plus a $60 service credit, awaiting your decision. Inputs gathered from three teams.",
+  },
+
+  [CAL.writeoff]: {
+    id: CAL.writeoff,
+    date: DEMO_TODAY,
+    time: "16:30",
+    durationMin: 20,
+    title: "Write-off decision — INV-1187 ($95)",
+    agentId: AGENT.finance,
+    agentName: AGENT_NAME[AGENT.finance],
+    workflowName: WF_NAME[WF.invoiceSummary],
+    team: "finance",
+    state: "pending_approval",
+    approvalId: APPROVAL.writeoff,
+    detail:
+      "Disputed touch-up charge, 74 days overdue. On approval the balance is written off in QuickBooks and Ms Ho is notified.",
+  },
+
+  [CAL.reschedule]: {
+    id: CAL.reschedule,
+    date: `${DEMO_MONTH}-25`,
+    time: "09:30",
+    durationMin: 30,
+    title: "Confirmed visit at risk — Jonathan Lim",
+    agentId: AGENT.admin,
+    agentName: AGENT_NAME[AGENT.admin],
+    workflowName: WF_NAME[WF.appointmentScheduling],
+    team: "admin",
+    state: "pending_approval",
+    approvalId: APPROVAL.reschedule,
+    detail:
+      "Saturday 09:30 slot clashes with an emergency job. Proposed move to 14:00 the same day needs your OK by 17:30 today.",
+  },
+
+  [CAL.contentPlan]: {
+    id: CAL.contentPlan,
+    date: `${DEMO_MONTH}-27`,
+    time: "10:00",
+    durationMin: 60,
+    title: "Weekly content plan — week of 27 Jul",
+    agentId: AGENT.marketing,
+    agentName: AGENT_NAME[AGENT.marketing],
+    workflowName: WF_NAME[WF.contentPlanning],
+    team: "marketing",
+    state: "needs_changes",
+    approvalId: APPROVAL.contentPlan,
+    detail:
+      "You asked to swap the Wednesday gutter post for a monsoon-prep checklist. The agent is revising the plan.",
+  },
+
+  [CAL.quote]: {
+    id: CAL.quote,
+    date: `${DEMO_MONTH}-27`,
+    time: "15:00",
+    durationMin: 30,
+    title: "Renewal quote — Rajesh Kumar ($756/yr)",
+    agentId: AGENT.admin,
+    agentName: AGENT_NAME[AGENT.admin],
+    workflowName: WF_NAME[WF.customerResponse],
+    team: "admin",
+    state: "pending_approval",
+    approvalId: APPROVAL.quote,
+    detail:
+      "Renewal quote with a 4% loyalty discount, drafted 7 days before plan expiry. Sends once you approve.",
+  },
+
+  [CAL.campaign]: {
+    id: CAL.campaign,
+    date: `${DEMO_MONTH}-28`,
+    time: "11:00",
+    durationMin: 60,
+    title: "August campaign launch — Monsoon-Ready Home",
+    agentId: AGENT.marketing,
+    agentName: AGENT_NAME[AGENT.marketing],
+    workflowName: WF_NAME[WF.campaignDrafting],
+    team: "marketing",
+    state: "pending_approval",
+    approvalId: APPROVAL.campaign,
+    detail:
+      "Email and social copy drafted and held. On approval, the email goes to 612 past customers and posts are scheduled.",
+  },
+
+  /* ── Standalone recurring + one-off events across July 2026 ── */
+
+  "cal-invoice-run-jul03": {
+    id: "cal-invoice-run-jul03",
+    date: `${DEMO_MONTH}-03`,
+    time: "09:00",
+    durationMin: 30,
+    title: "Weekly overdue invoice summary",
+    agentId: AGENT.finance,
+    agentName: AGENT_NAME[AGENT.finance],
+    workflowName: WF_NAME[WF.invoiceSummary],
+    team: "finance",
+    state: "completed",
+    approvalId: null,
+    detail: "Summary of 9 overdue invoices ($3,120) delivered to the Finance channel in Slack.",
+  },
+
+  "cal-invoice-run-jul10": {
+    id: "cal-invoice-run-jul10",
+    date: `${DEMO_MONTH}-10`,
+    time: "09:00",
+    durationMin: 30,
+    title: "Weekly overdue invoice summary",
+    agentId: AGENT.finance,
+    agentName: AGENT_NAME[AGENT.finance],
+    workflowName: WF_NAME[WF.invoiceSummary],
+    team: "finance",
+    state: "completed",
+    approvalId: null,
+    detail: "Summary of 11 overdue invoices ($4,780); two flagged for a personal follow-up call.",
+  },
+
+  "cal-invoice-run-jul17": {
+    id: "cal-invoice-run-jul17",
+    date: `${DEMO_MONTH}-17`,
+    time: "09:00",
+    durationMin: 30,
+    title: "Weekly overdue invoice summary",
+    agentId: AGENT.finance,
+    agentName: AGENT_NAME[AGENT.finance],
+    workflowName: WF_NAME[WF.invoiceSummary],
+    team: "finance",
+    state: "completed",
+    approvalId: null,
+    detail: "Summary of 10 overdue invoices ($4,450) delivered to Slack; aging improved on 4 accounts.",
+  },
+
+  "cal-invoice-run-jul31": {
+    id: "cal-invoice-run-jul31",
+    date: `${DEMO_MONTH}-31`,
+    time: "09:00",
+    durationMin: 30,
+    title: "Weekly overdue invoice summary",
+    agentId: AGENT.finance,
+    agentName: AGENT_NAME[AGENT.finance],
+    workflowName: WF_NAME[WF.invoiceSummary],
+    team: "finance",
+    state: "approved",
+    approvalId: null,
+    detail: "Next scheduled run. The summary posts to Slack automatically — no approval needed for read-only reports.",
+  },
+
+  "cal-reminder-batch-jul10": {
+    id: "cal-reminder-batch-jul10",
+    date: `${DEMO_MONTH}-10`,
+    time: "14:00",
+    durationMin: 45,
+    title: "Payment reminder batch — 10 invoices",
+    agentId: AGENT.finance,
+    agentName: AGENT_NAME[AGENT.finance],
+    workflowName: WF_NAME[WF.paymentReminders],
+    team: "finance",
+    state: "completed",
+    approvalId: null,
+    detail: "Ten reminders sent after approval; four payments received within 48 hours ($1,860).",
+  },
+
+  "cal-reminder-batch-jul17": {
+    id: "cal-reminder-batch-jul17",
+    date: `${DEMO_MONTH}-17`,
+    time: "14:00",
+    durationMin: 45,
+    title: "Payment reminder batch — send failed",
+    agentId: AGENT.finance,
+    agentName: AGENT_NAME[AGENT.finance],
+    workflowName: WF_NAME[WF.paymentReminders],
+    team: "finance",
+    state: "failed",
+    approvalId: null,
+    detail:
+      "QuickBooks connection expired mid-run; 0 of 11 reminders sent. Recovery: reconnect QuickBooks in Integrations, then use Run now. Reconnected same day; batch resent Sat 18 Jul.",
+  },
+
+  "cal-reminder-batch-jul31": {
+    id: "cal-reminder-batch-jul31",
+    date: `${DEMO_MONTH}-31`,
+    time: "14:00",
+    durationMin: 45,
+    title: "Payment reminder batch — next run",
+    agentId: AGENT.finance,
+    agentName: AGENT_NAME[AGENT.finance],
+    workflowName: WF_NAME[WF.paymentReminders],
+    team: "finance",
+    state: "pending_approval",
+    approvalId: null,
+    detail:
+      "Next Friday's batch. Drafts will be ready for your approval by 13:30 that day; nothing sends without sign-off.",
+  },
+
+  "cal-content-plan-jul06": {
+    id: "cal-content-plan-jul06",
+    date: `${DEMO_MONTH}-06`,
+    time: "10:00",
+    durationMin: 60,
+    title: "Weekly content plan — week of 6 Jul",
+    agentId: AGENT.marketing,
+    agentName: AGENT_NAME[AGENT.marketing],
+    workflowName: WF_NAME[WF.contentPlanning],
+    team: "marketing",
+    state: "completed",
+    approvalId: null,
+    detail: "Three posts approved Monday morning and scheduled; Friday customer story performed best.",
+  },
+
+  "cal-content-plan-jul13": {
+    id: "cal-content-plan-jul13",
+    date: `${DEMO_MONTH}-13`,
+    time: "10:00",
+    durationMin: 60,
+    title: "Weekly content plan — week of 13 Jul",
+    agentId: AGENT.marketing,
+    agentName: AGENT_NAME[AGENT.marketing],
+    workflowName: WF_NAME[WF.contentPlanning],
+    team: "marketing",
+    state: "completed",
+    approvalId: null,
+    detail: "Plan approved with one wording tweak; all three posts published on schedule.",
+  },
+
+  "cal-content-plan-jul20": {
+    id: "cal-content-plan-jul20",
+    date: `${DEMO_MONTH}-20`,
+    time: "10:00",
+    durationMin: 60,
+    title: "Weekly content plan — week of 20 Jul",
+    agentId: AGENT.marketing,
+    agentName: AGENT_NAME[AGENT.marketing],
+    workflowName: WF_NAME[WF.contentPlanning],
+    team: "marketing",
+    state: "completed",
+    approvalId: null,
+    detail: "This week's plan — approved Monday; before/after repaint photos lifted reach 18%.",
+  },
+
+  "cal-newsletter-jul15": {
+    id: "cal-newsletter-jul15",
+    date: `${DEMO_MONTH}-15`,
+    time: "16:00",
+    durationMin: 30,
+    title: "July newsletter send",
+    agentId: AGENT.marketing,
+    agentName: AGENT_NAME[AGENT.marketing],
+    workflowName: WF_NAME[WF.campaignDrafting],
+    team: "marketing",
+    state: "completed",
+    approvalId: null,
+    detail: "Mid-month newsletter sent to 598 subscribers after approval; 41% open rate, 9 booking enquiries.",
+  },
+
+  "cal-survey-draft-jul21": {
+    id: "cal-survey-draft-jul21",
+    date: `${DEMO_MONTH}-21`,
+    time: "15:00",
+    durationMin: 30,
+    title: "Post-job survey wording",
+    agentId: AGENT.admin,
+    agentName: AGENT_NAME[AGENT.admin],
+    workflowName: WF_NAME[WF.customerResponse],
+    team: "customer_care",
+    state: "needs_changes",
+    approvalId: null,
+    detail: "You asked to soften question 3 (\"Was the technician late?\") before the survey goes to customers.",
+  },
+
+  "cal-appointment-wave-jul22": {
+    id: "cal-appointment-wave-jul22",
+    date: `${DEMO_MONTH}-22`,
+    time: "08:30",
+    durationMin: 60,
+    title: "Reschedule wave — rain-delayed jobs",
+    agentId: AGENT.admin,
+    agentName: AGENT_NAME[AGENT.admin],
+    workflowName: WF_NAME[WF.appointmentScheduling],
+    team: "admin",
+    state: "completed",
+    approvalId: null,
+    detail: "Fourteen outdoor jobs moved after Tuesday's storm; all customers confirmed new slots by WhatsApp.",
+  },
+
+  "cal-quote-followups-jul28": {
+    id: "cal-quote-followups-jul28",
+    date: `${DEMO_MONTH}-28`,
+    time: "09:00",
+    durationMin: 45,
+    title: "Renewal quote follow-ups",
+    agentId: AGENT.admin,
+    agentName: AGENT_NAME[AGENT.admin],
+    workflowName: WF_NAME[WF.customerResponse],
+    team: "admin",
+    state: "approved",
+    approvalId: null,
+    detail: "Polite follow-up drafts for three renewal quotes sent last week that haven't had a reply yet.",
+  },
+
+  "cal-social-posts-jul29": {
+    id: "cal-social-posts-jul29",
+    date: `${DEMO_MONTH}-29`,
+    time: "15:00",
+    durationMin: 20,
+    title: "Publish approved engagement posts",
+    agentId: AGENT.marketing,
+    agentName: AGENT_NAME[AGENT.marketing],
+    workflowName: WF_NAME[WF.contentPlanning],
+    team: "marketing",
+    state: "approved",
+    approvalId: null,
+    detail: "Wednesday post from the approved weekly plan publishes to Facebook and Instagram at 15:00.",
+  },
+};
+
+/** §18.2 actions available on a calendar event / recurring workflow. */
+export const CALENDAR_ACTIONS: string[] = [
+  "Reschedule",
+  "Skip next run",
+  "Pause workflow",
+  "Run now",
+  "Set quiet hours",
+  "Exclude public holidays",
+  "Change frequency",
+];

@@ -1,0 +1,788 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Onboarding + Lean Canvas layout (spec §7, §8, §21).
+   Layout-only rules — visual primitives come from .oa-* (app/app/app.css).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Shared two-column layout: flow + live capture rail ── */
+
+.layout {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 336px;
+  gap: clamp(24px, 3vw, 40px);
+  align-items: start;
+}
+
+.flowCol {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.rail {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.railCard {
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.railRow {
+  display: grid;
+  gap: 7px;
+  padding-top: 12px;
+  border-top: 1px solid var(--oa-border);
+}
+
+.railChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.railChip {
+  font-size: 11.5px;
+  padding: 3px 10px;
+}
+
+.railSections {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.railSectionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--oa-muted);
+}
+
+.railSectionRow[data-done="true"] {
+  color: var(--oa-ink);
+  font-weight: 600;
+}
+
+.railSectionRow svg {
+  flex: none;
+}
+
+/* ── Stepper ── */
+
+.stepper {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.stepBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-surface);
+  padding: 5px 14px 5px 5px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+  cursor: pointer;
+  transition: border-color 0.2s var(--oa-ease), color 0.2s var(--oa-ease),
+    background 0.2s var(--oa-ease);
+}
+
+.stepBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.stepBtn[aria-current="step"] {
+  border-color: var(--oa-blue);
+  color: var(--oa-blue-dark);
+  background: var(--oa-soft-blue);
+}
+
+.stepBtnDone {
+  color: var(--oa-teal-deep);
+}
+
+.stepNum {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--oa-bg-alt);
+  font-size: 11px;
+  font-weight: 800;
+  flex: none;
+}
+
+.stepBtn[aria-current="step"] .stepNum {
+  background: var(--oa-blue);
+  color: var(--oa-on-blue);
+}
+
+.stepBtnDone .stepNum {
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+}
+
+/* ── Step viewport (horizontal transitions stay inside) ── */
+
+.viewport {
+  overflow-x: clip;
+  padding: 12px;
+  margin: -12px;
+}
+
+.stepCard {
+  padding: clamp(22px, 3.4vw, 36px);
+  display: grid;
+  gap: 22px;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Welcome step ── */
+
+.modeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.modeCard {
+  text-align: left;
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  cursor: pointer;
+  transition: transform 0.2s var(--oa-ease), border-color 0.2s var(--oa-ease),
+    box-shadow 0.2s var(--oa-ease);
+}
+
+.modeCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--oa-border-strong);
+}
+
+.modeIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+}
+
+.modeTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 750;
+  font-size: 15px;
+}
+
+.demoPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: var(--oa-r-inner);
+  border: 1px dashed var(--oa-border-strong);
+  background: var(--oa-bg-alt);
+  flex-wrap: wrap;
+}
+
+.demoPanel > div {
+  display: grid;
+  gap: 4px;
+  min-width: 220px;
+  flex: 1;
+}
+
+.demoList {
+  list-style: none;
+  margin: 0;
+  padding: 16px 18px;
+  display: grid;
+  gap: 9px;
+  background: var(--oa-soft-teal);
+  border-radius: var(--oa-r-inner);
+  font-size: 13.5px;
+}
+
+.demoList li {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+
+.demoList svg {
+  color: var(--oa-teal-deep);
+  margin-top: 3px;
+  flex: none;
+}
+
+/* ── Intro step ── */
+
+.promptQuote {
+  font-size: clamp(19px, 2.4vw, 24px);
+  font-weight: 720;
+  letter-spacing: -0.018em;
+  line-height: 1.32;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.capturedCard {
+  padding: 18px 20px;
+  display: grid;
+  gap: 12px;
+  background: var(--oa-bg-alt);
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+}
+
+.capturedCard p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.62;
+}
+
+/* ── Tools step ── */
+
+.systemsPanel {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-bg-alt);
+}
+
+.systemsChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 38px;
+  align-items: center;
+}
+
+.searchWrap {
+  position: relative;
+}
+
+.searchWrap svg {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--oa-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  padding-left: 38px;
+}
+
+.catList {
+  display: grid;
+  gap: 18px;
+}
+
+.catGroup {
+  display: grid;
+  gap: 10px;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── Summary step ── */
+
+.checkList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.checkRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 13px 16px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+}
+
+.checkRow > div {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.checkTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.checkIconDone,
+.checkIconTodo {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  margin-top: 1px;
+}
+
+.checkIconDone {
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+}
+
+.checkIconTodo {
+  border: 1px dashed var(--oa-border-strong);
+  color: var(--oa-muted);
+  background: transparent;
+}
+
+.consentCard {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-surface);
+}
+
+.consentLines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+  font-size: 13.5px;
+  color: var(--oa-muted-strong);
+  line-height: 1.55;
+}
+
+.consentLines li {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+
+.consentLines svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--oa-teal-deep);
+}
+
+.consentCheck {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: var(--oa-soft-blue);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.consentCheck input {
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  accent-color: var(--oa-blue);
+  flex: none;
+  cursor: pointer;
+}
+
+/* ══════════════════ Lean Canvas ══════════════════ */
+
+.narrowCol {
+  max-width: 880px;
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+.pathGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.pathCard {
+  text-align: left;
+  padding: clamp(22px, 3vw, 30px);
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  cursor: pointer;
+  transition: transform 0.22s var(--oa-ease), box-shadow 0.22s var(--oa-ease),
+    border-color 0.22s var(--oa-ease);
+}
+
+.pathCard:hover {
+  transform: translateY(-3px);
+  border-color: var(--oa-border-strong);
+  box-shadow: var(--oa-shadow-pop);
+}
+
+.pathIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+}
+
+.pathIconTeal {
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+}
+
+.pathCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 750;
+  color: var(--oa-blue-dark);
+  margin-top: 2px;
+}
+
+/* Upload */
+
+.dropZone {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: clamp(30px, 5vw, 54px) 24px;
+  border: 1.5px dashed var(--oa-border-strong);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-surface);
+  text-align: center;
+  transition: border-color 0.2s var(--oa-ease), background 0.2s var(--oa-ease);
+}
+
+.dropZoneActive {
+  border-color: var(--oa-blue);
+  background: var(--oa-soft-blue);
+}
+
+.fileChips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.readingCard {
+  padding: clamp(22px, 3vw, 32px);
+  display: grid;
+  gap: 16px;
+}
+
+.readingLines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.readingLines li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--oa-muted);
+}
+
+.readingLines li[data-state="done"] {
+  color: var(--oa-ink);
+}
+
+.readingLines li[data-state="current"] {
+  color: var(--oa-blue-dark);
+  font-weight: 650;
+}
+
+.lineDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--oa-border-strong);
+  margin: 0 4px;
+  flex: none;
+}
+
+/* Guided */
+
+.guidedTop {
+  display: grid;
+  gap: 10px;
+}
+
+.exampleChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.exampleChip {
+  cursor: default;
+  background: var(--oa-bg-alt);
+  font-weight: 550;
+  white-space: normal;
+  text-align: left;
+}
+
+.improveHead {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.improveIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.improveGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.improvePanel {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 16px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-bg-alt);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.improvePanel p {
+  margin: 0;
+}
+
+.improvePanelSuggested {
+  background: var(--oa-surface);
+  border-color: var(--oa-blue);
+  box-shadow: 0 0 0 3px rgba(49, 87, 213, 0.1);
+}
+
+/* Canvas grid — classic Lean Canvas layout on desktop */
+
+.canvasTopBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.canvasGrid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-auto-rows: minmax(140px, auto);
+  gap: 13px;
+  grid-template-areas:
+    "problem problem solution solution uvp uvp unfair unfair segments segments"
+    "problem problem metrics metrics uvp uvp channels channels segments segments"
+    "cost cost cost cost cost revenue revenue revenue revenue revenue";
+}
+
+.areaProblem  { grid-area: problem; }
+.areaSegments { grid-area: segments; }
+.areaUvp      { grid-area: uvp; }
+.areaSolution { grid-area: solution; }
+.areaChannels { grid-area: channels; }
+.areaRevenue  { grid-area: revenue; }
+.areaCost     { grid-area: cost; }
+.areaMetrics  { grid-area: metrics; }
+.areaUnfair   { grid-area: unfair; }
+
+.canvasBlock {
+  padding: 15px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.blockHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.blockNum {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  font-size: 10.5px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.blockTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+  margin: 0;
+}
+
+.blockIconBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--oa-muted);
+  border: 1px solid transparent;
+  flex: none;
+  transition: color 0.2s var(--oa-ease), border-color 0.2s var(--oa-ease),
+    background 0.2s var(--oa-ease);
+}
+
+.blockIconBtn:hover {
+  color: var(--oa-ink);
+  border-color: var(--oa-border);
+  background: var(--oa-bg-alt);
+}
+
+.blockTextBtn {
+  text-align: left;
+  font-size: 13.5px;
+  line-height: 1.58;
+  color: var(--oa-ink);
+  border-radius: 10px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  flex: 1;
+  cursor: text;
+  transition: background 0.2s var(--oa-ease);
+}
+
+.blockTextBtn:hover {
+  background: var(--oa-bg-alt);
+}
+
+.blockEdit {
+  display: grid;
+  gap: 8px;
+}
+
+.canvasFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+/* ── Responsive (spec §21: 1440 / 1024 / 768 / 390) ── */
+
+@media (max-width: 1023px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .rail {
+    position: static;
+  }
+  .canvasGrid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: none;
+    grid-auto-rows: auto;
+  }
+  .areaProblem, .areaSegments, .areaUvp, .areaSolution, .areaChannels,
+  .areaRevenue, .areaCost, .areaMetrics, .areaUnfair {
+    grid-area: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .modeGrid {
+    grid-template-columns: 1fr;
+  }
+  .pathGrid {
+    grid-template-columns: 1fr;
+  }
+  .improveGrid {
+    grid-template-columns: 1fr;
+  }
+  .canvasGrid {
+    grid-template-columns: 1fr;
+  }
+  .stepCard {
+    padding: 18px;
+  }
+  .checkRow {
+    flex-wrap: wrap;
+  }
+  .demoPanel {
+    align-items: stretch;
+  }
+}
