@@ -37,7 +37,7 @@ export default function CardsMode({
   return (
     <div className={styles.qCards}>
       <p className="oa-sub" style={{ margin: 0 }}>
-        Answer in any order — every confirmed answer feeds What Oriant knows.
+        Answer in any order. Every confirmed answer feeds What Oriant knows.
       </p>
       {DISCOVERY_QUESTIONS.map((q, i) => {
         const done = Boolean(answers[q.id]);

@@ -7,7 +7,7 @@
  */
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Check, HelpCircle, Info, SkipForward, Sparkles } from "lucide-react";
+import { Check, HelpCircle, Info, SkipForward } from "lucide-react";
 import type { DiscoveryQuestion, KnowledgeFact } from "@/lib/mock/types";
 import { DISCOVERY_QUESTIONS, KNOWLEDGE_FACTS } from "@/lib/mock/fixtures/discovery-questions";
 import VoiceAnswer from "@/components/mock/ui/VoiceAnswer";
@@ -111,7 +111,7 @@ export default function VoiceMode({
               <p className={styles.reason}>
                 <Info size={14} aria-hidden />
                 <span>
-                  <strong style={{ fontWeight: 750 }}>Why Oriant asks — </strong>
+                  <strong style={{ fontWeight: 750 }}>Why Oriant asks: </strong>
                   {displayQ.reason}
                 </span>
               </p>
@@ -126,7 +126,7 @@ export default function VoiceMode({
                     style={{ overflow: "hidden" }}
                   >
                     <div className={styles.clarify} role="note">
-                      <Sparkles size={14} aria-hidden />
+                      <HelpCircle size={14} aria-hidden />
                       <span>{CLARIFICATIONS[displayQ.id]}</span>
                     </div>
                   </motion.div>
@@ -196,7 +196,7 @@ export default function VoiceMode({
               disabled={done || isCurrent}
               onClick={() => onJump(question.id)}
               aria-current={isCurrent ? "step" : undefined}
-              aria-label={`Question ${i + 1}: ${question.question} — ${state}`}
+              aria-label={`Question ${i + 1}: ${question.question}, ${state}`}
             >
               {done ? <Check size={12} aria-hidden /> : <span aria-hidden>{i + 1}</span>}
               {isSkipped ? "Skipped" : done ? "Answered" : `Question ${i + 1}`}

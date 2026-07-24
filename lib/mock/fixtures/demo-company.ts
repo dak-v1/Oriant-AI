@@ -1,6 +1,7 @@
 /**
  * demo-company.ts — canonical BrightPath Home Services demo company fixture.
- * Covers spec §6 (demo company), §7.2 (onboarding sections), §7.3 (tool catalog).
+ * Covers spec §6 (demo company), §7.2 (onboarding sections), §7.3 (tool catalog)
+ * and improvement spec §7 (business-function grouping + one-line purposes).
  */
 
 import type { CompanyProfile, ToolCategory, ToolChip } from "../types";
@@ -38,56 +39,84 @@ export const DEMO_COMPANY: CompanyProfile = {
   ],
 };
 
-/** Spec §7.3 — the full selectable tool catalog, in spec category order. */
-export const TOOL_CATALOG: ToolChip[] = [
-  // Customer communication
-  { id: APP.gmail, name: "Gmail", category: "communication" },
-  { id: APP.outlook, name: "Outlook", category: "communication" },
-  { id: APP.whatsapp, name: "WhatsApp Business", category: "communication" },
-  { id: APP.telegram, name: "Telegram", category: "communication" },
-  { id: APP.intercom, name: "Intercom", category: "communication" },
-  // Scheduling
-  { id: APP.googleCalendar, name: "Google Calendar", category: "scheduling" },
-  { id: APP.microsoftCalendar, name: "Microsoft Calendar", category: "scheduling" },
-  { id: APP.calendly, name: "Calendly", category: "scheduling" },
-  // CRM and sales
-  { id: APP.hubspot, name: "HubSpot", category: "crm" },
-  { id: APP.salesforce, name: "Salesforce", category: "crm" },
-  { id: APP.pipedrive, name: "Pipedrive", category: "crm" },
+/** Catalog entry: the shared ToolChip contract plus a one-line purpose
+ *  (improvement spec §7 — purpose stays local to this fixture). */
+export type CatalogTool = ToolChip & { purpose: string };
+
+/** Spec §7.3 + improvement spec §7 — the selectable tool catalog, grouped by
+ *  business function. Catalog-only additions (Shopify, WooCommerce) use plain
+ *  string ids because they exist nowhere else in the mock. */
+export const TOOL_CATALOG: CatalogTool[] = [
+  // Communication
+  { id: APP.gmail, name: "Gmail", category: "communication", purpose: "Shared inbox for customer email" },
+  { id: APP.outlook, name: "Outlook", category: "communication", purpose: "Customer email for Microsoft 365 teams" },
+  { id: APP.whatsapp, name: "WhatsApp Business", category: "communication", purpose: "Customer chat on your business number" },
+  { id: APP.telegram, name: "Telegram", category: "communication", purpose: "Direct customer messaging channel" },
+  { id: APP.intercom, name: "Intercom", category: "communication", purpose: "Live chat on your website" },
+  { id: APP.slack, name: "Slack", category: "communication", purpose: "Team chat and internal channels" },
+  { id: APP.teams, name: "Microsoft Teams", category: "communication", purpose: "Team chat and meetings in Microsoft 365" },
+  // Calendar
+  { id: APP.googleCalendar, name: "Google Calendar", category: "scheduling", purpose: "Team and technician scheduling" },
+  { id: APP.microsoftCalendar, name: "Microsoft Calendar", category: "scheduling", purpose: "Scheduling for Microsoft 365 teams" },
+  { id: APP.calendly, name: "Calendly", category: "scheduling", purpose: "Self-service booking links for customers" },
+  // Customer management
+  { id: APP.hubspot, name: "HubSpot", category: "crm", purpose: "Customer records and deal tracking" },
+  { id: APP.salesforce, name: "Salesforce", category: "crm", purpose: "Customer records for larger sales teams" },
+  { id: APP.pipedrive, name: "Pipedrive", category: "crm", purpose: "Simple sales pipeline tracking" },
   // Finance
-  { id: APP.quickbooks, name: "QuickBooks", category: "finance" },
-  { id: APP.xero, name: "Xero", category: "finance" },
-  { id: APP.stripe, name: "Stripe", category: "finance" },
-  // Storage and documents
-  { id: APP.googleDrive, name: "Google Drive", category: "storage" },
-  { id: APP.dropbox, name: "Dropbox", category: "storage" },
-  { id: APP.onedrive, name: "OneDrive", category: "storage" },
-  { id: APP.notion, name: "Notion", category: "storage" },
+  { id: APP.quickbooks, name: "QuickBooks", category: "finance", purpose: "Invoicing and accounting" },
+  { id: APP.xero, name: "Xero", category: "finance", purpose: "Cloud accounting and invoicing" },
+  { id: APP.stripe, name: "Stripe", category: "finance", purpose: "Card payments and payouts" },
   // Marketing
-  { id: APP.mailchimp, name: "Mailchimp", category: "marketing" },
-  { id: APP.metaBusiness, name: "Meta Business Suite", category: "marketing" },
-  { id: APP.linkedin, name: "LinkedIn", category: "marketing" },
-  { id: APP.canva, name: "Canva", category: "marketing" },
-  // Internal collaboration
-  { id: APP.slack, name: "Slack", category: "collaboration" },
-  { id: APP.teams, name: "Microsoft Teams", category: "collaboration" },
-  { id: APP.asana, name: "Asana", category: "collaboration" },
-  { id: APP.clickup, name: "ClickUp", category: "collaboration" },
+  { id: APP.mailchimp, name: "Mailchimp", category: "marketing", purpose: "Email newsletters and campaigns" },
+  { id: APP.metaBusiness, name: "Meta Business Suite", category: "marketing", purpose: "Facebook and Instagram publishing" },
+  { id: APP.linkedin, name: "LinkedIn", category: "marketing", purpose: "Company page posts and hiring content" },
+  { id: APP.canva, name: "Canva", category: "marketing", purpose: "Design templates and brand assets" },
+  // Storage
+  { id: APP.googleDrive, name: "Google Drive", category: "storage", purpose: "Shared files and documents" },
+  { id: APP.dropbox, name: "Dropbox", category: "storage", purpose: "File storage and sharing" },
+  { id: APP.onedrive, name: "OneDrive", category: "storage", purpose: "File storage in Microsoft 365" },
+  { id: APP.notion, name: "Notion", category: "storage", purpose: "Team wiki, SOPs and notes" },
+  // Commerce
+  { id: "shopify", name: "Shopify", category: "commerce", purpose: "Online store orders and customers" },
+  { id: "woocommerce", name: "WooCommerce", category: "commerce", purpose: "Orders and stock on a WordPress store" },
+  // Project management
+  { id: APP.asana, name: "Asana", category: "project", purpose: "Task and project tracking" },
+  { id: APP.clickup, name: "ClickUp", category: "project", purpose: "Projects, tasks and docs in one place" },
 ];
 
+/** Business-function labels (improvement spec §7).
+ *  "collaboration" is a legacy union member with no catalog tools; it is kept
+ *  only so this record satisfies the ToolCategory union. */
 export const TOOL_CATEGORY_LABELS: Record<ToolCategory, string> = {
-  communication: "Customer communication",
-  scheduling: "Scheduling",
-  crm: "CRM and sales",
+  communication: "Communication",
+  scheduling: "Calendar",
+  crm: "Customer Management",
   finance: "Finance",
-  storage: "Storage and documents",
   marketing: "Marketing",
-  collaboration: "Internal collaboration",
+  storage: "Storage",
+  commerce: "Commerce",
+  project: "Project Management",
+  other: "Other",
+  collaboration: "Communication",
 };
+
+/** Display order for category groups and filter chips (improvement spec §7). */
+export const TOOL_CATEGORY_ORDER: ToolCategory[] = [
+  "communication",
+  "scheduling",
+  "crm",
+  "finance",
+  "marketing",
+  "storage",
+  "commerce",
+  "project",
+  "other",
+];
 
 /** Spec §7.1 — Sarah's hardcoded opening voice answer. */
 export const DEMO_INTRO_ANSWER =
-  "We run BrightPath Home Services in Singapore — eighteen of us doing residential " +
+  "We run BrightPath Home Services in Singapore, eighteen of us doing residential " +
   "maintenance, around 650 customer requests a month. Too much of our day goes into " +
   "sorting Gmail and WhatsApp messages by hand and rescheduling appointments over the " +
   "phone. Marketing keeps waiting on me, and every Friday the finance team combs " +
@@ -123,7 +152,7 @@ export const ONBOARDING_SECTIONS: { id: string; title: string; blurb: string }[]
   {
     id: "business-info",
     title: "Business information",
-    blurb: "Lean Canvas, SOPs or an org chart — anything already written down.",
+    blurb: "Lean Canvas, SOPs or an org chart: anything already written down.",
   },
   {
     id: "consent",

@@ -1,22 +1,25 @@
 "use client";
 /**
- * DeployChecklist — the eight-step activation review (spec §16).
+ * DeployChecklist — the eight-step activation review (spec §16, §15).
  *
  * Items 1–2 are auto-confirmed from real store state (build jobs, sandbox),
  * 3/5/6 are owner acknowledgements (real checkboxes → setChecklistValue),
- * 4 and 7 are choices, 8 is the single primary action: Activate workforce.
- * The primary stays disabled until every auto item is genuinely satisfied
- * and every acknowledgement/choice is made — with links back to whatever
- * is missing.
+ * 4 is a choice, 7 is the notification-channel picker (In app always on;
+ * WhatsApp / Email digest optional, each with a mock preview), 8 is the
+ * single primary action: Activate workforce. The primary stays disabled
+ * until every auto item is genuinely satisfied and every acknowledgement
+ * is made — with links back to whatever is missing.
  */
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle,
   ArrowRight,
   Bell,
   Check,
   FlaskConical,
+  Mail,
+  MessageCircle,
   PackageCheck,
   Plug,
 } from "lucide-react";
@@ -28,6 +31,7 @@ import { AGENT_NAME } from "@/lib/mock/fixtures/ids";
 import { INTEGRATIONS } from "@/lib/mock/fixtures/integrations";
 import { BUILD_FIXTURES } from "@/lib/mock/fixtures/build-artifacts";
 import { STRESS_TEST } from "@/lib/mock/fixtures/sandbox-scenarios";
+import { WHATSAPP_PREVIEW } from "@/lib/mock/fixtures/activity";
 import StatusBadge from "@/components/mock/ui/StatusBadge";
 import styles from "./deploy.module.css";
 
@@ -60,7 +64,7 @@ const CHECKLIST: DeployChecklistItem[] = [
   {
     id: "owners",
     title: "Human approval owners confirmed",
-    detail: "Every approval lands with a named person — check these are right.",
+    detail: "Every approval lands with a named person. Check these are right.",
     kind: "ack",
   },
   {
@@ -72,13 +76,24 @@ const CHECKLIST: DeployChecklistItem[] = [
   {
     id: "channels",
     title: "Notification channels",
-    detail: "How you want to hear about approvals and exceptions.",
+    detail: "How you want to hear about approvals and exceptions. In app is always on.",
     kind: "choice",
-    options: ["In-app", "WhatsApp", "Email digest"],
   },
 ];
 
-const CHANNEL_OPTIONS = ["In-app", "WhatsApp", "Email digest"];
+/* Channel buttons (spec §15, A-01). Ids match the values stored in
+   deployment.checked["channels"] so earlier selections keep working. */
+const CHANNELS: {
+  id: string;
+  label: string;
+  desc: string;
+  Icon: typeof Bell;
+  alwaysOn?: boolean;
+}[] = [
+  { id: "In-app", label: "In app", desc: "Approvals and alerts inside Oriant", Icon: Bell, alwaysOn: true },
+  { id: "WhatsApp", label: "WhatsApp", desc: "Approval requests to your phone", Icon: MessageCircle },
+  { id: "Email digest", label: "Email digest", desc: "A daily summary each evening", Icon: Mail },
+];
 
 export default function DeployChecklist({ onActivate }: { onActivate: () => void }) {
   const reduced = useReducedMotion();
@@ -116,12 +131,13 @@ export default function DeployChecklist({ onActivate }: { onActivate: () => void
   const warningsAcked = checked["warnings"] === true;
   const ownersAcked = checked["owners"] === true;
   const schedulesAcked = checked["schedules"] === true;
-  const channelsValue = typeof checked["channels"] === "string" ? checked["channels"] : "";
-  const selectedChannels = new Set(channelsValue ? channelsValue.split(", ") : []);
+  /* In app is always on, so the channel step always has at least one channel.
+     The stored value only records the optional extras the owner switched on. */
+  const storedChannels = typeof checked["channels"] === "string" ? checked["channels"] : "";
+  const selectedChannels = new Set(["In-app", ...storedChannels.split(", ").filter(Boolean)]);
 
   const canActivate =
-    allBuilt && sandboxDone && warningsAcked && systemsOk && ownersAcked && schedulesAcked &&
-    channelsValue.length > 0;
+    allBuilt && sandboxDone && warningsAcked && systemsOk && ownersAcked && schedulesAcked;
 
   const missing: { label: string; href: string }[] = [];
   if (!allBuilt) missing.push({ label: "Finish generating agent packages", href: "/app/build" });
@@ -131,16 +147,12 @@ export default function DeployChecklist({ onActivate }: { onActivate: () => void
     missing.push({ label: "Connect remaining systems, or choose to connect them later", href: "#chk-systems" });
   if (!ownersAcked) missing.push({ label: "Confirm approval owners", href: "#chk-owners" });
   if (!schedulesAcked) missing.push({ label: "Confirm schedules and quiet hours", href: "#chk-schedules" });
-  if (!channelsValue) missing.push({ label: "Choose notification channels", href: "#chk-channels" });
 
   const toggleChannel = (ch: string) => {
     const next = new Set(selectedChannels);
-    next.add("In-app"); // always on
-    if (ch !== "In-app") {
-      if (next.has(ch)) next.delete(ch);
-      else next.add(ch);
-    }
-    setChecklistValue("channels", CHANNEL_OPTIONS.filter((c) => next.has(c)).join(", "));
+    if (next.has(ch)) next.delete(ch);
+    else next.add(ch);
+    setChecklistValue("channels", CHANNELS.map((c) => c.id).filter((id) => next.has(id)).join(", "));
   };
 
   const satisfied = (id: string): boolean => {
@@ -151,7 +163,7 @@ export default function DeployChecklist({ onActivate }: { onActivate: () => void
       case "systems": return systemsOk;
       case "owners": return ownersAcked;
       case "schedules": return schedulesAcked;
-      case "channels": return channelsValue.length > 0;
+      case "channels": return true; // In app is always on
       default: return false;
     }
   };
@@ -170,7 +182,7 @@ export default function DeployChecklist({ onActivate }: { onActivate: () => void
             ) : (
               <p className={styles.evLine}>
                 <AlertTriangle size={14} className={styles.evIconWarn} aria-hidden />
-                {unbuilt.length} agent{unbuilt.length === 1 ? "" : "s"} still building —{" "}
+                {unbuilt.length} agent{unbuilt.length === 1 ? "" : "s"} still building:{" "}
                 <Link href="/app/build" style={{ fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 3 }}>
                   open the Agent Factory
                 </Link>
@@ -200,13 +212,13 @@ export default function DeployChecklist({ onActivate }: { onActivate: () => void
             {sandboxDone ? (
               <p className={styles.evLine}>
                 <Check size={14} className={styles.evIcon} aria-hidden />
-                High-value complaint scenario completed — the run paused for your approval before any
+                High-value complaint scenario completed. The run paused for your approval before any
                 compensation was proposed.
               </p>
             ) : (
               <p className={styles.evLine}>
                 <AlertTriangle size={14} className={styles.evIconWarn} aria-hidden />
-                No completed sandbox run yet —{" "}
+                No completed sandbox run yet:{" "}
                 <Link href="/app/sandbox" style={{ fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 3 }}>
                   open the sandbox
                 </Link>
@@ -216,7 +228,7 @@ export default function DeployChecklist({ onActivate }: { onActivate: () => void
             {sandbox.stressDone && (
               <p className={styles.evLine}>
                 <Check size={14} className={styles.evIcon} aria-hidden />
-                Stress test: {STRESS_TEST.total} cases — {STRESS_TEST.passed} passed,{" "}
+                Stress test: {STRESS_TEST.total} cases, {STRESS_TEST.passed} passed,{" "}
                 {STRESS_TEST.escalated} correctly escalated, {STRESS_TEST.failed} failed.
               </p>
             )}
@@ -237,7 +249,7 @@ export default function DeployChecklist({ onActivate }: { onActivate: () => void
               </div>
             ) : (
               <p className={styles.evLine}>
-                No warnings recorded yet — run the 20-case stress test in the{" "}
+                No warnings recorded yet. Run the 20-case stress test in the{" "}
                 <Link href="/app/sandbox" style={{ fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 3 }}>
                   sandbox
                 </Link>{" "}
@@ -318,32 +330,100 @@ export default function DeployChecklist({ onActivate }: { onActivate: () => void
           </div>
         );
 
-      case "channels":
+      case "channels": {
+        const reveal = reduced
+          ? {}
+          : {
+              initial: { opacity: 0, y: 8 },
+              animate: { opacity: 1, y: 0 },
+              exit: { opacity: 0 },
+              transition: { duration: DUR.card, ease: EASE },
+            };
         return (
           <div className={styles.evidence}>
-            <div className={styles.channelRow} role="group" aria-label="Notification channels">
-              {CHANNEL_OPTIONS.map((ch) => {
-                const confirmed = selectedChannels.has(ch);
+            <div className={styles.channelGrid} role="group" aria-label="Notification channels">
+              {CHANNELS.map(({ id, label, desc, Icon, alwaysOn }) => {
+                const on = selectedChannels.has(id);
                 return (
                   <button
-                    key={ch}
+                    key={id}
                     type="button"
-                    className={`oa-chip ${confirmed ? "oa-chip--selected" : ""}`}
-                    aria-pressed={confirmed}
-                    onClick={() => toggleChannel(ch)}
+                    className={`oa-selectable ${on ? "oa-selectable--selected" : ""} ${styles.channelCard}`}
+                    aria-pressed={on}
+                    disabled={alwaysOn}
+                    onClick={alwaysOn ? undefined : () => toggleChannel(id)}
                   >
-                    {confirmed && <Check size={13} aria-hidden />}
-                    {ch}
-                    {ch === "In-app" ? " · always on" : ""}
+                    <span className={styles.channelIcon} aria-hidden>
+                      <Icon size={17} />
+                    </span>
+                    <span className={styles.channelText}>
+                      <span className={styles.channelName}>
+                        {label}
+                        {alwaysOn && <span className="oa-tag oa-tag--neutral">Always on</span>}
+                      </span>
+                      <span className={styles.channelDesc}>{desc}</span>
+                    </span>
+                    <span className="oa-check-badge" aria-hidden>
+                      <Check size={13} />
+                    </span>
                   </button>
                 );
               })}
             </div>
-            <span className="oa-sim-note">
-              WhatsApp and email notifications are simulated — no real message is sent.
-            </span>
+
+            <AnimatePresence initial={false}>
+              {selectedChannels.has("WhatsApp") && (
+                <motion.div
+                  key="wa-preview"
+                  className={styles.previewCard}
+                  aria-label="WhatsApp notification preview"
+                  {...reveal}
+                >
+                  <div className={styles.previewTop}>
+                    <span className={`${styles.previewIcon} ${styles.previewIconWa}`} aria-hidden>
+                      <MessageCircle size={16} />
+                    </span>
+                    <div className={styles.previewHead}>
+                      <span className={styles.previewApp}>WhatsApp</span>
+                      <span className={styles.previewTitle}>
+                        {WHATSAPP_PREVIEW.title.replace(/\s*—\s*/g, ": ")}
+                      </span>
+                    </div>
+                    <span className={styles.previewTime}>{WHATSAPP_PREVIEW.time}</span>
+                  </div>
+                  <p className={styles.previewBody}>{WHATSAPP_PREVIEW.body}</p>
+                  <span className="oa-sim-note">Mock notification enabled: no real message is sent.</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence initial={false}>
+              {selectedChannels.has("Email digest") && (
+                <motion.div
+                  key="mail-preview"
+                  className={styles.previewCard}
+                  aria-label="Email digest preview"
+                  {...reveal}
+                >
+                  <div className={styles.previewTop}>
+                    <span className={`${styles.previewIcon} ${styles.previewIconMail}`} aria-hidden>
+                      <Mail size={16} />
+                    </span>
+                    <div className={styles.previewHead}>
+                      <span className={styles.previewApp}>Email · Oriant</span>
+                      <span className={styles.previewTitle}>
+                        Your BrightPath evening digest: 3 approvals, 12 tasks done
+                      </span>
+                    </div>
+                    <span className={styles.previewTime}>18:30</span>
+                  </div>
+                  <span className="oa-sim-note">Mock notification enabled: no real message is sent.</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         );
+      }
 
       default:
         return null;
@@ -353,8 +433,9 @@ export default function DeployChecklist({ onActivate }: { onActivate: () => void
   const leadFor = (item: DeployChecklistItem) => {
     const ok = satisfied(item.id);
     if (item.kind === "ack") {
+      /* Label wrapper gives the checkbox a real 44px hit target (§19.1). */
       return (
-        <span className={styles.checkLead}>
+        <label className={styles.checkLead}>
           <input
             id={`ack-${item.id}`}
             type="checkbox"
@@ -363,7 +444,7 @@ export default function DeployChecklist({ onActivate }: { onActivate: () => void
             onChange={(e) => setChecklistValue(item.id, e.target.checked)}
             aria-describedby={`detail-${item.id}`}
           />
-        </span>
+        </label>
       );
     }
     const Icon =
@@ -457,7 +538,7 @@ export default function DeployChecklist({ onActivate }: { onActivate: () => void
             </span>
             <span className="oa-tag oa-tag--neutral">Illustrative pricing</span>
           </div>
-          <span className="oa-sim-note">Simulated activation — nothing outside this demo is changed.</span>
+          <span className="oa-sim-note">Simulated activation: nothing outside this demo is changed.</span>
           {missing.length > 0 && (
             <ul className={styles.missing} aria-label="Before you can activate">
               {missing.map((m) => (

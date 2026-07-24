@@ -1,18 +1,21 @@
 "use client";
 /**
- * PlanInspector — the context-sensitive right rail (spec §11.1, §11.6):
- * selected agent detail, selected connection (what passes here / if it
- * fails), or the default plan summary. Rendered as a column ≥1024px and
- * inside a Drawer below that (the parent decides).
+ * PlanInspector — the context-sensitive right rail (spec §11.1, §11.6,
+ * improvement spec §12.4): selected agent detail (including the workflow
+ * enable toggles, moved here from the canvas cards), selected connection
+ * (what passes here / if it fails), or the default plan summary. Rendered
+ * as a column ≥1024px and inside a Drawer below that (the parent decides).
  */
 import Link from "next/link";
-import { ArrowDown, Check, Lightbulb, Plug, Settings2, ShieldCheck, TriangleAlert } from "lucide-react";
+import { ArrowDown, Check, Plug, Settings2, ShieldCheck, TriangleAlert } from "lucide-react";
 import StatusBadge from "@/components/mock/ui/StatusBadge";
 import { AGENT_LIBRARY, PLAN_OUTCOMES } from "@/lib/mock/fixtures/agent-library";
 import { INTEGRATIONS } from "@/lib/mock/fixtures/integrations";
 import { money, planTotals } from "@/lib/mock/pricing";
 import { useDemoStore } from "@/lib/mock/store";
+import { toast } from "@/components/mock/ui/Toaster";
 import type { AgentWorkflowDef } from "@/lib/mock/types";
+import { TriggerGlyph } from "./AgentPlanCard";
 import { OPERATING_MODE_LABEL, workflowDefById, type PlannerSelection } from "./planner-utils";
 import styles from "./planner.module.css";
 
@@ -25,6 +28,22 @@ function AgentDetail({ agentId, approved }: { agentId: string; approved: boolean
   if (!def || !agent) return null;
 
   const approvals = Array.from(new Set([...def.humanApprovals, ...agent.config.approvalActions]));
+  const workflows = agent.workflowOrder
+    .map((id) => workflowDefById(def, id))
+    .filter((w): w is AgentWorkflowDef => Boolean(w));
+
+  const toggle = (wf: AgentWorkflowDef) => {
+    const st = useDemoStore.getState();
+    const current = st.plan.agents.find((a) => a.agentId === agent.agentId);
+    const wasEnabled = current?.config.workflowsEnabled[wf.id] ?? true;
+    st.toggleAgentWorkflow(agent.agentId, wf.id);
+    toast({
+      title: wasEnabled ? `Disabled ${wf.name}.` : `Enabled ${wf.name}.`,
+      detail: wasEnabled ? "Kept in the plan. It will not run until re-enabled." : undefined,
+      tone: "info",
+      action: { label: "Undo", onClick: () => useDemoStore.getState().undoPlan() },
+    });
+  };
 
   return (
     <>
@@ -46,6 +65,39 @@ function AgentDetail({ agentId, approved }: { agentId: string; approved: boolean
         <p className={styles.insPanelBody}>
           {def.source === "preset" ? def.fitReason : def.customProposal?.whyCustom ?? def.fitReason}
         </p>
+      </div>
+
+      <div className={styles.insSection}>
+        <p className="oa-micro">Workflows</p>
+        <div className={styles.wfList}>
+          {workflows.map((wf) => {
+            const enabled = agent.config.workflowsEnabled[wf.id] ?? true;
+            return (
+              <div key={wf.id} className={`${styles.wfRow} ${enabled ? "" : styles.wfRowOff}`}>
+                <div className={styles.wfText}>
+                  <p className={styles.wfName}>{wf.name}</p>
+                  <p className={styles.wfTrigger}>
+                    <TriggerGlyph kind={wf.trigger.kind} />
+                    {wf.trigger.label}
+                  </p>
+                  {!enabled && <p className={styles.wfOffNote}>Disabled, kept in plan</p>}
+                </div>
+                {!approved ? (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={enabled}
+                    aria-label={`${wf.name} enabled`}
+                    className="oa-switch"
+                    onClick={() => toggle(wf)}
+                  />
+                ) : (
+                  <span className={`oa-switch ${enabled ? "oa-switch--on" : ""}`} aria-hidden />
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className={styles.insSection}>
@@ -185,7 +237,7 @@ function EdgeDetail({ fromId, toId }: { fromId: string; toId: string }) {
         <p className="oa-micro">What passes here</p>
         {enabledWorkflows.length === 0 && (
           <p className="oa-sub">
-            All upstream workflows are disabled — nothing passes on this connection right now.
+            All upstream workflows are disabled, so nothing passes on this connection right now.
           </p>
         )}
         {enabledWorkflows.map((wf) => (
@@ -271,7 +323,7 @@ function PlanSummary() {
       <div className={styles.insPanel}>
         <p className={styles.insPanelTitle}>Illustrative pricing</p>
         <p className={styles.insPanelBody}>
-          {money(totals.setup)} setup · {money(totals.monthly)}/mo. Estimates on demo data — no
+          {money(totals.setup)} setup · {money(totals.monthly)}/mo. Estimates on demo data, with no
           guaranteed savings.
         </p>
       </div>

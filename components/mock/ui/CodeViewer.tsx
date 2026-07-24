@@ -18,6 +18,15 @@ export default function CodeViewer({
   const file = files[active];
   if (!file) return null;
 
+  /* Roving tabindex + arrow keys (spec §19.1 tabs keyboard navigation). */
+  const onTabKey = (e: React.KeyboardEvent, i: number) => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    e.preventDefault();
+    const next = e.key === "ArrowRight" ? (i + 1) % files.length : (i - 1 + files.length) % files.length;
+    setActive(next);
+    (e.currentTarget.parentElement?.children[next] as HTMLElement | undefined)?.focus();
+  };
+
   return (
     <div style={{ display: "grid", gap: 10 }}>
       <div className="oa-tabs" role="tablist" aria-label="Generated files">
@@ -27,8 +36,10 @@ export default function CodeViewer({
             type="button"
             role="tab"
             aria-selected={i === active}
+            tabIndex={i === active ? 0 : -1}
             className={`oa-tab ${i === active ? "oa-tab--active" : ""}`}
             onClick={() => setActive(i)}
+            onKeyDown={(e) => onTabKey(e, i)}
           >
             <FileCode2 size={13} aria-hidden style={{ marginRight: 6, verticalAlign: -2 }} />
             {f.name}

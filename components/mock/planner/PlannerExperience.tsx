@@ -1,19 +1,29 @@
 "use client";
 /**
  * PlannerExperience — the AI Workforce Planner + Human Approval Gate 2
- * (spec §11.1–§11.8, §13, §20 "Planner", §22 planner timings).
+ * (spec §11, §13, improvement spec §12.1–§12.4).
  *
- * Orchestrates: the full-canvas generation state (5 stages over ~8s, with
- * Skip), the three-column layout (library / operations narrative /
- * inspector), the sticky controls bar with animated totals + undo/redo,
- * the NL command bar, the Gate 2 readiness drawer, the stale "Rebuild
- * required" banner and the approved read-only confirmation state.
+ * Structure top to bottom: header (plan name, version, costs, readiness) →
+ * outcome summary strip → workflow canvas (with Canvas / List toggle) with
+ * the inspector beside it → compact command bar → "Add more agents" library
+ * tray → approval footer. The library lives in a horizontal tray beneath
+ * the command bar at every width (rather than a left rail) so the canvas is
+ * always the single visual primary and the drop target sits directly above
+ * the cards being dragged. Also orchestrates the generation overlay, stale
+ * banner, undo/redo, the Gate 2 drawer and the approved read-only state.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, CircleCheckBig, RefreshCw, TriangleAlert } from "lucide-react";
-import { useDemoStore, usePlanTotals } from "@/lib/mock/store";
+import {
+  ArrowRight,
+  CircleCheckBig,
+  List,
+  RefreshCw,
+  TriangleAlert,
+  Workflow,
+} from "lucide-react";
+import { planBlockers, useDemoStore, usePlanTotals } from "@/lib/mock/store";
 import { atLeast } from "@/lib/mock/state-machine";
 import { mockPlannerService } from "@/lib/mock/services";
 import type { TimelineHandle } from "@/lib/mock/services/timeline";
@@ -23,13 +33,17 @@ import { DUR, EASE } from "@/lib/mock/motion";
 import Drawer from "@/components/mock/ui/Drawer";
 import GenerationOverlay from "./GenerationOverlay";
 import PlannerControls from "./PlannerControls";
+import OutcomeStrip from "./OutcomeStrip";
 import LibraryPanel from "./LibraryPanel";
 import PlanCanvas from "./PlanCanvas";
+import PlanList from "./PlanList";
 import PlanInspector from "./PlanInspector";
 import CommandBar from "./CommandBar";
 import GateDrawer from "./GateDrawer";
 import { useMinWidth, type PlannerSelection } from "./planner-utils";
 import styles from "./planner.module.css";
+
+type CanvasView = "canvas" | "list";
 
 export default function PlannerExperience() {
   const journey = useDemoStore((s) => s.journey);
@@ -40,6 +54,7 @@ export default function PlannerExperience() {
   const totals = usePlanTotals();
   const reduced = useReducedMotion();
   const isWide = useMinWidth(1024);
+  const isTablet = useMinWidth(768);
 
   const [generating, setGenerating] = useState(false);
   const [stagesDone, setStagesDone] = useState(0);
@@ -47,10 +62,16 @@ export default function PlannerExperience() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [gateOpen, setGateOpen] = useState(false);
   const [dropActive, setDropActive] = useState(false);
+  const [libraryDragging, setLibraryDragging] = useState(false);
+  /** Explicit user choice; null = responsive default (List below 768px). */
+  const [viewChoice, setViewChoice] = useState<CanvasView | null>(null);
   const dropRef = useRef<HTMLDivElement | null>(null);
   const genHandle = useRef<TimelineHandle | null>(null);
 
   const approved = plan.status === "approved";
+  const view: CanvasView = viewChoice ?? (isTablet ? "canvas" : "list");
+  const blockers = planBlockers(plan.agents);
+  const unresolved = blockers.length;
 
   /* ── Generation (spec §11 GENERATION, §22: 5 stages over ~8s) ── */
 
@@ -125,7 +146,7 @@ export default function PlannerExperience() {
         <div style={{ display: "grid", gap: 6, maxWidth: 720 }}>
           <p className="oa-eyebrow">Phase 2 · Workforce plan</p>
           <h1 className="oa-h1">
-            Your AI <span className="oa-serif">workforce</span> plan
+            BrightPath <span className="oa-serif">workforce</span> plan
           </h1>
           <p className="oa-lead">
             Drafted from Company Report v{reportVersion}. Review how each agent will run, adjust
@@ -163,7 +184,7 @@ export default function PlannerExperience() {
                 <div className={styles.bannerText}>
                   <p className={styles.bannerTitle}>Rebuild required</p>
                   <p className={styles.bannerSub}>
-                    The company report changed after this plan was generated — regenerate to bring
+                    The company report changed after this plan was generated. Regenerate to bring
                     it up to date.
                   </p>
                 </div>
@@ -187,7 +208,7 @@ export default function PlannerExperience() {
                   </p>
                   <p className={styles.bannerSub} style={{ color: "var(--oa-muted-strong)" }}>
                     Version {plan.version} is locked for the build
-                    {plan.approvedAt ? ` — approved at ${plan.approvedAt.slice(11, 16)}` : ""}. The
+                    {plan.approvedAt ? `, approved at ${plan.approvedAt.slice(11, 16)}` : ""}. The
                     plan below is read-only.
                   </p>
                 </div>
@@ -206,26 +227,55 @@ export default function PlannerExperience() {
               canRedo={canRedo}
               setup={totals.setup}
               monthly={totals.monthly}
+              unresolved={unresolved}
               onUndo={() => useDemoStore.getState().undoPlan()}
               onRedo={() => useDemoStore.getState().redoPlan()}
               onRegenerate={startGeneration}
-              onConfirm={() => setGateOpen(true)}
+              onOpenGate={() => setGateOpen(true)}
               onOpenSummary={() => setSummaryOpen(true)}
             />
 
-            <div className={`${styles.grid} ${approved ? styles.gridApproved : ""}`}>
-              {!approved && (
-                <LibraryPanel dropRef={dropRef} onDropHover={setDropActive} dragEnabled={isWide} />
-              )}
+            <OutcomeStrip />
 
+            <div className={styles.grid}>
               <section className={styles.canvasCol} aria-label="Workforce plan canvas">
-                <PlanCanvas
-                  selection={selection}
-                  onSelect={setSelection}
-                  approved={approved}
-                  dropActive={dropActive}
-                  dropRef={dropRef}
-                />
+                <div className={styles.canvasHead}>
+                  <p className="oa-micro">Workflow canvas</p>
+                  <div className="oa-tabs" role="group" aria-label="Plan view">
+                    <button
+                      type="button"
+                      className={`oa-tab ${view === "canvas" ? "oa-tab--active" : ""}`}
+                      aria-pressed={view === "canvas"}
+                      onClick={() => setViewChoice("canvas")}
+                    >
+                      <Workflow size={13} aria-hidden style={{ marginRight: 6, verticalAlign: "-2px" }} />
+                      Canvas
+                    </button>
+                    <button
+                      type="button"
+                      className={`oa-tab ${view === "list" ? "oa-tab--active" : ""}`}
+                      aria-pressed={view === "list"}
+                      onClick={() => setViewChoice("list")}
+                    >
+                      <List size={13} aria-hidden style={{ marginRight: 6, verticalAlign: "-2px" }} />
+                      List
+                    </button>
+                  </div>
+                </div>
+
+                {view === "canvas" ? (
+                  <PlanCanvas
+                    selection={selection}
+                    onSelect={setSelection}
+                    approved={approved}
+                    dropActive={dropActive}
+                    libraryDragging={libraryDragging}
+                    dropRef={dropRef}
+                  />
+                ) : (
+                  <PlanList selection={selection} onSelect={setSelection} approved={approved} />
+                )}
+
                 {!approved && <CommandBar />}
               </section>
 
@@ -233,6 +283,44 @@ export default function PlannerExperience() {
                 <PlanInspector selection={selection} approved={approved} />
               </aside>
             </div>
+
+            {!approved && (
+              <LibraryPanel
+                dropRef={dropRef}
+                onDropHover={setDropActive}
+                onDragStateChange={setLibraryDragging}
+                dragEnabled={isWide && view === "canvas"}
+              />
+            )}
+
+            {!approved && (
+              <footer className={styles.footerBar} aria-label="Plan approval">
+                <p
+                  className={`${styles.footerStatus} ${
+                    unresolved === 0 ? styles.footerStatusOk : styles.footerStatusWarn
+                  }`}
+                >
+                  {unresolved === 0 ? (
+                    <CircleCheckBig size={16} aria-hidden />
+                  ) : (
+                    <TriangleAlert size={16} aria-hidden />
+                  )}
+                  {unresolved === 0
+                    ? "All items resolved. The plan is ready for your approval."
+                    : `${unresolved} item${unresolved === 1 ? "" : "s"} unresolved. You can review ${
+                        unresolved === 1 ? "it" : "them"
+                      } in the readiness check before approving.`}
+                </p>
+                <button
+                  type="button"
+                  className="oa-btn oa-btn--primary"
+                  onClick={() => setGateOpen(true)}
+                >
+                  Confirm workforce plan
+                  <ArrowRight size={15} aria-hidden />
+                </button>
+              </footer>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

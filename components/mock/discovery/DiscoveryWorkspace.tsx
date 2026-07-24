@@ -1,10 +1,12 @@
 "use client";
 /**
  * DiscoveryWorkspace — the Discovery interview + What Oriant knows page
- * (spec §9). Two tabs: the live call-like interview (voice / text / cards /
- * more modes) and the live knowledge model. A floating call bar keeps the
- * interview reachable while the knowledge tab is open mid-question, and the
- * compile overlay hands off to the company report.
+ * (spec §9, §10). Two tabs: the live call-like interview (voice / text /
+ * cards / more modes) and the live knowledge model. "Prefill interview
+ * (demo)" plays a fast simulated conversation through every unanswered
+ * question (D-01). A floating call bar keeps the interview reachable while
+ * the knowledge tab is open mid-question, and the compile overlay hands off
+ * to the company report.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -14,6 +16,7 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
+  FastForward,
   LayoutGrid,
   MessageSquareText,
   Mic,
@@ -27,6 +30,11 @@ import { DISCOVERY_QUESTIONS } from "@/lib/mock/fixtures/discovery-questions";
 import { DEMO_COMPANY } from "@/lib/mock/fixtures/demo-company";
 import StatusBadge from "@/components/mock/ui/StatusBadge";
 import Waveform from "@/components/mock/ui/Waveform";
+import {
+  runTimeline,
+  type StepSpec,
+  type TimelineHandle,
+} from "@/lib/mock/services/timeline";
 import { DUR, EASE } from "@/lib/mock/motion";
 import VoiceMode from "./VoiceMode";
 import TextMode from "./TextMode";
@@ -38,6 +46,31 @@ import styles from "./discovery.module.css";
 
 type Tab = "interview" | "knowledge";
 type Segment = "voice" | "text" | "cards" | "more";
+
+/** One step of the simulated prefill conversation (spec §10, D-01). */
+type PrefillEmit =
+  | { kind: "show"; q: DiscoveryQuestion }
+  | { kind: "words"; q: DiscoveryQuestion; count: number }
+  | { kind: "confirm"; q: DiscoveryQuestion };
+
+/** ~1.2s per question: show (160ms) + 5 word chunks (150ms each) + confirm (290ms). */
+function prefillSteps(questions: DiscoveryQuestion[]): StepSpec<PrefillEmit>[] {
+  const steps: StepSpec<PrefillEmit>[] = [];
+  for (const q of questions) {
+    steps.push({ delay: 160, emit: { kind: "show", q } });
+    const words = q.answer.split(" ");
+    const chunks = 5;
+    const per = Math.ceil(words.length / chunks);
+    for (let c = 1; c <= chunks; c += 1) {
+      steps.push({
+        delay: 150,
+        emit: { kind: "words", q, count: Math.min(words.length, c * per) },
+      });
+    }
+    steps.push({ delay: 290, emit: { kind: "confirm", q } });
+  }
+  return steps;
+}
 
 const SEGMENTS: { id: Segment; label: string; icon: React.ComponentType<{ size?: number | string; "aria-hidden"?: boolean }> }[] = [
   { id: "voice", label: "Voice", icon: Mic },
@@ -61,11 +94,15 @@ export default function DiscoveryWorkspace() {
   const [skipped, setSkipped] = useState<string[]>([]);
   const [justConfirmed, setJustConfirmed] = useState<DiscoveryQuestion | null>(null);
   const [compiling, setCompiling] = useState(false);
+  /** Non-null while the prefill simulation plays (question + revealed words). */
+  const [prefill, setPrefill] = useState<{ q: DiscoveryQuestion; words: number } | null>(null);
   const flyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefillHandle = useRef<TimelineHandle | null>(null);
 
   useEffect(
     () => () => {
       if (flyTimer.current) clearTimeout(flyTimer.current);
+      prefillHandle.current?.cancel();
     },
     [],
   );
@@ -135,6 +172,48 @@ export default function DiscoveryWorkspace() {
     setTab("interview");
   };
 
+  /* ── Prefill simulation (spec §10, D-01) ──
+     Plays every unanswered question as a short conversation: question shown,
+     transcript revealed progressively, then confirmAnswer with the fixture
+     answer so facts and the knowledge count tick up live. Skippable; instant
+     under reduced motion; cancelled on unmount. */
+  const startPrefill = () => {
+    if (prefillHandle.current || completed) return;
+    const unanswered = DISCOVERY_QUESTIONS.filter(
+      (q) => !useDemoStore.getState().discovery.answers[q.id],
+    );
+    if (unanswered.length === 0) return;
+    if (flyTimer.current) clearTimeout(flyTimer.current);
+    setJustConfirmed(null);
+    setTab("interview");
+    const handle = runTimeline(
+      prefillSteps(unanswered),
+      (e) => {
+        if (e.kind === "show") setPrefill({ q: e.q, words: 0 });
+        else if (e.kind === "words") setPrefill({ q: e.q, words: e.count });
+        else confirmAnswer(e.q.id, e.q.answer);
+      },
+      { instant: Boolean(reduced) },
+    );
+    prefillHandle.current = handle;
+    handle.done.then(() => {
+      prefillHandle.current = null;
+      setPrefill(null);
+    });
+  };
+
+  const skipPrefill = () => {
+    prefillHandle.current?.cancel();
+    prefillHandle.current = null;
+    const answersNow = useDemoStore.getState().discovery.answers;
+    for (const q of DISCOVERY_QUESTIONS) {
+      if (!answersNow[q.id]) confirmAnswer(q.id, q.answer);
+    }
+    setPrefill(null);
+  };
+
+  const prefilling = prefill !== null;
+
   const finishCompile = () => {
     completeDiscovery();
     router.push("/app/discovery/report");
@@ -148,8 +227,8 @@ export default function DiscoveryWorkspace() {
     }
   };
 
-  const showCallBar = tab === "knowledge" && !completed && Boolean(activeQ);
-  const showCompletion = completed && !justConfirmed;
+  const showCallBar = tab === "knowledge" && !completed && Boolean(activeQ) && !prefilling;
+  const showCompletion = completed && !justConfirmed && !prefilling;
 
   return (
     <main className="oa-page">
@@ -160,8 +239,8 @@ export default function DiscoveryWorkspace() {
             The discovery <span className="oa-serif">interview</span>
           </h1>
           <p className="oa-lead">
-            Five short questions about how {DEMO_COMPANY.name} runs — watch what Oriant
-            learns build up live.
+            Five short questions about how {DEMO_COMPANY.name} runs. Watch what
+            Oriant learns build up live.
           </p>
         </div>
         {completed ? (
@@ -218,19 +297,31 @@ export default function DiscoveryWorkspace() {
           </div>
 
           {tab === "interview" && !showCompletion && (
-            <div className={styles.seg} role="group" aria-label="Interview mode">
-              {SEGMENTS.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={`${styles.segBtn} ${segment === id ? styles.segBtnOn : ""}`}
-                  aria-pressed={segment === id}
-                  onClick={() => pickSegment(id)}
-                >
-                  <Icon size={13} aria-hidden />
-                  {label}
-                </button>
-              ))}
+            <div className="oa-cluster" style={{ justifyContent: "flex-end" }}>
+              <div className={styles.seg} role="group" aria-label="Interview mode">
+                {SEGMENTS.map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`${styles.segBtn} ${segment === id ? styles.segBtnOn : ""}`}
+                    aria-pressed={segment === id}
+                    disabled={prefilling}
+                    onClick={() => pickSegment(id)}
+                  >
+                    <Icon size={13} aria-hidden />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="oa-btn oa-btn--ghost oa-btn--sm"
+                onClick={startPrefill}
+                disabled={prefilling}
+              >
+                <FastForward size={13} aria-hidden />
+                Prefill interview (demo)
+              </button>
             </div>
           )}
         </div>
@@ -244,7 +335,77 @@ export default function DiscoveryWorkspace() {
           hidden={tab !== "interview"}
         >
           <div className={styles.interview}>
-            {showCompletion ? (
+            {prefilling && prefill ? (
+              <motion.section
+                className={`oa-card ${styles.callCard}`}
+                initial={reduced ? false : { opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: DUR.card, ease: EASE }}
+                aria-label="Simulated interview playback"
+              >
+                <div className={styles.orbRow}>
+                  <div className={styles.orbId}>
+                    <span className={styles.avatar} aria-hidden>
+                      O
+                    </span>
+                    <div style={{ display: "grid", gap: 1 }}>
+                      <span style={{ fontSize: 14, fontWeight: 750 }}>
+                        Oriant Orchestrator
+                      </span>
+                      <span className="oa-sub">
+                        Playing the interview with prepared demo answers
+                      </span>
+                    </div>
+                  </div>
+                  <div className={styles.progressBlock}>
+                    <div className="oa-between" style={{ gap: 8 }}>
+                      <span className="oa-micro">
+                        Question{" "}
+                        {DISCOVERY_QUESTIONS.findIndex((x) => x.id === prefill.q.id) + 1}{" "}
+                        of {total}
+                      </span>
+                      <span className="oa-sub">{answeredCount} answered</span>
+                    </div>
+                    <div className="oa-progress" aria-hidden>
+                      <span style={{ width: `${(answeredCount / total) * 100}%` }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.question}>
+                  <h2 className="oa-h2">{prefill.q.question}</h2>
+                  <div className={styles.prefillTranscript} aria-live="polite">
+                    <span className="oa-micro">You (demo answer)</span>
+                    <p>
+                      {prefill.q.answer.split(" ").slice(0, prefill.words).join(" ")}
+                      {prefill.words === 0 && (
+                        <span className="oa-sub" style={{ fontStyle: "italic" }}>
+                          Listening…
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <Waveform
+                    active={!reduced && prefill.words < prefill.q.answer.split(" ").length}
+                    bars={17}
+                    height={22}
+                  />
+                </div>
+
+                <div className="oa-between">
+                  <span className="oa-sim-note">
+                    Simulated conversation. Prepared demo answers, no microphone used.
+                  </span>
+                  <button
+                    type="button"
+                    className="oa-btn oa-btn--ghost oa-btn--sm"
+                    onClick={skipPrefill}
+                  >
+                    Skip to the finished interview
+                  </button>
+                </div>
+              </motion.section>
+            ) : showCompletion ? (
               <>
                 <motion.section
                   className={`oa-card ${styles.completeCard}`}
@@ -257,12 +418,12 @@ export default function DiscoveryWorkspace() {
                     <CheckCircle2 size={26} />
                   </span>
                   <h2 className="oa-h2">
-                    Discovery complete — {discovery.factIds.length} facts captured
+                    Discovery complete: {discovery.factIds.length} facts captured
                   </h2>
-                  <p className="oa-sub" style={{ maxWidth: 460 }}>
+                  <p className="oa-sub" style={{ maxWidth: 480 }}>
                     {reportExists
                       ? "Your company report is ready. Open it to review, edit and approve what Oriant understood."
-                      : "Oriant can now compile everything into an editable company report for your review — nothing moves forward without your approval."}
+                      : "Next, Oriant compiles everything it learned into an editable company report. You review each fact and approve the report before any planning starts."}
                   </p>
                   <div className="oa-cluster" style={{ justifyContent: "center" }}>
                     {reportExists ? (

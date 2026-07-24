@@ -22,6 +22,7 @@ import type {
   AutomationMode,
   CalendarEventState,
   CompanyReportState,
+  CustomTool,
   DemoState,
   DiscoveryMode,
   IntegrationRuntime,
@@ -30,6 +31,7 @@ import type {
   LeanCanvasBlockId,
   NlCommandFixture,
   PlanAgent,
+  ReportFactState,
   ReportSectionId,
   WorkforcePlanState,
   WorkspaceTeam,
@@ -68,7 +70,12 @@ function initialReport(): CompanyReportState {
       confidential: false,
     };
   }
-  return { version: 1, status: "draft", approvedAt: null, stale: false, sections };
+  return { version: 1, status: "draft", approvedAt: null, stale: false, sections, facts: {} };
+}
+
+/** Default per-fact review state (facts are unreviewed until touched). */
+function blankFactState(): ReportFactState {
+  return { status: "unreviewed", editedValue: null, reason: "", confidential: false, reviewedAt: null };
 }
 
 function initialPlan(): WorkforcePlanState {
@@ -99,6 +106,7 @@ function initialState(): DemoState {
       usedDemoCompany: false,
       intro: "",
       selectedToolIds: [],
+      customTools: [],
       capturedSections: [],
       consentAccepted: false,
       completed: false,
@@ -183,6 +191,8 @@ export interface DemoActions {
   setIntro: (text: string) => void;
   useDemoCompany: () => void;
   toggleTool: (toolId: string) => void;
+  addCustomTool: (tool: Omit<CustomTool, "id">) => void;
+  removeCustomTool: (id: string) => void;
   captureSection: (sectionId: string) => void;
   acceptConsent: () => void;
   completeOnboarding: () => void;
@@ -200,6 +210,14 @@ export interface DemoActions {
   simulateUploadMore: () => void;
   simulateInvite: () => void;
   completeDiscovery: () => void;
+
+  /* report — fact-level review (improvement spec §11.2) */
+  confirmFact: (factId: string) => void;
+  confirmFacts: (factIds: string[]) => void;
+  editFact: (factId: string, value: string) => void;
+  rejectFact: (factId: string, reason: string) => void;
+  undoFactReview: (factId: string) => void;
+  toggleFactConfidential: (factId: string) => void;
 
   /* report */
   editReportSection: (id: ReportSectionId, body: string[]) => void;
@@ -290,6 +308,7 @@ export const useDemoStore = create<DemoStore>()(
           s.onboarding = {
             mode: "assist",
             usedDemoCompany: true,
+            customTools: [],
             intro: DEMO_INTRO_ANSWER,
             selectedToolIds: [...DEMO_COMPANY.painPoints.slice(0, 0), "gmail", "google-calendar", "hubspot", "whatsapp-business", "quickbooks", "google-drive", "slack"],
             capturedSections: ["company", "team", "goals", "automation-preference", "tools", "business-info", "consent"],
@@ -415,6 +434,24 @@ export const useDemoStore = create<DemoStore>()(
               : [...st.onboarding.selectedToolIds, toolId],
           },
         })),
+      addCustomTool: (tool) =>
+        set((st) => {
+          const id = `custom-${tool.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+          if (st.onboarding.customTools.some((t) => t.id === id)) return {};
+          return {
+            onboarding: {
+              ...st.onboarding,
+              customTools: [...st.onboarding.customTools, { ...tool, id }],
+            },
+          };
+        }),
+      removeCustomTool: (id) =>
+        set((st) => ({
+          onboarding: {
+            ...st.onboarding,
+            customTools: st.onboarding.customTools.filter((t) => t.id !== id),
+          },
+        })),
       captureSection: (sectionId) =>
         set((st) => ({
           onboarding: {
@@ -497,6 +534,98 @@ export const useDemoStore = create<DemoStore>()(
         set((st) => ({
           journey: atLeast(st.journey, "report_review") ? st.journey : "report_review",
         })),
+
+      /* ── report: fact-level review ── */
+      confirmFact: (factId) =>
+        set((st) => ({
+          report: {
+            ...st.report,
+            facts: {
+              ...st.report.facts,
+              [factId]: {
+                ...(st.report.facts[factId] ?? blankFactState()),
+                status: "confirmed",
+                reason: "",
+                reviewedAt: "Just now",
+              },
+            },
+          },
+        })),
+      confirmFacts: (factIds) =>
+        set((st) => {
+          const facts = { ...st.report.facts };
+          for (const id of factIds) {
+            const prev = facts[id] ?? blankFactState();
+            if (prev.status === "rejected") continue; // Confirm all never overrides an explicit rejection
+            facts[id] = { ...prev, status: "confirmed", reason: "", reviewedAt: "Just now" };
+          }
+          return { report: { ...st.report, facts } };
+        }),
+      editFact: (factId, value) =>
+        set((st) => {
+          const wasApproved = st.report.status === "approved";
+          return {
+            report: {
+              ...st.report,
+              status: wasApproved ? "draft" : st.report.status,
+              stale: wasApproved ? true : st.report.stale,
+              facts: {
+                ...st.report.facts,
+                [factId]: {
+                  ...(st.report.facts[factId] ?? blankFactState()),
+                  status: "edited",
+                  editedValue: value,
+                  reviewedAt: "Just now",
+                },
+              },
+            },
+            plan: wasApproved && st.plan.agents.length > 0 ? { ...st.plan, stale: true } : st.plan,
+          };
+        }),
+      rejectFact: (factId, reason) =>
+        set((st) => ({
+          report: {
+            ...st.report,
+            facts: {
+              ...st.report.facts,
+              [factId]: {
+                ...(st.report.facts[factId] ?? blankFactState()),
+                status: "rejected",
+                reason,
+                reviewedAt: "Just now",
+              },
+            },
+          },
+        })),
+      undoFactReview: (factId) =>
+        set((st) => ({
+          report: {
+            ...st.report,
+            facts: {
+              ...st.report.facts,
+              [factId]: {
+                ...(st.report.facts[factId] ?? blankFactState()),
+                status: "unreviewed",
+                editedValue: null,
+                reason: "",
+                reviewedAt: null,
+              },
+            },
+          },
+        })),
+      toggleFactConfidential: (factId) =>
+        set((st) => {
+          const prev = st.report.facts[factId] ?? blankFactState();
+          return {
+            report: {
+              ...st.report,
+              facts: {
+                ...st.report.facts,
+                [factId]: { ...prev, confidential: !prev.confidential },
+              },
+            },
+          };
+        }),
 
       /* ── report ── */
       editReportSection: (id, body) =>
@@ -793,6 +922,9 @@ export const useDemoStore = create<DemoStore>()(
             }
           }
           plan.lastChange = { summary: cmd.summary, costDelta: cmd.costDelta };
+          // Every applied change is a new mock plan version (improvement spec §12.3);
+          // undo restores the previous snapshot including its version.
+          plan.version = plan.version + 1;
           return { planPast: past, planFuture: [], plan };
         }),
 
@@ -1058,7 +1190,7 @@ export const useDemoStore = create<DemoStore>()(
     }),
     {
       name: "oriant-demo-v1",
-      version: 1,
+      version: 2, // v2: onboarding.customTools + report.facts (older snapshots reset)
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => {
         const { _hydrated, planPast, planFuture, ...rest } = s as DemoStore & Record<string, unknown>;

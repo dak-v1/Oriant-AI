@@ -124,8 +124,7 @@ export default function VoiceAnswer({
             </button>
             <button
               type="button"
-              className="oa-sim-note"
-              style={{ cursor: "pointer" }}
+              className="oa-btn oa-btn--ghost oa-btn--sm"
               onClick={() => {
                 setText("");
                 setStage("typing");
@@ -135,7 +134,7 @@ export default function VoiceAnswer({
               Prefer to type? Answer with text
             </button>
             <p className="oa-sub" style={{ textAlign: "center", maxWidth: 420 }}>
-              Simulated voice capture — this demo never accesses your microphone.
+              Simulated voice capture; this demo never accesses your microphone.
             </p>
           </motion.div>
         )}
@@ -175,7 +174,7 @@ export default function VoiceAnswer({
               ))}
               {stage === "listening" && (
                 <span className="oa-sub" style={{ fontStyle: "italic" }}>
-                  Speak naturally — Oriant is listening…
+                  Speak naturally. Oriant is listening…
                 </span>
               )}
             </p>
@@ -203,12 +202,7 @@ export default function VoiceAnswer({
                 {stage === "typing" ? "Type your answer" : "Review and edit before saving"}
               </span>
               {stage === "editable" && (
-                <button
-                  type="button"
-                  className="oa-sim-note"
-                  style={{ cursor: "pointer" }}
-                  onClick={start}
-                >
+                <button type="button" className="oa-btn oa-btn--ghost oa-btn--sm" onClick={start}>
                   <RotateCcw size={12} aria-hidden />
                   Re-record
                 </button>

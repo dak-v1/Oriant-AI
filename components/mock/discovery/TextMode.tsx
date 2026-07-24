@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { HelpCircle, Send, SkipForward, Sparkles } from "lucide-react";
+import { HelpCircle, Send, SkipForward } from "lucide-react";
 import type { DiscoveryQuestion, KnowledgeFact } from "@/lib/mock/types";
 import { DISCOVERY_QUESTIONS, KNOWLEDGE_FACTS } from "@/lib/mock/fixtures/discovery-questions";
 import { DUR, EASE } from "@/lib/mock/motion";
@@ -89,7 +89,7 @@ export default function TextMode({
         {clarifyOpen && current && !justConfirmed && (
           <div className={`${styles.bubble} ${styles.bubbleAi}`}>
             <span className={styles.bubbleMeta}>
-              <Sparkles size={10} aria-hidden style={{ verticalAlign: -1, marginRight: 4 }} />
+              <HelpCircle size={10} aria-hidden style={{ verticalAlign: -1, marginRight: 4 }} />
               Oriant clarifies
             </span>
             {CLARIFICATIONS[current.id]}
@@ -118,7 +118,7 @@ export default function TextMode({
             className={`oa-card oa-card--flat ${styles.composer}`}
           >
             <label className="oa-label" htmlFor="discovery-text-answer">
-              Your answer — suggested wording prefilled, edit freely
+              Your answer (suggested wording prefilled, edit freely)
             </label>
             <textarea
               id="discovery-text-answer"

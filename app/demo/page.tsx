@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import MargoApp from "@/components/MargoApp";
 
 export const metadata: Metadata = {
-  title: "Margo — your AI operations manager",
+  title: "Margo - your AI operations manager",
   description:
     "Margo learns the shop, hires the team, and runs it past you first. The done-for-you AI workforce for small brands that outgrew the spreadsheet.",
 };

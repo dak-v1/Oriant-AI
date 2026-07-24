@@ -16,7 +16,7 @@ const SECTIONS: { field: keyof AgentDesignAnswers; title: string; hint: string }
   { field: "objective", title: "Objective", hint: "What the agent is accountable for" },
   { field: "trigger", title: "Trigger", hint: "Exactly when it steps in" },
   { field: "inputs", title: "Required inputs", hint: "Information gathered before drafting" },
-  { field: "decisions", title: "Decisions", hint: "Judgements it prepares — never makes alone" },
+  { field: "decisions", title: "Decisions", hint: "Judgements it prepares, never makes alone" },
   { field: "permittedActions", title: "Permitted actions", hint: "What it may do on its own" },
   { field: "escalation", title: "Escalation", hint: "When a case goes straight to the owner" },
   { field: "systems", title: "Systems", hint: "Connections it works through" },
@@ -54,14 +54,14 @@ export default function DesignReport({
           <p className="oa-eyebrow">Agent design report</p>
           <StatusBadge
             status={editable ? "review_requested" : "approved"}
-            label={editable ? "Draft — editable" : "Design approved"}
+            label={editable ? "Draft, editable" : "Design approved"}
           />
         </div>
         <h2 className="oa-h2">
           {agentName} <span className="oa-serif">design</span>
         </h2>
         <p className="oa-sub">
-          Built from your design-call answers. {editable ? "Edit any section before approving — the build uses exactly what is written here." : "This approved design is what the Agent Factory builds from."}
+          Built from your design-call answers. {editable ? "Edit any section before approving: the build uses exactly what is written here." : "This approved design is what the Agent Factory builds from."}
         </p>
       </header>
 
@@ -78,11 +78,10 @@ export default function DesignReport({
               <button
                 type="button"
                 className="oa-btn oa-btn--ghost oa-btn--icon"
-                style={{ minHeight: 30, minWidth: 30 }}
                 aria-label={`Edit ${s.title}`}
                 onClick={() => startEdit(s.field)}
               >
-                <Pencil size={13} aria-hidden />
+                <Pencil size={14} aria-hidden />
               </button>
             )}
           </div>

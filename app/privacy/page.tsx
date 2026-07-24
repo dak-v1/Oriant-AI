@@ -3,7 +3,7 @@ import Link from "next/link";
 import "../landing.css";
 
 export const metadata: Metadata = {
-  title: "Privacy — Oriant.ai",
+  title: "Privacy - Oriant.ai",
   description:
     "The Oriant.ai privacy policy will be published here before launch.",
 };

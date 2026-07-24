@@ -5,9 +5,11 @@
  * Reusable: pass the fact ids to display (the discovery page passes the
  * store's discovery.factIds; other screens can embed a filtered set).
  * Facts are grouped into the nine knowledge sections, each fact carrying
- * provenance + confidence. Assumptions are visually distinct, gaps read as
- * open questions, opportunities sit on soft teal. When new facts arrive
- * while mounted, their section pulses softly and the new chips fade up.
+ * provenance + confidence. Only sections with captured facts render (no
+ * empty placeholders, spec §5). Assumptions are visually distinct, gaps
+ * read as positive "We will clarify this next" open questions (never error
+ * styling), opportunities sit on soft teal. When new facts arrive while
+ * mounted, their section pulses softly and the new chips fade up.
  */
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -125,60 +127,60 @@ export default function KnowledgePanel({
 
       {SECTION_ORDER.map((section) => {
         const sectionFacts = bySection.get(section) ?? [];
-        if (compact && sectionFacts.length === 0) return null;
+        /* Captured facts only: sections without content never render as
+           empty placeholders (spec §5). */
+        if (sectionFacts.length === 0) return null;
         const Icon = SECTION_ICONS[section];
         const confirmed = sectionFacts.filter((f) => f.confirmed).length;
+        const heading =
+          section === "gaps"
+            ? "We will clarify this next"
+            : KNOWLEDGE_SECTION_LABELS[section];
         return (
           <section
             key={section}
             className={`${styles.kSection} ${pulsingSections.has(section) ? "oa-pulse-ring" : ""}`}
-            aria-label={KNOWLEDGE_SECTION_LABELS[section]}
+            aria-label={heading}
           >
             <header className={styles.kHead}>
               <span className={styles.kHeadId}>
                 <Icon size={15} aria-hidden />
                 <h4 className="oa-h3" style={{ fontSize: 14.5 }}>
-                  {KNOWLEDGE_SECTION_LABELS[section]}
+                  {heading}
                 </h4>
               </span>
               <span className="oa-sub">
-                {sectionFacts.length === 0
-                  ? "0 facts"
-                  : section === "gaps"
-                    ? `${sectionFacts.length} open`
-                    : `${sectionFacts.length} fact${sectionFacts.length === 1 ? "" : "s"} · ${confirmed} confirmed`}
+                {section === "gaps"
+                  ? `${sectionFacts.length} to clarify`
+                  : `${sectionFacts.length} fact${sectionFacts.length === 1 ? "" : "s"} · ${confirmed} confirmed`}
               </span>
             </header>
 
-            {sectionFacts.length === 0 ? (
-              <p className={styles.kEmpty}>Nothing captured here yet — the interview fills this in.</p>
-            ) : (
-              <div className={styles.factGrid}>
-                {sectionFacts.map((f) => (
-                  <motion.article
-                    key={f.id}
-                    className={factCardClass(f)}
-                    initial={fresh.has(f.id) && !reduced ? { opacity: 0, y: 12 } : false}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: DUR.card, ease: EASE }}
-                  >
-                    <span className={styles.factLabel}>
-                      {section === "gaps" && <CircleHelp size={12} aria-hidden />}
-                      {f.label}
-                      {section === "gaps" && (
-                        <span className="oa-tag oa-tag--amber" style={{ marginLeft: "auto" }}>
-                          Open question
-                        </span>
-                      )}
-                    </span>
-                    <span className={styles.factValue}>{f.value}</span>
-                    <span>
-                      <ProvenanceChip provenance={f.provenance} confidence={f.confidence} />
-                    </span>
-                  </motion.article>
-                ))}
-              </div>
-            )}
+            <div className={styles.factGrid}>
+              {sectionFacts.map((f) => (
+                <motion.article
+                  key={f.id}
+                  className={factCardClass(f)}
+                  initial={fresh.has(f.id) && !reduced ? { opacity: 0, y: 12 } : false}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: DUR.card, ease: EASE }}
+                >
+                  <span className={styles.factLabel}>
+                    {section === "gaps" && <CircleHelp size={12} aria-hidden />}
+                    {f.label}
+                    {section === "gaps" && (
+                      <span className="oa-tag oa-tag--neutral" style={{ marginLeft: "auto" }}>
+                        Open question
+                      </span>
+                    )}
+                  </span>
+                  <span className={styles.factValue}>{f.value}</span>
+                  <span>
+                    <ProvenanceChip provenance={f.provenance} confidence={f.confidence} />
+                  </span>
+                </motion.article>
+              ))}
+            </div>
           </section>
         );
       })}

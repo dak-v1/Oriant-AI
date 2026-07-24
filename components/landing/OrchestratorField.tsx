@@ -14,8 +14,9 @@
  * width, so the SVG uses preserveAspectRatio="none" + non-scaling strokes —
  * %-positioned cards and user-unit paths stretch identically and stay
  * aligned at every band aspect. The Human Approval node is categorically
- * different: soft-teal surface, teal border, person glyph, "Approved" tick
- * chip — a person, not an agent.
+ * different: neutral surface, stronger neutral border, person glyph,
+ * "Owner review" annotation (a person, not an agent), and it sits DIRECTLY
+ * ABOVE the central Orchestrator card so escalation reads upward (§3.2).
  *
  * Primary motion concept — layered build + parallax depth:
  *  1) Build-in (whileInView once, orchestrating variants container):
@@ -57,13 +58,12 @@ import {
   type Variants,
 } from "framer-motion";
 import {
-  Check,
   LayoutDashboard,
   Mic,
   PackageCheck,
   Play,
   Search,
-  UserCheck,
+  User,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
@@ -104,7 +104,9 @@ const NODE_LAYOUT: Record<
      also the only bottom-row slot that stays collision-free at 768px */
   dashboard: { tier: "b", x: 640, y: 375, delay: 0.42, drift: -5.6 },
   planner: { tier: "a", x: 1008, y: 88, delay: 0.5, drift: -1.7 },
-  approval: { tier: "a", x: 938, y: 344, delay: 0.58, drift: -4.3 },
+  /* approval sits DIRECTLY ABOVE the orchestrator: escalation goes upward
+     to a person (§3.2), mirroring the dashboard slot below */
+  approval: { tier: "a", x: 640, y: 66, delay: 0.58, drift: -4.3 },
   interview: { tier: "c", x: 52, y: 235, delay: 0.66, drift: -3.5, edge: "left" },
   deployment: { tier: "c", x: 1228, y: 205, delay: 0.74, drift: -7.1, edge: "right" },
 };
@@ -113,7 +115,7 @@ const GLYPHS: Record<FieldNodeId, LucideIcon> = {
   discovery: Search,
   interview: Mic,
   planner: Workflow,
-  approval: UserCheck,
+  approval: User,
   executor: Play,
   deployment: PackageCheck,
   dashboard: LayoutDashboard,
@@ -127,7 +129,8 @@ const GLYPHS: Record<FieldNodeId, LucideIcon> = {
 const PATHS: Record<FieldNodeId, string> = {
   discovery: "M640 220 C530 175 380 125 248 92",
   planner: "M640 220 C765 175 895 125 1008 88",
-  approval: "M640 220 C745 265 850 310 938 344",
+  /* upward escalation curve — mirrors the dashboard curve below */
+  approval: "M640 220 C660 170 655 115 640 66",
   interview: "M640 220 C455 235 250 232 52 235",
   executor: "M640 220 C525 275 405 330 300 368",
   deployment: "M640 220 C835 213 1040 208 1228 205",
@@ -154,7 +157,7 @@ const FLOAT_LABELS: {
 }[] = [
   { text: "context in", x: 462, y: 190, delay: 2.4 },
   { text: "plan out", x: 838, y: 184, delay: 2.05 },
-  { text: "your decision", x: 905, y: 262, delay: 2.55, teal: true },
+  { text: "your decision", x: 724, y: 136, delay: 2.55, teal: true },
 ];
 
 /* ── Variants (orchestrated by the scene container's whileInView) ───────── */
@@ -212,12 +215,6 @@ function NodeCard({ node, tier }: { node: FieldNode; tier: Tier }) {
       <span className={styles.cardText}>
         <span className={styles.cardLabel}>{node.label}</span>
         <span className={`lp-micro ${styles.cardNote}`}>{node.annotation}</span>
-        {node.human && (
-          <span className={styles.tickChip}>
-            <Check size={14} strokeWidth={2} aria-hidden="true" />
-            Approved
-          </span>
-        )}
       </span>
     </div>
   );
@@ -359,8 +356,10 @@ export default function OrchestratorField() {
     >
       {/* Meaning of the aria-hidden artwork, for assistive technology */}
       <p className={styles.srOnly}>
-        {ORCHESTRATOR.label} — {ORCHESTRATOR.caption.toLowerCase()} — sits at
-        the centre of seven connected roles:{" "}
+        {ORCHESTRATOR.label} ({ORCHESTRATOR.caption.toLowerCase()}) sits at
+        the centre of seven connected roles. Escalation flows upward: Human
+        Approval, the owner review step, sits directly above the
+        Orchestrator. The roles are{" "}
         {FIELD_NODES.map((n) => `${n.label} (${n.annotation.toLowerCase()})`).join(
           "; ",
         )}
@@ -456,9 +455,29 @@ export default function OrchestratorField() {
         </motion.div>
       </div>
 
-      {/* ── Mobile recomposition (<768): compact cluster ── */}
+      {/* ── Mobile recomposition (<768): compact cluster. Human Approval
+            sits ABOVE the orchestrator (escalation reads upward, §3.2);
+            the remaining six roles form the 2-col grid below. ── */}
       <div className={styles.cluster} aria-hidden="true">
         <div className={styles.clusterInner}>
+          {FIELD_NODES.filter((n) => n.human).map((n) => {
+            const Glyph = GLYPHS[n.id];
+            return (
+              <div key={n.id} className={styles.mEsc}>
+                <div className={`${styles.mNode} ${styles.mHuman} ${styles.mEscCard}`}>
+                  <span className={`${styles.glyph} ${styles.glyphHuman}`}>
+                    <Glyph size={15} strokeWidth={2} aria-hidden="true" />
+                  </span>
+                  <span className={styles.cardText}>
+                    <span className={styles.cardLabel}>{n.label}</span>
+                    <span className={`lp-micro ${styles.cardNote}`}>
+                      {n.annotation}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            );
+          })}
           <div className={styles.mOrch}>
             <span className={styles.orchTop}>
               <span className={styles.pulseDot} />
@@ -468,20 +487,11 @@ export default function OrchestratorField() {
             <span className={styles.orchCaption}>{ORCHESTRATOR.caption}</span>
           </div>
           <ul className={styles.mGrid}>
-            {FIELD_NODES.map((n, i) => {
+            {FIELD_NODES.filter((n) => !n.human).map((n) => {
               const Glyph = GLYPHS[n.id];
-              const cls = [
-                styles.mNode,
-                n.human ? styles.mHuman : "",
-                i === FIELD_NODES.length - 1 ? styles.mLast : "",
-              ]
-                .filter(Boolean)
-                .join(" ");
               return (
-                <li key={n.id} className={cls}>
-                  <span
-                    className={`${styles.glyph}${n.human ? ` ${styles.glyphHuman}` : ""}`}
-                  >
+                <li key={n.id} className={styles.mNode}>
+                  <span className={styles.glyph}>
                     <Glyph size={15} strokeWidth={2} aria-hidden="true" />
                   </span>
                   <span className={styles.cardText}>
@@ -489,12 +499,6 @@ export default function OrchestratorField() {
                     <span className={`lp-micro ${styles.cardNote}`}>
                       {n.annotation}
                     </span>
-                    {n.human && (
-                      <span className={styles.tickChip}>
-                        <Check size={14} strokeWidth={2} aria-hidden="true" />
-                        Approved
-                      </span>
-                    )}
                   </span>
                 </li>
               );

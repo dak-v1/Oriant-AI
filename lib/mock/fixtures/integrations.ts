@@ -28,7 +28,7 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
     permissionSummary: [
       "Oriant can read mail arriving in the shared ops inbox.",
       "Agents prepare drafts; nothing is sent without your approval rules.",
-      "You can disconnect at any time — existing drafts stay in Gmail.",
+      "You can disconnect at any time; existing drafts stay in Gmail.",
     ],
     account: "ops@brightpath.sg",
   },
@@ -76,7 +76,7 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
       "Agents may add notes and tags but never delete a customer record.",
       "High-value customer tags drive the extra approval rules you set.",
     ],
-    account: "BrightPath Home Services — SG portal",
+    account: "BrightPath Home Services (SG portal)",
   },
 
   [APP.whatsapp]: {
@@ -99,7 +99,7 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
       "Replies are drafted first; sending follows your approval rules.",
       "No message ever goes to a high-value customer automatically.",
     ],
-    account: "+65 6744 2018 — BrightPath Services",
+    account: "+65 6744 2018 (BrightPath Services)",
   },
 
   [APP.quickbooks]: {
@@ -166,7 +166,7 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
     permissionSummary: [
       "Oriant can post into the channels you pick, such as #ops and #finance.",
       "Agents only read channels they post into, nothing private.",
-      "Notifications link back to the approval — decisions stay in Oriant.",
+      "Notifications link back to the approval; decisions stay in Oriant.",
     ],
     account: "brightpath-sg.slack.com",
   },
@@ -201,7 +201,7 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
     name: "Intercom",
     category: "Customer communication",
     kind: "app",
-    purpose: "Website chat inbox — useful if you later add live chat to the BrightPath booking page.",
+    purpose: "Website chat inbox, useful if you later add live chat to the BrightPath booking page.",
     neededBy: [],
     reads: ["Website chat conversations", "Visitor context"],
     actions: ["Draft chat replies", "Tag conversations by topic"],
@@ -339,7 +339,7 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
     name: "Meta Business",
     category: "Marketing",
     kind: "app",
-    purpose: "Facebook and Instagram publishing — drafts only; public posts always stay human-approved.",
+    purpose: "Facebook and Instagram publishing: drafts only; public posts always stay human-approved.",
     neededBy: [],
     reads: ["Page inbox and comments", "Post performance"],
     actions: ["Prepare post drafts", "Schedule approved posts"],
@@ -352,7 +352,7 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
     permissionSummary: [
       "Oriant can prepare posts for your BrightPath pages.",
       "Public content never publishes without your approval.",
-      "Ad spend is out of scope — no budget actions at all.",
+      "Ad spend is out of scope: no budget actions at all.",
     ],
     account: "BrightPath Home Services SG page",
   },
@@ -377,7 +377,7 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
       "Posts publish only after your approval.",
       "No connection requests or private messages, ever.",
     ],
-    account: "BrightPath Home Services — company page",
+    account: "BrightPath Home Services (company page)",
   },
 
   [APP.canva]: {
@@ -431,7 +431,7 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
     name: "Asana",
     category: "Internal collaboration",
     kind: "app",
-    purpose: "Task tracking — agents could file follow-up tasks for technicians and coordinators.",
+    purpose: "Task tracking: agents could file follow-up tasks for technicians and coordinators.",
     neededBy: [],
     reads: ["Project task lists", "Task status and assignees"],
     actions: ["Create follow-up tasks", "Update task status after approval"],
@@ -468,7 +468,7 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
     },
     permissionSummary: [
       "Agents can search the documents you have shared with Oriant.",
-      "Only approved folders are visible — nothing else on your Drive.",
+      "Only approved folders are visible, nothing else on your Drive.",
       "Documents are quoted, never edited or deleted.",
     ],
     account: "BrightPath document store",
@@ -548,7 +548,7 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
     name: "Internal Knowledge Search",
     category: "MCP and internal tools",
     kind: "mcp",
-    purpose: "A secure tool connection that lets agents search everything confirmed during Discovery — your rules, processes and preferences.",
+    purpose: "A secure tool connection that lets agents search everything confirmed during Discovery: your rules, processes and preferences.",
     neededBy: [AGENT.admin, AGENT.recovery],
     reads: ["Confirmed company facts", "Approval rules", "Process descriptions"],
     actions: ["Check a rule before acting", "Cite the source of a decision"],

@@ -18,11 +18,11 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Oriant.ai — Your AI Operations Consultant",
+  title: "Oriant.ai - Your AI Operations Consultant",
   description:
     "Learn how your business works, identify high-value AI opportunities, and plan a customised AI workforce with human approval built in.",
   openGraph: {
-    title: "Oriant.ai — From business discovery to a working AI workforce",
+    title: "Oriant.ai - From business discovery to a working AI workforce",
     description:
       "Discover, plan, approve, deploy, and manage an AI workforce designed around your business.",
     type: "website",

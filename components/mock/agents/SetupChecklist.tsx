@@ -1,23 +1,16 @@
 "use client";
 /**
- * SetupChecklist — the required setup checklist shown under the Agent Design
- * Report (spec §11.5.5): configuration fields, connections needed, credentials
- * the owner will provide later (referenced by name only), a permissions
- * summary, and the process-owner confirmation select.
+ * SetupChecklist — the required setup checklist for a CUSTOM agent, rendered
+ * ONLY after the design is approved (improvement spec §13): configuration
+ * fields, the gated connections list with mock credential placeholders and
+ * Connect later / Use mock connection actions, a permissions summary, and
+ * the process-owner confirmation select. Never asks for real keys.
  */
-import {
-  CheckCircle2,
-  Eye,
-  KeyRound,
-  Lock,
-  Plug,
-  ShieldCheck,
-  UserCheck,
-} from "lucide-react";
+import { CheckCircle2, Eye, Lock, Plug, ShieldCheck, UserCheck } from "lucide-react";
 import type { AgentDef, PlanAgent } from "@/lib/mock/types";
 import { useDemoStore } from "@/lib/mock/store";
-import { INTEGRATIONS } from "@/lib/mock/fixtures/integrations";
 import { OWNER, PEOPLE } from "@/lib/mock/fixtures/ids";
+import { ConnectionList } from "./ConnectionsCard";
 import styles from "./agents.module.css";
 
 const MODE_LABEL: Record<string, string> = {
@@ -26,21 +19,8 @@ const MODE_LABEL: Record<string, string> = {
   auto_within_limits: "Auto within limits",
 };
 
-export default function SetupChecklist({
-  def,
-  agent,
-  readOnly,
-}: {
-  def: AgentDef;
-  agent: PlanAgent;
-  readOnly: boolean;
-}) {
+export default function SetupChecklist({ def, agent }: { def: AgentDef; agent: PlanAgent }) {
   const updateAgentConfig = useDemoStore((s) => s.updateAgentConfig);
-
-  const connections = def.integrations
-    .map((r) => INTEGRATIONS[r.integrationId])
-    .filter((d): d is NonNullable<typeof d> => Boolean(d));
-  const appConnections = connections.filter((c) => c.kind === "app");
 
   const people = Array.from(
     new Set([OWNER.name, ...Object.values(PEOPLE), agent.config.processOwner]),
@@ -74,52 +54,25 @@ export default function SetupChecklist({
         </div>
       </div>
 
-      {/* 2 — connections needed */}
+      {/* 2 — connections + mock credential placeholders (unlocked by approval) */}
       <div className={styles.checkRow}>
         <span className={styles.checkIcon} aria-hidden>
           <Plug size={16} />
         </span>
         <div className={styles.checkBody}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 750 }}>Connections needed</p>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 750 }}>Connections</p>
           <p className="oa-sub">
-            Selected for the plan, not yet connected — connections are made during activation.
+            Unlocked now the design is approved. Use mock connections here, or leave them for
+            activation.
           </p>
-          <div className="oa-cluster" style={{ gap: 6 }}>
-            {connections.map((c) => (
-              <span key={c.id} className="oa-chip" style={{ padding: "5px 12px", fontSize: 12.5 }}>
-                {c.name}
-                {c.kind === "mcp" && (
-                  <span className="oa-tag oa-tag--neutral" style={{ padding: "1px 7px" }}>
-                    MCP
-                  </span>
-                )}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 3 — credentials, by name only */}
-      <div className={styles.checkRow}>
-        <span className={styles.checkIcon} aria-hidden>
-          <KeyRound size={16} />
-        </span>
-        <div className={styles.checkBody}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 750 }}>Credentials provided later</p>
-          <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 4 }}>
-            {appConnections.map((c) => (
-              <li key={c.id} className="oa-sub" style={{ color: "var(--oa-ink)" }}>
-                {c.name} access — provided by {OWNER.name} at activation
-              </li>
-            ))}
-          </ul>
+          <ConnectionList def={def} />
           <span className="oa-sim-note">
-            Referenced by name only — this demo never asks for or stores credentials.
+            Credentials are referenced by name only. This demo never asks for or stores real keys.
           </span>
         </div>
       </div>
 
-      {/* 4 — permissions summary */}
+      {/* 3 — permissions summary */}
       <div className={styles.checkRow}>
         <span className={styles.checkIcon} aria-hidden>
           <ShieldCheck size={16} />
@@ -157,7 +110,7 @@ export default function SetupChecklist({
         </div>
       </div>
 
-      {/* 5 — process-owner confirmation */}
+      {/* 4 — process-owner confirmation */}
       <div className={styles.checkRow}>
         <span className={styles.checkIcon} aria-hidden>
           <UserCheck size={16} />
@@ -165,32 +118,26 @@ export default function SetupChecklist({
         <div className={styles.checkBody}>
           <p style={{ margin: 0, fontSize: 14, fontWeight: 750 }}>Process-owner confirmation</p>
           <p className="oa-sub">
-            The person who confirms this design matches how the process really runs today.
+            The person who confirms this design matches how the process really runs today. You can
+            still change who that is.
           </p>
-          {readOnly ? (
-            <span className="oa-chip" style={{ justifySelf: "start", padding: "5px 12px", fontSize: 12.5 }}>
-              <CheckCircle2 size={13} aria-hidden style={{ color: "var(--oa-teal-deep)" }} />
-              {agent.config.processOwner}
-            </span>
-          ) : (
-            <div style={{ maxWidth: 320 }}>
-              <label className="oa-label" htmlFor={`process-owner-${def.id}`}>
-                Process owner
-              </label>
-              <select
-                id={`process-owner-${def.id}`}
-                className="oa-select"
-                value={agent.config.processOwner}
-                onChange={(e) => updateAgentConfig(def.id, { processOwner: e.target.value })}
-              >
-                {people.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div style={{ maxWidth: 320 }}>
+            <label className="oa-label" htmlFor={`process-owner-${def.id}`}>
+              Process owner
+            </label>
+            <select
+              id={`process-owner-${def.id}`}
+              className="oa-select"
+              value={agent.config.processOwner}
+              onChange={(e) => updateAgentConfig(def.id, { processOwner: e.target.value })}
+            >
+              {people.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
     </section>

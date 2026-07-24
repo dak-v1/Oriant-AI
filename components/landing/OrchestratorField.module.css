@@ -59,8 +59,9 @@
   aspect-ratio: 1;
 }
 .glowTeal {
-  left: 73%;
-  top: 80%;
+  /* follows the escalation lane: soft light behind the Human Approval slot */
+  left: 57%;
+  top: 18%;
   width: 26%;
   aspect-ratio: 1;
 }
@@ -146,7 +147,8 @@
     animation: packetOut 6s linear 3.15s infinite;
   }
   .began .packetDecide {
-    offset-path: path("M640 220 C745 265 850 310 938 344");
+    /* kept in sync with PATHS.approval in the component (upward escalation) */
+    offset-path: path("M640 220 C660 170 655 115 640 66");
     animation: packetOut 4.8s linear 3.4s infinite;
   }
 }
@@ -225,11 +227,13 @@
   opacity: 0.85;
 }
 
-/* The human node — categorically different from the agents */
+/* The human node — categorically different from the agents: a person on a
+   neutral surface with a stronger neutral border (§3.2), never an agent
+   tint. Sits directly above the orchestrator; escalation reads upward. */
 .cardHuman {
   width: 184px;
-  background: var(--lp-soft-teal);
-  border: 1.5px solid var(--lp-teal);
+  background: var(--lp-surface);
+  border: 1.5px solid var(--lp-border-strong);
 }
 
 /* Outermost band nodes (interview / deployment) sit partially past the
@@ -256,8 +260,8 @@
   place-items: center;
 }
 .glyphHuman {
-  background: var(--lp-teal-deep);
-  color: var(--lp-on-teal-deep);
+  background: var(--lp-bg-alt);
+  color: var(--lp-ink);
 }
 
 .cardText {
@@ -279,24 +283,6 @@
   line-height: 1.4;
   color: var(--lp-muted-strong);
 }
-
-/* Styled like .lp-status--approved: deep-teal fill + tick + visible label */
-.tickChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  width: fit-content;
-  margin-top: 7px;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--lp-approved-fill);
-  color: var(--lp-on-teal-deep);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-.tickChip svg { flex: none; }
 
 /* ── Orchestrator card ──────────────────────────────────────────────────── */
 .orchCard {
@@ -385,8 +371,9 @@
   color: var(--lp-teal-deep);
 }
 
-/* ── Mobile recomposition (<768): orchestrator on top, 2-col mini-grid with
-      straight faint connectors from a central spine; no cropping/parallax ── */
+/* ── Mobile recomposition (<768): Human Approval on top (escalation reads
+      upward), orchestrator beneath it, then a 2-col mini-grid with straight
+      faint connectors from a central spine; no cropping/parallax ── */
 .cluster { display: none; }
 
 .clusterInner {
@@ -459,15 +446,28 @@
 .mNode:nth-child(even)::before { left: -14px; }
 
 .mHuman {
-  background: var(--lp-soft-teal);
-  border: 1.5px solid var(--lp-teal);
+  background: var(--lp-surface);
+  border: 1.5px solid var(--lp-border-strong);
 }
-.mLast {
-  grid-column: 1 / -1;
-  justify-self: center;
+
+/* Human Approval above the orchestrator, joined by a short vertical stub. */
+.mEsc {
+  display: grid;
+  justify-items: center;
+  row-gap: 0;
+}
+.mEscCard {
   width: min(78%, 250px);
 }
-.mLast::before { display: none; }
+.mEscCard::before { display: none; }
+.mEsc::after {
+  /* spans its own 16px plus the cluster's 18px gap down to the orchestrator */
+  content: "";
+  width: 1.5px;
+  height: 34px;
+  margin-bottom: -18px;
+  background: var(--lp-border);
+}
 
 .mNode .glyph {
   width: 30px;

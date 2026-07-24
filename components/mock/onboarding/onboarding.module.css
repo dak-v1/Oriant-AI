@@ -34,11 +34,111 @@
   gap: 14px;
 }
 
-.railRow {
+/* Intentional info panel (improvement spec §8): 1.5px border + subtle tint.
+   Scoped under .rail so it wins over the .oa-card border. */
+.rail .railCard {
+  border: 1.5px solid var(--oa-border-strong);
+  background: color-mix(in srgb, var(--oa-soft-blue) 16%, var(--oa-surface));
+}
+
+.railHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.railHeadRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.railCount {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-surface);
+  border: 1px solid var(--oa-border);
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+
+@keyframes railPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.updatedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.updatedDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--oa-teal-deep);
+  flex: none;
+  animation: railPulse 1.3s ease-in-out infinite;
+}
+
+.railFacts {
   display: grid;
-  gap: 7px;
-  padding-top: 12px;
+}
+
+.railFact {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 0;
   border-top: 1px solid var(--oa-border);
+}
+
+.railFactIcon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--oa-surface);
+  border: 1px solid var(--oa-border);
+  color: var(--oa-blue-dark);
+  display: grid;
+  place-items: center;
+  flex: none;
+  margin-top: 1px;
+}
+
+.railFactBody {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+}
+
+.railNext {
+  margin: 0;
+  border-top: 1px dashed var(--oa-border-strong);
+  padding-top: 12px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted);
 }
 
 .railChips {
@@ -50,31 +150,6 @@
 .railChip {
   font-size: 11.5px;
   padding: 3px 10px;
-}
-
-.railSections {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.railSectionRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12.5px;
-  color: var(--oa-muted);
-}
-
-.railSectionRow[data-done="true"] {
-  color: var(--oa-ink);
-  font-weight: 600;
-}
-
-.railSectionRow svg {
-  flex: none;
 }
 
 /* ── Stepper ── */
@@ -93,7 +168,8 @@
   border: 1px solid var(--oa-border);
   border-radius: var(--oa-r-chip);
   background: var(--oa-surface);
-  padding: 5px 14px 5px 5px;
+  min-height: 44px; /* §19.1: 44px minimum button target */
+  padding: 5px 16px 5px 10px;
   font-size: 12.5px;
   font-weight: 700;
   color: var(--oa-muted-strong);
@@ -163,26 +239,31 @@
 
 /* ── Welcome step ── */
 
+/* Mode cards (improvement spec §6): built on .oa-selectable + .oa-radio.
+   Equal heights via grid stretch; selection changes indicator + tint only,
+   never height. */
 .modeGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  align-items: stretch;
 }
 
 .modeCard {
-  text-align: left;
-  padding: 18px;
-  display: grid;
-  gap: 10px;
-  align-content: start;
-  cursor: pointer;
-  transition: transform 0.2s var(--oa-ease), border-color 0.2s var(--oa-ease),
-    box-shadow 0.2s var(--oa-ease);
+  height: 100%;
+  align-items: stretch;
 }
 
-.modeCard:hover {
-  transform: translateY(-2px);
-  border-color: var(--oa-border-strong);
+.modeCard :global(.oa-radio) {
+  align-self: flex-start;
+}
+
+.modeBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
 }
 
 .modeIcon {
@@ -193,15 +274,21 @@
   place-items: center;
   background: var(--oa-soft-blue);
   color: var(--oa-blue-dark);
+  flex: none;
 }
 
 .modeTitle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
   font-weight: 750;
   font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.modeRec {
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 11.5px;
+  font-weight: 750;
+  color: var(--oa-teal-deep);
 }
 
 .demoPanel {
@@ -272,9 +359,18 @@
   line-height: 1.62;
 }
 
-/* ── Tools step ── */
+/* ── Tools step (improvement spec §7) ── */
 
-.systemsPanel {
+.toolsHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* "Your tools" area — selected + custom tools, always first. */
+.yourTools {
   display: grid;
   gap: 10px;
   padding: 16px 18px;
@@ -283,12 +379,65 @@
   background: var(--oa-bg-alt);
 }
 
-.systemsChips {
-  display: flex;
-  flex-wrap: wrap;
+.yourToolList {
+  display: grid;
   gap: 8px;
-  min-height: 38px;
+}
+
+.yourToolRow {
+  display: flex;
   align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--oa-border);
+  border-radius: 12px;
+  background: var(--oa-surface);
+}
+
+.yourToolMeta {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.yourToolName {
+  font-size: 13.5px;
+  font-weight: 720;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.yourToolSub {
+  font-size: 12px;
+  color: var(--oa-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yourToolSubWrap {
+  font-size: 12.5px;
+  color: var(--oa-muted);
+  line-height: 1.5;
+}
+
+/* Deterministic monogram tool mark (no external logos). */
+.toolMark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid var(--oa-border);
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  flex: none;
 }
 
 .searchWrap {
@@ -308,6 +457,12 @@
   padding-left: 38px;
 }
 
+.filterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .catList {
   display: grid;
   gap: 18px;
@@ -318,10 +473,86 @@
   gap: 10px;
 }
 
-.chipRow {
+/* Catalog tool cards: .oa-selectable base, compact padding, check badge.
+   Selection never changes card height. */
+.toolGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
+  gap: 10px;
+}
+
+.toolCard {
+  padding: 12px 42px 12px 12px;
+  border-radius: var(--oa-r-inner);
+  gap: 10px;
+}
+
+.toolCardMeta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.toolCardName {
+  font-size: 13.5px;
+  font-weight: 720;
+}
+
+.toolCardPurpose {
+  font-size: 12px;
+  color: var(--oa-muted);
+  line-height: 1.45;
+}
+
+.toolCardCat {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+}
+
+.addRowEnd {
   display: flex;
-  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Add app drawer (improvement spec §7.2) ── */
+
+.drawerTabsWrap {
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.drawerStack {
+  display: grid;
+  gap: 14px;
+}
+
+.drawerList {
+  display: grid;
   gap: 8px;
+}
+
+.drawerRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--oa-border);
+  border-radius: 12px;
+  background: var(--oa-surface);
+  flex-wrap: wrap;
+}
+
+.drawerRow .yourToolMeta {
+  flex: 1 1 180px;
+}
+
+.customForm {
+  display: grid;
+  gap: 14px;
 }
 
 /* ── Summary step ── */
@@ -442,27 +673,44 @@
   gap: 18px;
 }
 
-.pathGrid {
+/* Entry: three equal selectable option cards (improvement spec §9.1).
+   Base affordance comes from .oa-selectable; this only lays out the grid.
+   Selection never changes card height (indicator + tint only). */
+
+.entryGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
 }
 
-.pathCard {
-  text-align: left;
-  padding: clamp(22px, 3vw, 30px);
+.entryBody {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   align-content: start;
-  cursor: pointer;
-  transition: transform 0.22s var(--oa-ease), box-shadow 0.22s var(--oa-ease),
-    border-color 0.22s var(--oa-ease);
+  min-width: 0;
 }
 
-.pathCard:hover {
-  transform: translateY(-3px);
-  border-color: var(--oa-border-strong);
-  box-shadow: var(--oa-shadow-pop);
+.entryIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+}
+
+.entryIconTeal {
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+}
+
+.entryTitle {
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
 }
 
 .pathIcon {
@@ -473,21 +721,6 @@
   place-items: center;
   background: var(--oa-soft-blue);
   color: var(--oa-blue-dark);
-}
-
-.pathIconTeal {
-  background: var(--oa-soft-teal);
-  color: var(--oa-teal-deep);
-}
-
-.pathCta {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 13.5px;
-  font-weight: 750;
-  color: var(--oa-blue-dark);
-  margin-top: 2px;
 }
 
 /* Upload */
@@ -563,6 +796,43 @@
   gap: 10px;
 }
 
+/* Guided question card: content-driven height (no fixed heights anywhere),
+   20-24px desktop padding, 16px on mobile (improvement spec §9.2). */
+.guidedCard {
+  padding: clamp(20px, 2.4vw, 24px);
+  gap: 18px;
+}
+
+/* Collapsed-by-default "Examples and guidance" expander (spec §9.2). */
+.guideToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 14px;
+  margin-left: -14px;
+  border-radius: var(--oa-r-chip);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+  transition: color 0.2s var(--oa-ease), background 0.2s var(--oa-ease);
+}
+
+.guideToggle:hover {
+  color: var(--oa-ink);
+  background: var(--oa-bg-alt);
+}
+
+.guidePanel {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 14px 16px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-bg-alt);
+}
+
 .exampleChips {
   display: flex;
   flex-wrap: wrap;
@@ -623,7 +893,11 @@
   box-shadow: 0 0 0 3px rgba(49, 87, 213, 0.1);
 }
 
-/* Canvas grid — classic Lean Canvas layout on desktop */
+/* Canvas board — a real Lean Canvas (improvement spec §9.3, LC-01/LC-02).
+   One outer 1.5px-bordered container; the 1px grid gap over a border-colour
+   background draws SHARED internal cell borders (no doubles). Desktop uses
+   the classic multi-column arrangement; ≤1024px two columns; ≤768px stacked
+   in the fixture's logical reading order. Cells grow with content. */
 
 .canvasTopBar {
   display: flex;
@@ -634,11 +908,15 @@
   margin-bottom: 16px;
 }
 
-.canvasGrid {
+.canvasBoard {
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
-  grid-auto-rows: minmax(140px, auto);
-  gap: 13px;
+  grid-auto-rows: minmax(150px, auto);
+  gap: 1px;
+  background: var(--oa-border);
+  border: 1.5px solid var(--oa-border-strong);
+  border-radius: var(--oa-r-card);
+  overflow: hidden;
   grid-template-areas:
     "problem problem solution solution uvp uvp unfair unfair segments segments"
     "problem problem metrics metrics uvp uvp channels channels segments segments"
@@ -656,7 +934,8 @@
 .areaUnfair   { grid-area: unfair; }
 
 .canvasBlock {
-  padding: 15px 16px;
+  background: var(--oa-surface);
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -694,6 +973,7 @@
 }
 
 .blockIconBtn {
+  position: relative;
   width: 28px;
   height: 28px;
   border-radius: 8px;
@@ -704,6 +984,13 @@
   flex: none;
   transition: color 0.2s var(--oa-ease), border-color 0.2s var(--oa-ease),
     background 0.2s var(--oa-ease);
+}
+
+/* §19.1: extend the tap target to 44px without growing the visual button. */
+.blockIconBtn::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
 }
 
 .blockIconBtn:hover {
@@ -721,6 +1008,9 @@
   padding: 4px 6px;
   margin: -4px -6px;
   flex: 1;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
   cursor: text;
   transition: background 0.2s var(--oa-ease);
 }
@@ -752,10 +1042,13 @@
   .rail {
     position: static;
   }
-  .canvasGrid {
+  /* Two columns keep the shared-border board; DOM order = logical reading
+     order (Problem → Segments → UVP → Solution → Channels → Revenue → Cost
+     → Metrics → Unfair advantage). */
+  .canvasBoard {
     grid-template-columns: 1fr 1fr;
     grid-template-areas: none;
-    grid-auto-rows: auto;
+    grid-auto-rows: minmax(120px, auto);
   }
   .areaProblem, .areaSegments, .areaUvp, .areaSolution, .areaChannels,
   .areaRevenue, .areaCost, .areaMetrics, .areaUnfair {
@@ -767,17 +1060,21 @@
   .modeGrid {
     grid-template-columns: 1fr;
   }
-  .pathGrid {
+  .entryGrid {
     grid-template-columns: 1fr;
   }
   .improveGrid {
     grid-template-columns: 1fr;
   }
-  .canvasGrid {
+  .canvasBoard {
     grid-template-columns: 1fr;
+    grid-auto-rows: auto;
   }
   .stepCard {
     padding: 18px;
+  }
+  .guidedCard {
+    padding: 16px;
   }
   .checkRow {
     flex-wrap: wrap;

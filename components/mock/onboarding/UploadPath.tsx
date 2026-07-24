@@ -92,7 +92,7 @@ export default function UploadPath({
                 <UploadCloud size={19} />
               </span>
               <h2 className="oa-h3">Drag and drop your Lean Canvas</h2>
-              <p className="oa-sub">One file is enough — Oriant reads it into nine editable blocks.</p>
+              <p className="oa-sub">One file is enough. Oriant reads it into nine editable blocks.</p>
               <div className={styles.fileChips} aria-hidden>
                 {["PDF", "PNG", "DOCX"].map((ext) => (
                   <span key={ext} className="oa-chip">
@@ -119,7 +119,7 @@ export default function UploadPath({
                   className="oa-btn oa-btn--soft oa-btn--sm"
                   onClick={() => startReading(SAMPLE_FILE)}
                 >
-                  Use sample file — {SAMPLE_FILE}
+                  Use sample file ({SAMPLE_FILE})
                 </button>
               </div>
             </div>
@@ -129,7 +129,7 @@ export default function UploadPath({
                 Choose a different path
               </button>
               <span className="oa-sim-note">
-                Simulated import — your file is never uploaded or parsed.
+                Simulated import. Your file is never uploaded or parsed.
               </span>
             </div>
           </motion.div>
@@ -174,8 +174,8 @@ export default function UploadPath({
               <span style={{ width: `${(lineCount / stages.length) * 100}%` }} />
             </div>
             <span className="oa-sim-note">
-              Simulated reading — the prepared BrightPath demo canvas will load.
-              Your file is never parsed.
+              Simulated reading. The prepared BrightPath demo canvas will load;
+              your file is never parsed.
             </span>
           </motion.div>
         )}

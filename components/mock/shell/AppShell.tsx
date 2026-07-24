@@ -20,7 +20,7 @@ import ProgressTracker from "./ProgressTracker";
 import CommandPalette from "./CommandPalette";
 import MobileNav from "./MobileNav";
 import Toaster from "@/components/mock/ui/Toaster";
-import { Sparkles } from "lucide-react";
+import { MessageSquareText } from "lucide-react";
 import styles from "./shell.module.css";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -72,7 +72,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           onClick={() => setPaletteOpen(true)}
           aria-haspopup="dialog"
         >
-          <Sparkles size={15} aria-hidden />
+          <MessageSquareText size={15} aria-hidden />
           Ask Oriant
           <span className={styles.cmdKbd} aria-hidden>
             ⌘K

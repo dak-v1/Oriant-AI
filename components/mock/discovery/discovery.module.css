@@ -171,6 +171,25 @@
   flex-wrap: wrap;
 }
 
+/* ── Prefill simulation transcript (improvement spec §10, D-01) ── */
+
+.prefillTranscript {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-bg-alt);
+  min-height: 84px;
+  align-content: start;
+}
+
+.prefillTranscript p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
 /* ── Question list (return to skipped questions) ── */
 
 .qList {
@@ -539,12 +558,6 @@ button.qPill:not(:disabled):hover { border-color: var(--oa-border-strong); trans
   font-size: 13.5px;
   line-height: 1.45;
   color: var(--oa-ink);
-}
-.kEmpty {
-  margin: 0;
-  font-size: 13px;
-  color: var(--oa-muted);
-  font-style: italic;
 }
 .kCompact .factGrid { grid-template-columns: 1fr; }
 .kCompact .kSection { padding: 12px 14px; }

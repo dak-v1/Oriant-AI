@@ -33,7 +33,7 @@ export default function AgentRoster() {
 
   const pause = (name: string) => {
     toast({
-      title: `${name} — paused (simulated)`,
+      title: `${name} paused (simulated)`,
       detail: "Demo only. No live agent was changed.",
       tone: "info",
     });
@@ -46,7 +46,7 @@ export default function AgentRoster() {
           <p className="oa-eyebrow">Operate · Agents</p>
           <h1 className="oa-h1">Agent roster</h1>
           <p className="oa-lead">
-            Every agent on your plan — status, workflows, guardrails and cost, in one
+            Every agent on your plan: status, workflows, guardrails and cost in one
             operational view.
           </p>
         </div>
@@ -174,7 +174,7 @@ export default function AgentRoster() {
       </div>
 
       <p className="oa-sim-note" style={{ marginTop: 16 }}>
-        Read-only operational view — pausing is simulated in this demo.
+        Read-only operational view. Pausing is simulated in this demo.
       </p>
     </main>
   );

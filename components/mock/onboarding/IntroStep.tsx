@@ -31,7 +31,7 @@ export default function IntroStep() {
         <span className="oa-micro">Oriant asks</span>
         <p className={styles.promptQuote}>“{INTRO_PROMPT}”</p>
         <p className="oa-sub">
-          Speak naturally for twenty or thirty seconds — Oriant turns it into
+          Speak naturally for twenty or thirty seconds. Oriant turns it into
           structured facts you can review on the right.
         </p>
       </div>

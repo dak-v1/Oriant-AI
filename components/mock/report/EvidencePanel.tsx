@@ -103,7 +103,7 @@ export default function EvidencePanel({
       <div className={styles.thread}>
         <p className="oa-micro">Notes &amp; comments</p>
         {noteLines.length === 0 && (
-          <p className="oa-sub">No notes yet — anything you add travels with this section to the Planner.</p>
+          <p className="oa-sub">No notes yet. Anything you add travels with this section to the Planner.</p>
         )}
         {noteLines.map((line, i) => (
           <div key={i} className={styles.threadBubble}>
@@ -138,7 +138,7 @@ export default function EvidencePanel({
             <Send size={13} aria-hidden />
           </button>
         </form>
-        <span className="oa-sim-note">Notes stay inside this demo — nothing is shared.</span>
+        <span className="oa-sim-note">Notes stay inside this demo; nothing is shared.</span>
       </div>
     </div>
   );

@@ -88,7 +88,7 @@ export const NL_COMMANDS: NlCommandFixture[] = [
     keywords: ["campaign"],
     reasoning: [
       "Checking the Marketing Agent's current approval settings",
-      "Campaign publishing is already gated — making the rule explicit and locked",
+      "Campaign publishing is already gated; this makes the rule explicit and locked",
       "No workflow structure changes needed",
     ],
     summary:
@@ -110,7 +110,7 @@ export const NL_COMMANDS: NlCommandFixture[] = [
       "Estimating the incremental setup and monthly cost",
     ],
     summary:
-      "Added the Weekly Invoice Digest workflow to the Finance Follow-up Agent — a Monday 08:30 summary of remaining overdue invoices and reminder outcomes for Sarah.",
+      "Added the Weekly Invoice Digest workflow to the Finance Follow-up Agent: a Monday 08:30 summary of remaining overdue invoices and reminder outcomes for Sarah.",
     costDelta: { setup: 40, monthly: 8 },
     effect: {
       kind: "add_workflow",
@@ -125,7 +125,7 @@ export const NL_COMMANDS: NlCommandFixture[] = [
     reasoning: [
       "Appointment reminders sit inside Appointment Scheduling, already owned by the Admin Operations Agent",
       "Recording an explicit routing rule so no other agent drafts appointment reminders",
-      "No cost change — the capability already exists in the plan",
+      "No cost change; the capability already exists in the plan",
     ],
     summary:
       "Appointment reminders are now explicitly owned by the Admin Operations Agent. No other agent will draft or send appointment reminders.",
@@ -149,7 +149,7 @@ export const NL_COMMANDS: NlCommandFixture[] = [
     costDelta: { setup: 0, monthly: 0 },
     effect: {
       kind: "add_rule",
-      rule: "No agent may contact a high-value customer automatically — every such message queues for human approval first.",
+      rule: "No agent may contact a high-value customer automatically; every such message queues for human approval first.",
     },
   },
 ];

@@ -87,9 +87,10 @@ export default function LandingFooter() {
           </div>
         </div>
 
-        {/* ── Bottom row ── */}
+        {/* ── Bottom row (incl. the single subtle sponsor note, spec §3.4) ── */}
         <div className={styles.bottom}>
           <p className={styles.copyright}>© 2026 Oriant.ai</p>
+          <p className={styles.attribution}>{FOOTER.attribution}</p>
           <a href="#top" className={styles.toTop}>
             Back to top
             <ArrowUp size={14} strokeWidth={2} aria-hidden="true" />

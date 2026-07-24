@@ -9,12 +9,21 @@
  * Approving morphs the card to its approved state IN PLACE via layout
  * motion — the linked calendar pill and activity feed change in the very
  * same store update (§20 "Workspace" motion row).
+ *
+ * The status icon chip uses the calendar's stateMeta treatment (C-01), and
+ * `highlight` draws a brief focus ring when the card is deep-linked via
+ * ?focus=<approvalId> (C-02).
  */
 import { motion } from "framer-motion";
 import { Check, Clock, UserRound } from "lucide-react";
 import type { ApprovalItem } from "@/lib/mock/types";
 import { DEMO_TODAY } from "@/lib/mock/fixtures/ids";
 import { DUR, EASE, fadeUp } from "@/lib/mock/motion";
+import {
+  APPROVAL_STATE,
+  STATE_META,
+  stateFill,
+} from "@/components/mock/calendar/stateMeta";
 import StatusBadge from "@/components/mock/ui/StatusBadge";
 import { RISK_TAG, cap, dueLabel } from "./format";
 import styles from "./approvals.module.css";
@@ -23,6 +32,7 @@ export default function ApprovalCard({
   item,
   index,
   reduced,
+  highlight = false,
   onReview,
   onApprove,
 }: {
@@ -30,10 +40,14 @@ export default function ApprovalCard({
   /** Position in the visible list (entrance stagger only). */
   index: number;
   reduced: boolean;
+  /** Brief focus ring after a ?focus= deep link (C-02). */
+  highlight?: boolean;
   onReview: () => void;
   onApprove: () => void;
 }) {
   const actionable = item.status === "pending" || item.status === "review_requested";
+  const stateKey = APPROVAL_STATE[item.status];
+  const meta = STATE_META[stateKey];
 
   const motionProps = reduced
     ? {}
@@ -53,12 +67,20 @@ export default function ApprovalCard({
     <motion.article
       layout={!reduced}
       {...motionProps}
-      className={`oa-card oa-card--flat ${styles.card} ${actionable ? "" : styles.cardDecided}`}
+      id={`oa-approval-${item.id}`}
+      className={`oa-card oa-card--flat ${styles.card} ${
+        actionable ? "" : styles.cardDecided
+      } ${highlight ? styles.cardFocus : ""}`}
       aria-labelledby={`${item.id}-title`}
     >
       <div className={styles.cardTop}>
-        <span className={styles.wfLine}>
-          {item.workflowName} · {item.agentName}
+        <span className={styles.cardTopLead}>
+          <span className={styles.statusIconChip} style={stateFill(stateKey)} aria-hidden>
+            <meta.icon size={11} />
+          </span>
+          <span className={styles.wfLine}>
+            {item.workflowName} · {item.agentName}
+          </span>
         </span>
         <StatusBadge status={item.status} />
       </div>

@@ -15,7 +15,7 @@ export default function WorkspaceIntegrationsPage() {
           <h1 className="oa-h1">Workspace connections</h1>
           <p className="oa-lead">
             The connections your live agents use day to day. Manage or disconnect any tool at any
-            time — your approval rules stay exactly as you set them.
+            time; your approval rules stay exactly as you set them.
           </p>
         </div>
       </header>

@@ -224,7 +224,7 @@ function AdvancedAccordion({ adv, name }: { adv: IntegrationDef["advanced"]; nam
         />
         Advanced
         <span className="oa-sub" style={{ fontSize: 11.5 }}>
-          — technical details for {name}
+          (technical details for {name})
         </span>
       </button>
       <AnimatePresence initial={false}>

@@ -11,7 +11,7 @@
  */
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, Plus, Sparkles } from "lucide-react";
+import { ArrowLeft, Plus, Target } from "lucide-react";
 import { AGENT_LIBRARY } from "@/lib/mock/fixtures/agent-library";
 import { useDemoStore } from "@/lib/mock/store";
 import { money } from "@/lib/mock/pricing";
@@ -117,7 +117,7 @@ function AddToPlan({ def, onAdd }: { def: (typeof AGENT_LIBRARY)[string]; onAdd:
       <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65 }}>{def.description}</p>
       {def.fitReason && (
         <p className="oa-sub" style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-          <Sparkles size={14} aria-hidden style={{ flex: "none", marginTop: 3, color: "var(--oa-blue)" }} />
+          <Target size={14} aria-hidden style={{ flex: "none", marginTop: 3, color: "var(--oa-blue)" }} />
           {def.fitReason}
         </p>
       )}

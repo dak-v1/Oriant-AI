@@ -55,8 +55,8 @@ export default function DeployPage() {
             {showLive
               ? "Your agents are active and reporting into the workspace."
               : showActivation
-                ? "Your agents are switching on one by one — this takes a few seconds."
-                : "One last check that everything Oriant built matches the rules you approved — then activate."}
+                ? "Your agents are switching on one by one. This takes a few seconds."
+                : "One last check that everything Oriant built matches the rules you approved, then activate."}
           </p>
         </div>
       </header>
@@ -68,7 +68,7 @@ export default function DeployPage() {
           </span>
           <h2 className="oa-h2">Your workforce is live</h2>
           <p className="oa-sub">
-            {agents.length} agents active{activatedTime ? ` since ${activatedTime} today` : ""} — approvals,
+            {agents.length} agents active{activatedTime ? ` since ${activatedTime} today` : ""}. Approvals,
             calendar and activity are waiting in your workspace.
           </p>
           <Link href="/app/workspace" className="oa-btn oa-btn--primary">

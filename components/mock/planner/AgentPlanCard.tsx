@@ -1,32 +1,36 @@
 "use client";
 /**
- * AgentPlanCard — one agent in the operations narrative (spec §11.1, §11.6):
- * header with source tag + status + fit reason, workflow rows with enable
- * switches, human-approval chips, integration chips, illustrative price
- * footer and Configure / Remove actions. Read-only when the plan is approved.
+ * AgentPlanCard — one slim agent card on the canvas (improvement spec
+ * §12.4): source tag + status, name, role line, one-line purpose, summary
+ * chips ("N workflows · M approvals" plus connected tools) and the price
+ * footer with Configure / Remove. Full workflow detail and the enable
+ * toggles live in the inspector. Keyboard reorder: Move up / Move down
+ * buttons plus arrow keys on the drag handle (all 44px targets).
+ * Read-only when the plan is approved.
  */
 import Link from "next/link";
 import {
   CalendarClock,
+  ChevronDown,
+  ChevronUp,
   Gauge,
   GitBranch,
   GripVertical,
   Hand,
-  Lightbulb,
   Plug,
   Settings2,
   ShieldCheck,
   Trash2,
   TriangleAlert,
+  Workflow,
   Zap,
 } from "lucide-react";
-import type { AgentDef, AgentWorkflowDef, PlanAgent, TriggerKind } from "@/lib/mock/types";
+import type { AgentDef, PlanAgent, TriggerKind } from "@/lib/mock/types";
 import StatusBadge from "@/components/mock/ui/StatusBadge";
-import { INTEGRATIONS } from "@/lib/mock/fixtures/integrations";
 import { money } from "@/lib/mock/pricing";
 import { useDemoStore } from "@/lib/mock/store";
 import { toast } from "@/components/mock/ui/Toaster";
-import { formatCostDelta, workflowDefById } from "./planner-utils";
+import { formatCostDelta } from "./planner-utils";
 import styles from "./planner.module.css";
 
 const TRIGGER_ICON: Record<TriggerKind, typeof Zap> = {
@@ -49,6 +53,13 @@ export interface DragHandleProps {
   position: string;
 }
 
+export interface MoveProps {
+  up: () => void;
+  down: () => void;
+  canUp: boolean;
+  canDown: boolean;
+}
+
 export default function AgentPlanCard({
   agent,
   def,
@@ -56,6 +67,7 @@ export default function AgentPlanCard({
   approved,
   onSelect,
   dragHandle,
+  move,
 }: {
   agent: PlanAgent;
   def: AgentDef;
@@ -63,23 +75,17 @@ export default function AgentPlanCard({
   approved: boolean;
   onSelect: () => void;
   dragHandle: DragHandleProps | null;
+  move: MoveProps | null;
 }) {
-  const workflows = agent.workflowOrder
-    .map((id) => workflowDefById(def, id))
-    .filter((w): w is AgentWorkflowDef => Boolean(w));
-
-  const toggle = (wf: AgentWorkflowDef) => {
-    const st = useDemoStore.getState();
-    const current = st.plan.agents.find((a) => a.agentId === agent.agentId);
-    const wasEnabled = current?.config.workflowsEnabled[wf.id] ?? true;
-    st.toggleAgentWorkflow(agent.agentId, wf.id);
-    toast({
-      title: wasEnabled ? `Disabled ${wf.name}.` : `Enabled ${wf.name}.`,
-      detail: wasEnabled ? "Kept in the plan — it will not run until re-enabled." : undefined,
-      tone: "info",
-      action: { label: "Undo", onClick: () => useDemoStore.getState().undoPlan() },
-    });
-  };
+  const workflowCount = agent.workflowOrder.length;
+  const disabledCount = agent.workflowOrder.filter(
+    (id) => !(agent.config.workflowsEnabled[id] ?? true),
+  ).length;
+  const approvalCount = Array.from(
+    new Set([...def.humanApprovals, ...agent.config.approvalActions]),
+  ).length;
+  /** One-line purpose: the first sentence of the description. */
+  const purpose = def.description.split(". ")[0];
 
   const remove = () => {
     useDemoStore.getState().removeAgentFromPlan(def.id);
@@ -116,85 +122,71 @@ export default function AgentPlanCard({
           <button type="button" className={styles.agentName} onClick={onSelect}>
             {def.name}
           </button>
-          <p className={styles.fitReason}>
-            <Lightbulb size={13} aria-hidden />
-            {def.fitReason}
-          </p>
+          <p className={styles.agentRole}>{def.role}</p>
+          <p className={styles.agentPurpose}>{purpose}.</p>
         </div>
-        {dragHandle && (
-          <button
-            type="button"
-            className={styles.dragHandle}
-            onPointerDown={dragHandle.onPointerDown}
-            onKeyDown={dragHandle.onKeyDown}
-            aria-label={`Reorder ${def.name} — position ${dragHandle.position}. Use the arrow keys to move it.`}
-          >
-            <GripVertical size={15} aria-hidden />
-          </button>
+        {(move || dragHandle) && (
+          <div className={styles.headBtns}>
+            {move && (
+              <>
+                <button
+                  type="button"
+                  className="oa-btn oa-btn--ghost oa-btn--icon"
+                  onClick={move.up}
+                  disabled={!move.canUp}
+                  aria-label={`Move ${def.name} up`}
+                >
+                  <ChevronUp size={15} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="oa-btn oa-btn--ghost oa-btn--icon"
+                  onClick={move.down}
+                  disabled={!move.canDown}
+                  aria-label={`Move ${def.name} down`}
+                >
+                  <ChevronDown size={15} aria-hidden />
+                </button>
+              </>
+            )}
+            {dragHandle && (
+              <button
+                type="button"
+                className={`oa-btn oa-btn--ghost oa-btn--icon ${styles.dragHandle}`}
+                onPointerDown={dragHandle.onPointerDown}
+                onKeyDown={dragHandle.onKeyDown}
+                aria-label={`Reorder ${def.name}, position ${dragHandle.position}. Use the arrow keys to move it.`}
+              >
+                <GripVertical size={15} aria-hidden />
+              </button>
+            )}
+          </div>
         )}
       </header>
 
-      <div className={styles.wfList}>
-        {workflows.map((wf) => {
-          const enabled = agent.config.workflowsEnabled[wf.id] ?? true;
-          return (
-            <div key={wf.id} className={`${styles.wfRow} ${enabled ? "" : styles.wfRowOff}`}>
-              <div className={styles.wfText}>
-                <p className={styles.wfName}>{wf.name}</p>
-                <p className={styles.wfTrigger}>
-                  <TriggerGlyph kind={wf.trigger.kind} />
-                  {wf.trigger.label}
-                </p>
-                {!enabled && <p className={styles.wfOffNote}>Disabled — kept in plan</p>}
-              </div>
-              {!approved ? (
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={enabled}
-                  aria-label={`${wf.name} enabled`}
-                  className="oa-switch"
-                  onClick={() => toggle(wf)}
-                />
-              ) : (
-                <span className={`oa-switch ${enabled ? "oa-switch--on" : ""}`} aria-hidden />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {agent.config.approvalActions.length > 0 && (
-        <div className={styles.metaBlock}>
-          <p className="oa-micro">Human approval required</p>
-          <div className="oa-cluster" style={{ gap: 6 }}>
-            {agent.config.approvalActions.map((a) => (
-              <span key={a} className={styles.approvalChip}>
-                <ShieldCheck size={11} aria-hidden />
-                {a}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className={styles.metaBlock}>
-        <p className="oa-micro">Connects to</p>
-        <div className="oa-cluster" style={{ gap: 6 }}>
-          {def.integrations.map((req) => (
-            <span key={req.integrationId} className={styles.intChip} title={req.purpose}>
-              <Plug size={11} aria-hidden />
-              {INTEGRATIONS[req.integrationId]?.name ?? req.integrationId}
-            </span>
-          ))}
-        </div>
+      <div className={styles.summaryChips}>
+        <span className={styles.sumChip}>
+          <Workflow size={11} aria-hidden />
+          {workflowCount} workflow{workflowCount === 1 ? "" : "s"} · {approvalCount} approval
+          {approvalCount === 1 ? "" : "s"}
+        </span>
+        {disabledCount > 0 && (
+          <span className={`${styles.sumChip} ${styles.sumChipWarn}`}>
+            <TriangleAlert size={11} aria-hidden />
+            {disabledCount} workflow{disabledCount === 1 ? "" : "s"} off
+          </span>
+        )}
+        <span className={styles.sumChip}>
+          <Plug size={11} aria-hidden />
+          {def.integrations.length} tools
+        </span>
       </div>
 
       {agent.status === "needs_information" && !approved && (
         <p className={styles.designNote}>
           <TriangleAlert size={13} aria-hidden />
           Design call required before this agent can be built
-          {def.customProposal ? ` — ${def.customProposal.missingInformation.length} open questions` : ""}.
+          {def.customProposal ? ` (${def.customProposal.missingInformation.length} open questions)` : ""}.
         </p>
       )}
 

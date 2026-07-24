@@ -70,7 +70,7 @@ export default function ConnectWizard({
           setPhase("done");
           toast({
             title: `${def.name} connected`,
-            detail: "Simulated connection — no account was accessed.",
+            detail: "Simulated connection; no account was accessed.",
             tone: "ok",
           });
         }
@@ -230,7 +230,7 @@ export default function ConnectWizard({
       </div>
 
       <p className="oa-sim-note" style={{ marginTop: 6 }}>
-        This is a simulated connection — no account is accessed.
+        This is a simulated connection; no account is accessed.
       </p>
     </Drawer>
   );

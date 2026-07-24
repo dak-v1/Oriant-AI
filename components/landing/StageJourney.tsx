@@ -39,23 +39,33 @@ import {
   ArrowDown,
   ArrowRight,
   Building2,
+  Calculator,
   Calendar,
+  ClipboardCheck,
   FileCode,
   FileText,
+  HardDrive,
   Mail,
   MessageCircle,
   Mic,
   Package,
+  Plug,
   Search,
   Send,
   ShieldCheck,
   User,
   UserCheck,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType, CSSProperties, RefObject } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { STAGES, STAGES_SECTION, type StageId } from "@/lib/landing-content";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import {
+  BUILD_STAGE,
+  STAGES,
+  STAGES_SECTION,
+  type StageId,
+} from "@/lib/landing-content";
 import { DUR, EASE, STAGGER } from "./motion";
 import styles from "./StageJourney.module.css";
 
@@ -309,45 +319,129 @@ function ApproveVisual() {
   );
 }
 
-/* 04 · Build — files type in line by line (staggered scaleX-masked rows). */
-const BUILD_FILES = [
-  { name: "agent.yaml", lines: [72, 54, 63] },
-  { name: "prompt.md", lines: [66, 78, 48] },
-  { name: "workflow.yaml", lines: [58, 70] },
-];
+/* 04 · Build (spec §3.1) — the approved plan enters the build, becomes
+   generated configuration, and the workflow is connected to external tools
+   with owner approval; a five-step sequence rail reads underneath. */
+const BUILD_TOOL_ICONS: Record<string, LucideIcon> = {
+  email: Mail,
+  calendar: Calendar,
+  crm: Users,
+  accounting: Calculator,
+  storage: HardDrive,
+  messaging: MessageCircle,
+  mcp: Plug,
+};
 
 function BuildVisual() {
   const { ref, entered } = useEntry();
   const t = useT();
   return (
-    <div ref={ref} className={`${styles.vis} ${styles.build}`}>
-      {BUILD_FILES.map((file, fi) => (
+    <div ref={ref} className={`${styles.vis} ${styles.buildFlow}`}>
+      {/* Approved plan → generated configuration */}
+      <div className={styles.buildTop}>
         <motion.div
-          key={file.name}
-          className={styles.fileCard}
-          initial={{ opacity: 0, y: 16 }}
-          animate={entered ? { opacity: 1, y: 0 } : undefined}
-          transition={t(0.45, fi * 0.28)}
+          className={styles.buildPlanChip}
+          initial={{ opacity: 0, x: -14 }}
+          animate={entered ? { opacity: 1, x: 0 } : undefined}
+          transition={t(0.4, 0.05)}
         >
-          <div className={styles.fileHead}>
+          <ClipboardCheck size={14} strokeWidth={2} aria-hidden="true" />
+          <span>{BUILD_STAGE.input}</span>
+        </motion.div>
+        <ArrowRight
+          size={15}
+          strokeWidth={2}
+          className={styles.buildArrow}
+          aria-hidden="true"
+        />
+        <motion.div
+          className={styles.buildGenCard}
+          initial={{ opacity: 0, y: 14 }}
+          animate={entered ? { opacity: 1, y: 0 } : undefined}
+          transition={t(0.45, 0.2)}
+        >
+          <div className={styles.buildCardHead}>
             <FileCode size={14} strokeWidth={2} aria-hidden="true" />
-            <span className={styles.fileName}>{file.name}</span>
-            <span className={`lp-micro ${styles.fileTag}`}>Generated</span>
+            <span className="lp-micro">{BUILD_STAGE.outputsTitle}</span>
           </div>
-          <div className={styles.fileLines}>
-            {file.lines.map((width, li) => (
+          <div className={styles.buildOutputs}>
+            {BUILD_STAGE.outputs.map((output, i) => (
               <motion.span
-                key={li}
-                className={styles.fileLine}
-                style={{ width: `${width}%` }}
-                initial={{ scaleX: 0 }}
-                animate={entered ? { scaleX: 1 } : undefined}
-                transition={t(0.4, fi * 0.28 + 0.18 + li * 0.14)}
-              />
+                key={output}
+                className={styles.buildOutputRow}
+                initial={{ opacity: 0, x: -10 }}
+                animate={entered ? { opacity: 1, x: 0 } : undefined}
+                transition={t(0.35, 0.34 + i * 0.1)}
+              >
+                <FileText size={13} strokeWidth={2} aria-hidden="true" />
+                {output}
+              </motion.span>
             ))}
           </div>
         </motion.div>
-      ))}
+      </div>
+
+      {/* Connect tools — owner-approved connections */}
+      <motion.div
+        className={styles.buildToolsCard}
+        initial={{ opacity: 0, y: 14 }}
+        animate={entered ? { opacity: 1, y: 0 } : undefined}
+        transition={t(0.45, 0.55)}
+      >
+        <div className={styles.buildCardHead}>
+          <Plug size={14} strokeWidth={2} aria-hidden="true" />
+          <span className="lp-micro">{BUILD_STAGE.connectTitle}</span>
+          <span className={styles.buildApproveNote}>
+            <UserCheck size={13} strokeWidth={2} aria-hidden="true" />
+            {BUILD_STAGE.connectNote}
+          </span>
+        </div>
+        <div className={styles.buildToolChips}>
+          {BUILD_STAGE.tools.map((tool, i) => {
+            const Icon = BUILD_TOOL_ICONS[tool.id] ?? Plug;
+            return (
+              <motion.span
+                key={tool.id}
+                className={styles.buildToolChip}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={entered ? { opacity: 1, scale: 1 } : undefined}
+                transition={t(0.3, 0.65 + i * 0.07)}
+              >
+                <Icon size={13} strokeWidth={2} aria-hidden="true" />
+                {tool.label}
+              </motion.span>
+            );
+          })}
+        </div>
+      </motion.div>
+
+      {/* Five-step build sequence (arrows are icons, never copy) */}
+      <div className={styles.buildSeq}>
+        {BUILD_STAGE.sequence.map((step, i) => (
+          <Fragment key={step}>
+            {i > 0 && (
+              <ArrowRight
+                size={12}
+                strokeWidth={2}
+                className={styles.buildSeqArrow}
+                aria-hidden="true"
+              />
+            )}
+            <motion.span
+              className={`${styles.buildSeqStep}${
+                i === BUILD_STAGE.sequence.length - 1
+                  ? ` ${styles.buildSeqDone}`
+                  : ""
+              }`}
+              initial={{ opacity: 0 }}
+              animate={entered ? { opacity: 1 } : undefined}
+              transition={t(0.3, 1.1 + i * 0.12)}
+            >
+              {step}
+            </motion.span>
+          </Fragment>
+        ))}
+      </div>
     </div>
   );
 }

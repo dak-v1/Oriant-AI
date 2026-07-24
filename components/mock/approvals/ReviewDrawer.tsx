@@ -23,7 +23,6 @@ import {
   RefreshCw,
   Send,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import type { ApprovalItem } from "@/lib/mock/types";
 import { useDemoStore } from "@/lib/mock/store";
@@ -117,7 +116,7 @@ export default function ReviewDrawer({
     if (!item) return;
     approveItem(item.id);
     toast({
-      title: "Approved — calendar and activity updated",
+      title: "Approved. Calendar and activity updated",
       detail: item.title,
       tone: "ok",
     });
@@ -171,7 +170,7 @@ export default function ReviewDrawer({
           <>
             <span className={`oa-sim-note ${styles.footNote}`}>
               <Info size={12} aria-hidden />
-              Demo decision — nothing is really sent.
+              Demo decision. Nothing is really sent.
             </span>
             <button
               type="button"
@@ -186,7 +185,7 @@ export default function ReviewDrawer({
                 </>
               ) : (
                 <>
-                  <Sparkles size={14} aria-hidden />
+                  <PenLine size={14} aria-hidden />
                   Ask Agent to Update
                 </>
               )}
@@ -204,7 +203,7 @@ export default function ReviewDrawer({
         ) : (
           <>
             <span className={`oa-sim-note ${styles.footNote}`}>
-              Decision recorded — history stays intact.
+              Decision recorded. History stays intact.
             </span>
             <StatusBadge status={item.status} />
             <button type="button" className="oa-btn oa-btn--ghost" onClick={onClose}>
@@ -322,7 +321,7 @@ export default function ReviewDrawer({
                 <p className={styles.versionText}>{ownerDraft}</p>
                 <span className="oa-sim-note">
                   <Info size={12} aria-hidden />
-                  Demo-only draft — kept alongside the agent&apos;s versions.
+                  Demo-only draft, kept alongside the agent&apos;s versions.
                 </span>
               </motion.section>
             )}

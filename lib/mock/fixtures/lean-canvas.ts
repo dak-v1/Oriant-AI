@@ -52,7 +52,7 @@ export const LEAN_CANVAS_BLOCKS: LeanCanvasBlockDef[] = [
     demoValue:
       "One trusted team for every home maintenance need, with fixed transparent pricing and a response within 24 hours. Customers on a plan never have to hunt for a contractor again.",
     improvedValue:
-      "Every home maintenance need handled by one accountable team — fixed prices, a 24-hour response promise, and plan customers who never search for a contractor again.",
+      "Every home maintenance need handled by one accountable team: fixed prices, a 24-hour response promise, and plan customers who never search for a contractor again.",
   },
   {
     id: "solution",
@@ -67,7 +67,7 @@ export const LEAN_CANVAS_BLOCKS: LeanCanvasBlockDef[] = [
     demoValue:
       "Bundled maintenance plans with scheduled quarterly visits, plus on-demand repairs booked through WhatsApp or email. Every job is confirmed, dispatched, tracked and invoiced by our office team.",
     improvedValue:
-      "Subscription maintenance plans with scheduled quarterly visits, backed by on-demand repairs booked via WhatsApp or email — each job confirmed, dispatched, tracked and invoiced centrally.",
+      "Subscription maintenance plans with scheduled quarterly visits, backed by on-demand repairs booked via WhatsApp or email, with each job confirmed, dispatched, tracked and invoiced centrally.",
   },
   {
     id: "channels",
@@ -105,7 +105,7 @@ export const LEAN_CANVAS_BLOCKS: LeanCanvasBlockDef[] = [
     title: "Cost Structure",
     question: "What are your biggest costs?",
     guidance:
-      "Start with the largest line items. Flag any cost that grows faster than revenue — that is usually where automation helps.",
+      "Start with the largest line items. Flag any cost that grows faster than revenue; that is usually where automation helps.",
     examples: [
       "Technician salaries, CPF and training",
       "Vans, fuel, parts and tools",
@@ -114,7 +114,7 @@ export const LEAN_CANVAS_BLOCKS: LeanCanvasBlockDef[] = [
     demoValue:
       "The largest costs are technician salaries and CPF contributions, followed by vans, fuel, parts and tools. Office coordination overhead keeps growing each year as job volume rises.",
     improvedValue:
-      "Technician salaries and CPF dominate costs, followed by vehicles, fuel, parts and tools. Coordination overhead is the fastest-growing line — it scales with job volume, not revenue.",
+      "Technician salaries and CPF dominate costs, followed by vehicles, fuel, parts and tools. Coordination overhead is the fastest-growing line: it scales with job volume, not revenue.",
   },
   {
     id: "key-metrics",
@@ -137,7 +137,7 @@ export const LEAN_CANVAS_BLOCKS: LeanCanvasBlockDef[] = [
     title: "Unfair Advantage",
     question: "What do you have that competitors cannot easily copy?",
     guidance:
-      "Think history, relationships and data — not features. Something bought or built quickly by a rival does not count.",
+      "Think history, relationships and data, not features. Something bought or built quickly by a rival does not count.",
     examples: [
       "Eight years of service records across thousands of homes",
       "Technicians customers request by name",
@@ -145,6 +145,6 @@ export const LEAN_CANVAS_BLOCKS: LeanCanvasBlockDef[] = [
     demoValue:
       "Eight years of service history across more than 2,000 Singapore homes, with technicians customers ask for by name. Our plan renewal rate above 80% is hard for new entrants to copy.",
     improvedValue:
-      "Eight years of documented service history across 2,000+ Singapore homes, technicians requested by name, and an 80%+ plan renewal rate — trust a new entrant cannot buy.",
+      "Eight years of documented service history across 2,000+ Singapore homes, technicians requested by name, and an 80%+ plan renewal rate: trust a new entrant cannot buy.",
   },
 ];

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     if (db.report?.status === "approved") {
       // an approved brief is the locked source of truth — replaying the call
       // must not silently replace it (§4.3); edit it on the report screen
-      throw new GateError("The brief is already approved — edit it on the report screen instead.");
+      throw new GateError("The brief is already approved. Edit it on the report screen instead.");
     }
     db.call.answers = { ...db.call.answers, ...(body.answers ?? {}) };
     if (body.goals) db.call.goals = body.goals;

@@ -121,7 +121,12 @@ export default function OnboardingFlow() {
     (step === 0 && !onboarding.mode) || (step === 3 && !consentChecked);
 
   const onContinue = () => {
-    if (step === 2 && onboarding.selectedToolIds.length > 0) captureSection("tools");
+    if (
+      step === 2 &&
+      (onboarding.selectedToolIds.length > 0 || onboarding.customTools.length > 0)
+    ) {
+      captureSection("tools");
+    }
     if (step < 3) {
       goTo(step + 1);
       return;
@@ -129,7 +134,7 @@ export default function OnboardingFlow() {
     completeOnboarding();
     toast({
       title: "Onboarding captured",
-      detail: "Next: your Lean Canvas — upload it or build it together.",
+      detail: "Next: your Lean Canvas. Upload it or build it together.",
       tone: "ok",
     });
     router.push("/app/onboarding/lean-canvas");
@@ -147,8 +152,8 @@ export default function OnboardingFlow() {
               Let’s meet your <span className="oa-serif">business</span>
             </h1>
             <p className="oa-lead">
-              A short, guided conversation — speak or type, edit anything later.
-              Discovery covers whatever we don’t capture here.
+              A short, guided conversation. Speak or type, and edit anything
+              later. Discovery covers whatever we don’t capture here.
             </p>
           </header>
 

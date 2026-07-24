@@ -1,13 +1,18 @@
 "use client";
 /**
- * DayTimeline — the day drawer body for the Automation Calendar (spec §18.2).
+ * DayTimeline — the day drawer body for the Automation Calendar (spec §17.2).
  *
- * Time-sorted blocks on an 08:00–18:00 hour rail; clicking a block expands
- * its detail inline: detail text, workflow + agent, the linked approval
- * summary (with a live inline Approve when the approval is pending) and the
- * simulated calendar-action chips. Tolerates approvalId === null.
+ * Time-sorted block cards on an 08:00–18:00 hour rail. Every block shows a
+ * state icon (colours from ./stateMeta, matching the legend, C-01), a clear
+ * time column, a title that wraps to at most two lines, the agent and
+ * workflow, a StatusBadge and ONE quick action: pending blocks open their
+ * approval in the Approval Inbox (?focus=<approvalId>, C-02), completed
+ * blocks open the outcome inline, everything else opens its details inline.
+ * Pending events without a linked approval note that the approval will be
+ * created when the run is prepared.
  */
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowUpRight,
@@ -24,6 +29,7 @@ import { useDemoStore } from "@/lib/mock/store";
 import { DUR, EASE } from "@/lib/mock/motion";
 import StatusBadge from "@/components/mock/ui/StatusBadge";
 import { toast } from "@/components/mock/ui/Toaster";
+import { STATE_META, stateFill } from "./stateMeta";
 import styles from "./calendar.module.css";
 
 /** Working-hours rail (all fixture events fall inside 08:00–18:00). */
@@ -55,6 +61,7 @@ export default function DayTimeline({
   onToggle: (id: string) => void;
 }) {
   const reduced = useReducedMotion();
+  const router = useRouter();
   const approvals = useDemoStore((s) => s.workspace.approvals);
   const approveItem = useDemoStore((s) => s.approveItem);
 
@@ -113,11 +120,12 @@ export default function DayTimeline({
                     approval={ev.approvalId ? approvals[ev.approvalId] : undefined}
                     expanded={expandedId === ev.id}
                     onToggle={() => onToggle(ev.id)}
+                    onOpenApproval={(href) => router.push(href)}
                     onApprove={(approval) => {
                       approveItem(approval.id);
                       toast({
                         title: "Approved",
-                        detail: `${approval.title} — the calendar and approval inbox updated together.`,
+                        detail: `${approval.title}. The calendar and approval inbox updated together.`,
                         tone: "ok",
                       });
                     }}
@@ -144,13 +152,14 @@ export default function DayTimeline({
   );
 }
 
-/* ── One time block + inline expanding detail ── */
+/* ── One time block: head, one quick action, inline expanding detail ── */
 
 function EventBlock({
   event,
   approval,
   expanded,
   onToggle,
+  onOpenApproval,
   onApprove,
   reduced,
 }: {
@@ -158,32 +167,99 @@ function EventBlock({
   approval: ApprovalItem | undefined;
   expanded: boolean;
   onToggle: () => void;
+  onOpenApproval: (href: string) => void;
   onApprove: (approval: ApprovalItem) => void;
   reduced: boolean;
 }) {
+  const meta = STATE_META[event.state];
+  const focusHref = event.approvalId
+    ? `/app/workspace/approvals?focus=${event.approvalId}`
+    : null;
+  /* C-02: clicking a pending block opens/focuses its approval. */
+  const opensApproval = event.state === "pending_approval" && focusHref !== null;
+
   return (
     <div className={`${styles.block} ${expanded ? styles.blockExpanded : ""}`}>
       <button
         type="button"
         className={styles.blockHead}
-        aria-expanded={expanded}
-        onClick={onToggle}
+        {...(opensApproval
+          ? {
+              onClick: () => onOpenApproval(focusHref as string),
+              "aria-label": `${event.time}, ${event.title}. Opens its approval in the Approval Inbox.`,
+            }
+          : { onClick: onToggle, "aria-expanded": expanded })}
       >
+        <span className={styles.blockIcon} style={stateFill(event.state)} aria-hidden>
+          <meta.icon size={13} />
+        </span>
         <span className={styles.blockTime}>
           <span className={styles.blockTimeMain}>{event.time}</span>
           <span className={styles.blockTimeSub}>{event.durationMin} min</span>
         </span>
         <span className={styles.blockMain}>
           <span className={styles.blockTitle}>{event.title}</span>
-          <span className={styles.blockAgent}>{event.agentName}</span>
+          <span className={styles.blockAgent}>
+            {event.agentName} · {event.workflowName}
+          </span>
         </span>
         <StatusBadge status={event.state} />
-        <ChevronDown
-          size={14}
-          aria-hidden
-          className={`${styles.blockChevron} ${expanded ? styles.blockChevronOpen : ""}`}
-        />
+        {opensApproval ? (
+          <ArrowUpRight size={14} aria-hidden className={styles.blockChevron} />
+        ) : (
+          <ChevronDown
+            size={14}
+            aria-hidden
+            className={`${styles.blockChevron} ${expanded ? styles.blockChevronOpen : ""}`}
+          />
+        )}
       </button>
+
+      {/* ONE quick action per block (spec §17.2). The extra chevron on
+          pending blocks is disclosure only, so run details stay reachable. */}
+      <div className={styles.blockActions}>
+        {opensApproval && focusHref ? (
+          <>
+            <Link href={focusHref} className="oa-btn oa-btn--soft oa-btn--sm">
+              <Hand size={13} aria-hidden />
+              Review approval
+            </Link>
+            <button
+              type="button"
+              className="oa-btn oa-btn--ghost oa-btn--icon"
+              aria-expanded={expanded}
+              aria-label={expanded ? "Hide run details" : "Show run details"}
+              onClick={onToggle}
+            >
+              <ChevronDown
+                size={14}
+                aria-hidden
+                className={`${styles.blockChevron} ${expanded ? styles.blockChevronOpen : ""}`}
+              />
+            </button>
+          </>
+        ) : event.state === "pending_approval" ? (
+          <span className={styles.blockNote}>
+            <Hand size={12} aria-hidden />
+            Approval will be created when the run is prepared.
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="oa-btn oa-btn--ghost oa-btn--sm"
+            aria-expanded={expanded}
+            onClick={onToggle}
+          >
+            {event.state === "completed"
+              ? expanded
+                ? "Hide outcome"
+                : "View outcome"
+              : expanded
+                ? "Hide details"
+                : "View details"}
+          </button>
+        )}
+      </div>
 
       <AnimatePresence initial={false}>
         {expanded && (
@@ -198,12 +274,16 @@ function EventBlock({
               <p className={styles.detailText}>{event.detail}</p>
 
               <div className={styles.metaRow}>
+                <span className={styles.stateChip} style={stateFill(event.state)}>
+                  <meta.icon size={11} aria-hidden />
+                  {meta.label}
+                </span>
                 <span className="oa-tag oa-tag--neutral">{event.workflowName}</span>
                 <span className="oa-tag oa-tag--neutral">{event.agentName}</span>
                 <span className="oa-tag oa-tag--neutral">{TEAM_LABEL[event.team]}</span>
               </div>
 
-              {approval ? (
+              {approval && (
                 <div className={`oa-panel ${styles.approvalPanel}`}>
                   <p className="oa-micro">Linked approval</p>
                   <p className={styles.approvalTitle}>{approval.title}</p>
@@ -216,7 +296,7 @@ function EventBlock({
                   </div>
                   <div className={styles.approvalActions}>
                     <Link
-                      href="/app/workspace/approvals"
+                      href={`/app/workspace/approvals?focus=${approval.id}`}
                       className="oa-btn oa-btn--ghost oa-btn--sm"
                     >
                       Open in approvals
@@ -234,15 +314,7 @@ function EventBlock({
                     )}
                   </div>
                 </div>
-              ) : event.state === "pending_approval" ? (
-                <div className={`oa-panel ${styles.approvalPanel}`}>
-                  <p className="oa-micro">Linked approval</p>
-                  <p className="oa-sub" style={{ display: "flex", gap: 7, alignItems: "flex-start" }}>
-                    <Hand size={13} aria-hidden style={{ flex: "none", marginTop: 2 }} />
-                    Approval will be created when the run is prepared.
-                  </p>
-                </div>
-              ) : null}
+              )}
 
               <div className={styles.actionsBlock}>
                 <p className="oa-micro">Calendar actions</p>
@@ -253,7 +325,7 @@ function EventBlock({
                       type="button"
                       className="oa-chip"
                       onClick={() =>
-                        toast({ title: `${action} — simulated demo action`, tone: "info" })
+                        toast({ title: `${action}: simulated demo action`, tone: "info" })
                       }
                     >
                       {action}
@@ -262,7 +334,7 @@ function EventBlock({
                 </div>
                 <span className="oa-sim-note">
                   <Info size={12} aria-hidden />
-                  Simulated demo actions — no schedule is changed.
+                  Simulated demo actions. No schedule is changed.
                 </span>
               </div>
             </div>

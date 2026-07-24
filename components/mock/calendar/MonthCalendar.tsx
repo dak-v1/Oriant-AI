@@ -1,6 +1,6 @@
 "use client";
 /**
- * MonthCalendar — the reusable July 2026 month grid (spec §18.2).
+ * MonthCalendar — the reusable July 2026 month grid (spec §17.1, §18.2).
  *
  * Google-Calendar-familiar, Oriant-styled. The grid layout is derived
  * STATICALLY from DEMO_MONTH: 2026-07-01 is a Wednesday and July has 31
@@ -8,61 +8,17 @@
  * Aug 1–2 as muted cells (never `new Date()` with no args).
  *
  * Also imported by the Approvals screen in `compact` mode (2 slim pills
- * + "+N" overflow per day). Every pill carries its state as accessible
+ * + "+N" overflow per day). State colours + icons come exclusively from
+ * ./stateMeta (C-01) and every pill carries its state as accessible
  * text — colour is never the only signal (spec §21).
  */
 import { useMemo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import {
-  AlertTriangle,
-  CalendarCheck,
-  Check,
-  Hand,
-  PenLine,
-  type LucideIcon,
-} from "lucide-react";
-import type { CalendarEvent, CalendarEventState } from "@/lib/mock/types";
+import type { CalendarEvent } from "@/lib/mock/types";
 import { DEMO_MONTH, DEMO_MONTH_LABEL, DEMO_TODAY } from "@/lib/mock/fixtures/ids";
 import { DUR, EASE } from "@/lib/mock/motion";
+import { STATE_META, stateFill } from "./stateMeta";
 import styles from "./calendar.module.css";
-
-/* ── State treatments (spec §18.2 table) — one source for pills + legend ── */
-
-export const STATE_META: Record<
-  CalendarEventState,
-  { label: string; cls: string; Icon: LucideIcon; treatment: string }
-> = {
-  pending_approval: {
-    label: "Pending approval",
-    cls: styles.stPending,
-    Icon: Hand,
-    treatment: "Amber outline with a hand icon — scheduled, waiting on your decision",
-  },
-  approved: {
-    label: "Approved",
-    cls: styles.stApproved,
-    Icon: CalendarCheck,
-    treatment: "Near-black fill — approved and scheduled to run",
-  },
-  completed: {
-    label: "Completed",
-    cls: styles.stCompleted,
-    Icon: Check,
-    treatment: "Deep teal fill — finished successfully",
-  },
-  needs_changes: {
-    label: "Review requested",
-    cls: styles.stChanges,
-    Icon: PenLine,
-    treatment: "Blue outline — you asked the agent for changes",
-  },
-  failed: {
-    label: "Failed",
-    cls: styles.stFailed,
-    Icon: AlertTriangle,
-    treatment: "Red tint with an alert icon — run failed, recovery noted in the detail",
-  },
-};
 
 /* ── Static July 2026 grid (Monday-first, 5 weeks × 7 days) ── */
 
@@ -169,7 +125,7 @@ export default function MonthCalendar({
             <button
               type="button"
               className={styles.cellHit}
-              aria-label={`${weekday} ${cell.day} July${isToday ? ", today" : ""} — ${countText}`}
+              aria-label={`${weekday} ${cell.day} July${isToday ? ", today" : ""}, ${countText}`}
               aria-pressed={isSelected}
               onClick={() => onSelectDate(cell.iso)}
             >
@@ -198,9 +154,10 @@ export default function MonthCalendar({
                       initial={reduced ? false : { opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: DUR.micro, ease: EASE }}
-                      className={`${compact ? styles.pillSlim : styles.pill} ${meta.cls}`}
-                      title={`${ev.title} — ${meta.label}`}
-                      aria-label={`${ev.time}, ${ev.title} — ${meta.label}`}
+                      className={compact ? styles.pillSlim : styles.pill}
+                      style={stateFill(ev.state)}
+                      title={`${ev.title} (${meta.label})`}
+                      aria-label={`${ev.time}, ${ev.title}, ${meta.label}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (onSelectEvent) onSelectEvent(ev.id);
@@ -209,13 +166,13 @@ export default function MonthCalendar({
                     >
                       {compact ? (
                         <>
-                          <meta.Icon size={10} aria-hidden />
+                          <meta.icon size={10} aria-hidden />
                           <span className={styles.pillTitle}>{ev.title}</span>
                         </>
                       ) : (
                         <>
                           <span className={styles.pillHead}>
-                            <meta.Icon size={11} aria-hidden />
+                            <meta.icon size={11} aria-hidden />
                             <span className={styles.pillTime}>{ev.time}</span>
                             <span className={styles.pillTitle}>{ev.title}</span>
                           </span>

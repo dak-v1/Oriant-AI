@@ -134,14 +134,14 @@ export const SCENARIO = {
 
 /* ── Approvals (workspace fixtures) ── */
 export const APPROVAL = {
-  refund: "ap-refund-tan",           // $180 refund — high value, financial
+  refund: "ap-refund-tan",           // $180 refund: high value, financial
   campaign: "ap-campaign-august",    // public campaign copy
   writeoff: "ap-invoice-writeoff",   // invoice write-off
   reschedule: "ap-reschedule-lim",   // schedule change after confirmation
   reminder: "ap-payment-reminders",  // Friday reminder batch
   complaint: "ap-complaint-wong",    // service recovery resolution
   contentPlan: "ap-content-plan",    // marketing content plan
-  quote: "ap-maintenance-quote",     // renewal quote — customer facing
+  quote: "ap-maintenance-quote",     // renewal quote: customer facing
 } as const;
 
 /* ── Calendar events referenced by approvals (cal-*) ── */

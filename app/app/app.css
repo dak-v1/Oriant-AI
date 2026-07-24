@@ -172,7 +172,7 @@
   border-radius: var(--oa-r-chip);
   border: 1px solid transparent;
   padding: 0 20px;
-  min-height: 42px;
+  min-height: 44px; /* improvement spec §19.1: 44px minimum for every button */
   font-size: 14px;
   font-weight: 700;
   letter-spacing: -0.008em;
@@ -208,9 +208,11 @@
 .oa-btn--teal { background: var(--oa-teal-deep); color: var(--oa-on-teal); }
 .oa-btn--teal:hover:not(:disabled) { background: #0c5f59; }
 
-.oa-btn--sm { min-height: 34px; padding: 0 14px; font-size: 13px; gap: 6px; }
-.oa-btn--lg { min-height: 50px; padding: 0 26px; font-size: 15px; }
-.oa-btn--icon { min-height: 36px; min-width: 36px; padding: 0; border-radius: 12px; }
+/* "Small" buttons stay 44px tall for the touch target; they read lighter via
+   tighter padding + type, never via a shrunken hit area (spec §19.1). */
+.oa-btn--sm { min-height: 44px; padding: 0 15px; font-size: 13px; gap: 6px; }
+.oa-btn--lg { min-height: 52px; padding: 0 26px; font-size: 15px; }
+.oa-btn--icon { min-height: 44px; min-width: 44px; padding: 0; border-radius: 13px; }
 
 /* ── Cards / panels ─────────────────────────────────────────────────────── */
 
@@ -247,7 +249,8 @@
   transition: border-color 0.2s var(--oa-ease), background 0.2s var(--oa-ease),
     color 0.2s var(--oa-ease), transform 0.2s var(--oa-ease);
 }
-button.oa-chip { cursor: pointer; }
+/* Chips that act as controls get the full 44px target (spec §19.1). */
+button.oa-chip { cursor: pointer; min-height: 44px; padding: 9px 16px; }
 button.oa-chip:hover { border-color: var(--oa-border-strong); transform: translateY(-1px); }
 .oa-chip--selected {
   background: var(--oa-soft-blue);
@@ -301,6 +304,91 @@ button.oa-chip:hover { border-color: var(--oa-border-strong); transform: transla
 .oa-status--ready    { background: var(--oa-soft-teal); color: var(--oa-teal-deep); }
 .oa-status--neutral  { border-color: var(--oa-border); color: var(--oa-muted-strong); }
 
+/* ── Selectable cards (improvement spec §2.2, §6, §15) ──
+   One shared affordance for every choice card: visible border + radio/check
+   indicator BEFORE interaction; hover tint + lift; selected = stronger border,
+   soft tint, filled indicator. Selection NEVER changes card height. */
+
+.oa-selectable {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--oa-surface);
+  border: 1.5px solid var(--oa-border);
+  border-radius: var(--oa-r-card);
+  padding: 18px;
+  cursor: pointer;
+  transition: border-color 0.16s var(--oa-ease), background 0.16s var(--oa-ease),
+    box-shadow 0.16s var(--oa-ease), transform 0.16s var(--oa-ease);
+}
+.oa-selectable:hover:not(:disabled) {
+  border-color: var(--oa-border-strong);
+  box-shadow: var(--oa-shadow-card);
+  transform: translateY(-1px);
+}
+.oa-selectable:disabled { opacity: 0.55; cursor: not-allowed; }
+.oa-selectable--selected,
+.oa-selectable[aria-pressed="true"],
+.oa-selectable[aria-checked="true"] {
+  border-color: var(--oa-blue);
+  background: color-mix(in srgb, var(--oa-soft-blue) 44%, var(--oa-surface));
+  box-shadow: 0 0 0 3px rgba(49, 87, 213, 0.12);
+}
+
+/* Radio indicator — render as the card's first child. */
+.oa-radio {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--oa-border-strong);
+  background: var(--oa-surface);
+  flex: none;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  transition: border-color 0.16s var(--oa-ease);
+}
+.oa-radio::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--oa-blue);
+  transform: scale(0);
+  transition: transform 0.16s var(--oa-ease);
+}
+.oa-selectable--selected .oa-radio,
+[aria-pressed="true"] .oa-radio,
+[aria-checked="true"] .oa-radio { border-color: var(--oa-blue); }
+.oa-selectable--selected .oa-radio::after,
+[aria-pressed="true"] .oa-radio::after,
+[aria-checked="true"] .oa-radio::after { transform: scale(1); }
+
+/* Checkmark badge variant (multi-select / channel choices) — top-right. */
+.oa-check-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--oa-border);
+  background: var(--oa-surface);
+  display: grid;
+  place-items: center;
+  color: transparent;
+  transition: background 0.16s var(--oa-ease), border-color 0.16s var(--oa-ease),
+    color 0.16s var(--oa-ease);
+}
+.oa-selectable--selected .oa-check-badge {
+  background: var(--oa-blue);
+  border-color: var(--oa-blue);
+  color: var(--oa-on-blue);
+}
+
 /* Provenance chips (spec §9.3) */
 .oa-prov {
   display: inline-flex;
@@ -339,16 +427,24 @@ button.oa-chip:hover { border-color: var(--oa-border-strong); transform: transla
   color: var(--oa-ink);
   transition: border-color 0.2s var(--oa-ease), box-shadow 0.2s var(--oa-ease);
 }
+.oa-input, .oa-select { min-height: 44px; } /* spec §19.1 */
 .oa-input:focus, .oa-textarea:focus, .oa-select:focus {
   outline: none;
   border-color: var(--oa-blue);
   box-shadow: 0 0 0 3px rgba(49, 87, 213, 0.14);
 }
 .oa-textarea { resize: vertical; min-height: 96px; line-height: 1.55; }
-.oa-select { appearance: none; padding-right: 34px; }
+/* Selects always show a dropdown indicator (spec §19.1). */
+.oa-select {
+  appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%234e596b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+}
 .oa-field { display: grid; gap: 2px; }
 
-/* Toggle switch */
+/* Toggle switch (visual 38x22; hit area extended to 44px via ::before) */
 .oa-switch {
   position: relative;
   width: 38px; height: 22px;
@@ -357,6 +453,11 @@ button.oa-chip:hover { border-color: var(--oa-border-strong); transform: transla
   transition: background 0.2s var(--oa-ease);
   flex: none;
   cursor: pointer;
+}
+.oa-switch::before {
+  content: "";
+  position: absolute;
+  inset: -11px -4px; /* invisible 44px hit area around the 22px visual */
 }
 .oa-switch::after {
   content: "";
@@ -383,7 +484,8 @@ button.oa-chip:hover { border-color: var(--oa-border-strong); transform: transla
 }
 .oa-tab {
   border-radius: var(--oa-r-chip);
-  padding: 7px 16px;
+  padding: 9px 16px;
+  min-height: 38px;
   font-size: 13px;
   font-weight: 700;
   color: var(--oa-muted-strong);
@@ -401,7 +503,8 @@ button.oa-chip:hover { border-color: var(--oa-border-strong); transform: transla
 /* Underline tab variant (report outline, workspace teams) */
 .oa-tabline { display: flex; gap: 2px; border-bottom: 1px solid var(--oa-border); overflow-x: auto; }
 .oa-tabline-tab {
-  padding: 10px 14px;
+  padding: 12px 14px;
+  min-height: 44px;
   font-size: 13.5px;
   font-weight: 700;
   color: var(--oa-muted);

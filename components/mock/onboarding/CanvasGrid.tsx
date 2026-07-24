@@ -1,10 +1,13 @@
 "use client";
 /**
- * CanvasGrid — the editable 9-block Lean Canvas (spec §8).
+ * CanvasGrid — the completed Lean Canvas as a real board (spec §9.3, LC-02).
  *
- * Classic Lean Canvas layout on desktop (grid-template-areas), two columns
- * at ≤1024px, stacked at ≤768px. Every block is inline-editable on click.
- * Both intake paths (upload + guided) end here.
+ * One outer 1.5px-bordered container; internal cells share 1px borders
+ * (grid with gap: 1px over a border-colour background, so no double borders).
+ * Desktop uses the recognisable multi-column Lean Canvas arrangement via
+ * grid-template-areas; tablet/mobile stack in logical reading order with the
+ * same labels. Every cell offers inline Edit (textarea in place) + Confirm;
+ * long content wraps and the cell grows. Both intake paths end here.
  */
 import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -47,7 +50,7 @@ export default function CanvasGrid() {
 
   return (
     <motion.div
-      className={styles.canvasGrid}
+      className={styles.canvasBoard}
       initial={reduced ? false : "hidden"}
       animate="show"
       variants={{ hidden: {}, show: { transition: { staggerChildren: STAGGER * 0.6 } } }}
@@ -58,10 +61,10 @@ export default function CanvasGrid() {
         return (
           <motion.section
             key={b.id}
-            className={`oa-card oa-card--flat ${styles.canvasBlock} ${AREA_CLASS[b.id]}`}
+            className={`${styles.canvasBlock} ${AREA_CLASS[b.id]}`}
             variants={{
-              hidden: { opacity: 0, y: 14 },
-              show: { opacity: 1, y: 0, transition: { duration: DUR.card, ease: EASE } },
+              hidden: { opacity: 0 },
+              show: { opacity: 1, transition: { duration: DUR.card, ease: EASE } },
             }}
             aria-label={b.title}
           >
@@ -110,7 +113,7 @@ export default function CanvasGrid() {
                     onClick={save}
                   >
                     <Check size={13} aria-hidden />
-                    Save block
+                    Confirm
                   </button>
                 </div>
               </div>

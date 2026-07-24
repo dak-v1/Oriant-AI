@@ -142,7 +142,7 @@ export default function CompileOverlay({ onFinished }: { onFinished: () => void 
         </div>
 
         <div className="oa-between">
-          <span className="oa-sim-note">Simulated analysis — a prepared demo report is assembled.</span>
+          <span className="oa-sim-note">Simulated analysis. A prepared demo report is assembled.</span>
           <button type="button" className="oa-btn oa-btn--ghost oa-btn--sm" onClick={skip} autoFocus>
             Skip animation
           </button>

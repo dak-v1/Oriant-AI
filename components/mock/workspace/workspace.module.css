@@ -1,6 +1,6 @@
-/* Workspace — owner operations overview, notifications and agent roster
-   (spec §17, §19.2, §19.3, §20 "Workspace" row). Layout only; all generic
-   styling comes from .oa-* primitives. */
+/* Workspace — owner operations overview, daily digest, notifications and
+   agent roster (spec §17, §19.2, §19.3; improvement spec §16, §18).
+   Layout only; all generic styling comes from .oa-* primitives. */
 
 /* ── Page header ────────────────────────────────────────────────────────── */
 
@@ -14,7 +14,13 @@
 .headActions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
+}
+.headDate {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
 }
 
 .bellWrap {
@@ -39,7 +45,7 @@
   pointer-events: none;
 }
 
-/* ── Team tabline ───────────────────────────────────────────────────────── */
+/* ── Team tabline (§16.1d) ──────────────────────────────────────────────── */
 
 .tabline {
   margin: 2px 0 20px;
@@ -51,75 +57,74 @@
   margin-left: auto;
 }
 
-/* ── Today summary strip ────────────────────────────────────────────────── */
+/* ── Top summary strip (§16.1a): four stats, number + label + timeframe ── */
 
-.todayCard {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  flex-wrap: wrap;
-  padding: 18px 22px;
-  margin-bottom: 16px;
-}
-.todayDate {
+.summaryCard {
   display: grid;
-  gap: 3px;
-  min-width: 200px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 16px;
+  overflow: hidden; /* keeps the internal stat dividers inside the radius */
 }
-.todayDay {
-  font-size: 19px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-.todayTiles {
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.statTile {
+.sumStat {
   display: grid;
   gap: 1px;
-  align-content: center;
-  min-width: 116px;
-  padding: 10px 16px;
-  border: 1px solid var(--oa-border);
-  border-radius: var(--oa-r-inner);
-  background: var(--oa-bg-alt);
+  align-content: start;
+  padding: 16px 20px;
+  min-width: 0;
 }
-.statNum {
-  font-size: 22px;
+.sumStat + .sumStat {
+  border-left: 1px solid var(--oa-border);
+}
+.sumNum {
+  font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.02em;
-  line-height: 1.15;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
-.statLabel {
+.sumLabel {
+  font-size: 12.5px;
+  font-weight: 750;
+  color: var(--oa-ink);
+}
+.sumTime {
   font-size: 11.5px;
-  font-weight: 700;
-  color: var(--oa-muted-strong);
+  font-weight: 650;
+  color: var(--oa-muted);
+}
+
+/* ── Slim single-row "Ask Oriant" bar (§16.1e) ──────────────────────────── */
+
+.cmdBar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px 10px 18px;
+  margin-bottom: 16px;
+  background: var(--oa-soft-blue);
+}
+.cmdLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--oa-blue-dark);
   white-space: nowrap;
 }
-
-/* ── Command bar moment ─────────────────────────────────────────────────── */
-
-.cmdCard {
-  background: var(--oa-soft-blue);
-  margin-bottom: 16px;
-}
 .cmdInputBtn {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 100%;
   text-align: left;
   background: var(--oa-surface);
   border: 1px solid var(--oa-border);
   border-radius: var(--oa-r-chip);
-  padding: 13px 20px;
-  font-size: 14.5px;
+  min-height: 44px;
+  padding: 0 18px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--oa-muted);
   cursor: text;
@@ -146,11 +151,11 @@
   padding: 2px 8px;
 }
 
-/* ── Overview grid ──────────────────────────────────────────────────────── */
+/* ── Overview grid (§16.1b/c): primary ≈60% / secondary ≈40% ────────────── */
 
 .cols {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: 16px;
   align-items: start;
 }
@@ -158,6 +163,13 @@
   display: grid;
   gap: 16px;
   min-width: 0;
+}
+
+/* Secondary sections stacked below the grid (§16.1f) */
+.below {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
 }
 
 .card {
@@ -211,7 +223,7 @@
   padding: 10px 2px;
 }
 
-/* ── Approval rows ──────────────────────────────────────────────────────── */
+/* ── Approval rows (primary column) ─────────────────────────────────────── */
 
 .approvalRow {
   padding: 12px 14px;
@@ -287,11 +299,26 @@
   color: var(--oa-amber-ink);
 }
 
-/* ── Scheduled work rows ────────────────────────────────────────────────── */
+/* ── Flat divider rows (secondary lists, §16.1: no cards in cards) ─────── */
 
-.schedRow {
-  padding: 12px 14px;
+.flatList {
+  display: grid;
 }
+.flatRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--oa-border);
+  min-width: 0;
+}
+.flatRow:last-child {
+  border-bottom: none;
+}
+a.flatRow:hover .rowTitle {
+  color: var(--oa-blue-dark);
+}
+
 .timeBlock {
   flex: none;
   width: 64px;
@@ -313,29 +340,37 @@
   white-space: nowrap;
 }
 
-/* ── Agents & workflows rows ────────────────────────────────────────────── */
-
-.agentRow {
-  padding: 14px;
-  align-items: flex-start;
-}
-.wfChips {
+/* Label + value rows (Recent outcomes + digest glance) */
+.glanceRow {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--oa-border);
+  min-width: 0;
 }
-.wfChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
+.glanceRow:last-child {
+  border-bottom: none;
+}
+.glanceLabel {
+  font-size: 13px;
   font-weight: 700;
-  padding: 3px 10px;
-  border-radius: var(--oa-r-chip);
-  border: 1px solid var(--oa-border);
-  background: var(--oa-bg-alt);
-  color: var(--oa-muted-strong);
+  min-width: 0;
+}
+.glanceNote {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--oa-muted);
+  margin-top: 1px;
+}
+.glanceValue {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  flex: none;
 }
 
 /* ── Activity feed ──────────────────────────────────────────────────────── */
@@ -395,8 +430,11 @@
   margin: 0;
 }
 
-/* ── Weekly outcome snapshot ────────────────────────────────────────────── */
+/* ── Weekly outcome report (full-width, below the grid) ─────────────────── */
 
+.weeklyCard {
+  scroll-margin-top: 90px;
+}
 .metricGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
@@ -448,19 +486,30 @@
   margin-top: 3px;
 }
 
-/* ── Daily digest ───────────────────────────────────────────────────────── */
+/* ── Daily digest (§18, DD-01) ──────────────────────────────────────────── */
 
-.digestGrid {
+.digestMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dgCols {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 20px 32px;
 }
-.digestBlock {
+.dgCol {
   display: grid;
-  gap: 7px;
+  gap: 18px;
   align-content: start;
+  min-width: 0;
 }
-.digestHead {
+.dgSection {
+  display: grid;
+  gap: 6px;
+}
+.dgHead {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -469,27 +518,149 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--oa-muted-strong);
+  margin-bottom: 2px;
 }
-.digestList {
+.dgList {
   display: grid;
   gap: 7px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.digestItem {
+.dgItem {
   display: flex;
   gap: 8px;
-  font-size: 12.8px;
+  font-size: 13px;
   line-height: 1.5;
 }
-.digestDot {
+.dgDot {
   width: 5px;
   height: 5px;
   border-radius: 50%;
   background: var(--oa-border-strong);
   flex: none;
   margin-top: 7px;
+}
+.dgCheck {
+  color: var(--oa-teal-deep);
+  flex: none;
+  margin-top: 3px;
+}
+
+/* Attention rows: one clear action per row (the row deep-links) */
+.attnRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--oa-border);
+  min-width: 0;
+}
+.attnRow:last-child {
+  border-bottom: none;
+}
+.attnRow:hover .rowTitle {
+  color: var(--oa-blue-dark);
+}
+.attnMain {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  /* minmax(0,1fr) pins the track to the available width so long titles and
+     the due/risk meta row wrap instead of widening the page at 390px */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+}
+.attnMain > * { min-width: 0; }
+.attnMain .due { flex-wrap: wrap; white-space: normal; }
+.attnArrow {
+  flex: none;
+  color: var(--oa-muted);
+  margin-top: 4px;
+}
+
+/* Completed automatically: collapsed team groups */
+.teamGroup {
+  border-bottom: 1px solid var(--oa-border);
+}
+.teamGroup:last-child {
+  border-bottom: none;
+}
+.teamBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 2px;
+  text-align: left;
+  font-size: 13.5px;
+  font-weight: 750;
+  color: var(--oa-ink);
+  transition: color 0.15s var(--oa-ease);
+}
+.teamBtn:hover {
+  color: var(--oa-blue-dark);
+}
+.teamChevron {
+  flex: none;
+  color: var(--oa-muted);
+  transition: transform 0.18s var(--oa-ease);
+}
+.teamChevronOpen {
+  transform: rotate(90deg);
+}
+.teamCount {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--oa-muted);
+  white-space: nowrap;
+}
+.teamItems {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0 12px 22px;
+  display: grid;
+  gap: 7px;
+}
+
+.insightRow {
+  display: flex;
+  gap: 9px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.insightIcon {
+  color: var(--oa-blue-dark);
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ── Connected tools + cost summary lines (§16.1f) ──────────────────────── */
+
+.metaCard {
+  padding: 4px 22px;
+  gap: 0;
+}
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+  min-width: 0;
+}
+.metaIcon {
+  color: var(--oa-muted-strong);
+  flex: none;
+}
+.metaText {
+  min-width: 0;
+}
+.metaAction {
+  margin-left: auto;
 }
 
 /* ── Notifications drawer ───────────────────────────────────────────────── */
@@ -656,6 +827,7 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
+  min-height: 44px; /* §19.1: 44px minimum button target */
   padding: 11px 10px;
   font-size: 13.5px;
   font-weight: 750;
@@ -710,6 +882,24 @@
   display: grid;
   gap: 8px;
 }
+.wfChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.wfChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--oa-r-chip);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
 .configList {
   display: grid;
   gap: 7px;
@@ -762,18 +952,23 @@
 }
 
 @media (max-width: 767px) {
-  .todayCard {
-    flex-direction: column;
-    align-items: stretch;
+  .summaryCard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .todayTiles {
-    justify-content: flex-start;
+  .sumStat + .sumStat {
+    border-left: none;
   }
-  .statTile {
-    flex: 1;
-    min-width: 100px;
+  .sumStat:nth-child(even) {
+    border-left: 1px solid var(--oa-border);
   }
-  .digestGrid {
+  .sumStat:nth-child(n + 3) {
+    border-top: 1px solid var(--oa-border);
+  }
+  .cmdBar {
+    flex-wrap: wrap;
+    padding: 12px 14px;
+  }
+  .dgCols {
     grid-template-columns: 1fr;
   }
   .rowSide {
@@ -787,6 +982,9 @@
 @media (max-width: 480px) {
   .card {
     padding: 16px;
+  }
+  .metaCard {
+    padding: 2px 16px;
   }
   .agentCard {
     padding: 18px 16px;

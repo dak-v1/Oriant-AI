@@ -1,14 +1,18 @@
 "use client";
 /**
- * SandboxScreen — Sandbox + stress test (spec §15; §20 "Sandbox" row; §22
- * timing). Orchestrates the whole experience:
+ * SandboxScreen — the focused validation workspace (spec §14; S-01).
  *
- *  - left: scenario selector, input panel, run controls, result + logs
- *  - right: the animated event timeline with the human-approval interception
- *  - the 20-case stress test (fast progress strip → summary + failed-case review)
- *  - the validation banner → finishValidation() → /app/deploy
+ * Four zones:
+ *  1. header summary strip: tests passed / remaining / critical failures /
+ *     ready-for-activation chip
+ *  2. left rail: the 3 scenarios + the 20-case stress test as a 4th entry
+ *  3. main panel: description, input, expected behavior, run controls and
+ *     the staged step timeline (Preparing → Running trigger → Agent action
+ *     → Human checkpoint → Result)
+ *  4. output panel: result summary, checkpoints, warnings, evidence
+ *     (right column at >=1024px, a drawer below)
  *
- * The run itself is driven by mockSandboxService.run over the pre-pause and
+ * The run is driven by mockSandboxService.run over the pre-pause and
  * post-pause slices of the scenario fixture; every handle is cancelled on
  * unmount so route changes never leave stale timers.
  */
@@ -23,16 +27,34 @@ import { runTimeline, type TimelineHandle } from "@/lib/mock/services/timeline";
 import { SANDBOX_SCENARIOS, STRESS_TEST } from "@/lib/mock/fixtures/sandbox-scenarios";
 import { SCENARIO } from "@/lib/mock/fixtures/ids";
 import { DUR, EASE } from "@/lib/mock/motion";
-import ScenarioPanel from "./ScenarioPanel";
-import EventTimeline from "./EventTimeline";
-import StressPanel from "./StressPanel";
+import Drawer from "@/components/mock/ui/Drawer";
+import StatusBadge from "@/components/mock/ui/StatusBadge";
+import { ENTRY_CATEGORY, STRESS_ENTRY_ID, type EntryStatus } from "./stages";
+import ScenarioRail, { type RailEntry } from "./ScenarioRail";
+import ScenarioMain from "./ScenarioMain";
+import OutputPanel from "./OutputPanel";
 import styles from "./sandbox.module.css";
 
 const SCENARIO_LIST = Object.values(SANDBOX_SCENARIOS);
+const TOTAL_TESTS = SCENARIO_LIST.length + 1; /* 3 scenarios + stress test */
+
+/** True at >=1024px; the output panel moves into a drawer below that. */
+function useWide(): boolean {
+  const [wide, setWide] = useState(true);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setWide(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return wide;
+}
 
 export default function SandboxScreen() {
   const router = useRouter();
   const reduced = useReducedMotion();
+  const wide = useWide();
 
   const journey = useDemoStore((s) => s.journey);
   const phase = useDemoStore((s) => s.sandbox.phase);
@@ -49,40 +71,112 @@ export default function SandboxScreen() {
 
   /* Local UI state (never journey state — that lives in the store). */
   const [selectedLocal, setSelectedLocal] = useState<string | null>(null);
-  const [view, setView] = useState<"run" | "stress">("run");
+  const [stopped, setStopped] = useState(false);
   const [stressLocal, setStressLocal] = useState<"running" | "done" | null>(null);
   const [stressCase, setStressCase] = useState(0);
+  const [outputOpen, setOutputOpen] = useState(false);
+  /* Scenarios completed this session; the store only remembers the last run. */
+  const [passedLocal, setPassedLocal] = useState<ReadonlySet<string>>(() => new Set());
   const stressHandle = useRef<TimelineHandle | null>(null);
 
   const selectedId = selectedLocal ?? runScenarioId ?? SCENARIO.complaint;
+  const isStressSelected = selectedId === STRESS_ENTRY_ID;
   const stressState: "idle" | "running" | "done" =
     stressLocal ?? (stressDone ? "done" : "idle");
 
+  const selectedScenario = isStressSelected
+    ? null
+    : (SANDBOX_SCENARIOS[selectedId] ?? SCENARIO_LIST[0]);
   const runScenario = runScenarioId ? (SANDBOX_SCENARIOS[runScenarioId] ?? null) : null;
-  const pauseIdx = runScenario
+  const pauseIdxOfRun = runScenario
     ? runScenario.events.findIndex((e) => e.kind === "approval_pause")
     : -1;
+  const pauseIdxSelected = selectedScenario
+    ? selectedScenario.events.findIndex((e) => e.kind === "approval_pause")
+    : -1;
 
-  const runActive =
-    phase === "running" || phase === "resuming" || phase === "paused_for_approval";
+  /* Record completed scenarios (also seeds from a persisted completed run). */
+  useEffect(() => {
+    if (phase === "completed" && runScenarioId) {
+      setPassedLocal((prev) => {
+        if (prev.has(runScenarioId)) return prev;
+        const next = new Set(prev);
+        next.add(runScenarioId);
+        return next;
+      });
+    }
+  }, [phase, runScenarioId]);
+
+  const scenarioRunActive =
+    (!stopped && (phase === "running" || phase === "resuming")) ||
+    phase === "paused_for_approval";
+  const locked = scenarioRunActive || stressState === "running";
   const bannerVisible =
     (phase === "completed" || phase === "idle") && atLeast(journey, "validation_review");
-  const canRun = !runActive && stressState !== "running";
-  const canStress = !runActive && stressState !== "running";
-  const runIsPrimary = canRun && !bannerVisible;
-  const activeView: "run" | "stress" =
-    stressState === "running" ? "stress" : stressState === "done" ? view : "run";
+  const ready = atLeast(journey, "validation_review");
 
-  const displayCount = !runScenario
+  const runDisplayCount = !runScenario
     ? 0
     : phase === "paused_for_approval"
-      ? Math.max(Math.min(eventCount, runScenario.events.length), pauseIdx + 1)
+      ? Math.max(Math.min(eventCount, runScenario.events.length), pauseIdxOfRun + 1)
       : Math.min(eventCount, runScenario.events.length);
+
+  /* The main panel shows the SELECTED test; its trace only exists when the
+     store's last run belongs to that same scenario. */
+  const traceActive =
+    !isStressSelected && runScenarioId === selectedId && phase !== "idle";
+
+  /* ── Entry statuses (icon + label in the rail; numbers in the strip) ── */
+  const statusOf = (id: string): EntryStatus => {
+    if (runScenarioId === id) {
+      if ((phase === "running" || phase === "resuming") && stopped) return "stopped";
+      if (phase === "running" || phase === "resuming") return "running";
+      if (phase === "paused_for_approval") return "needs_review";
+      if (phase === "completed") return "passed";
+    }
+    return passedLocal.has(id) ? "passed" : "not_run";
+  };
+  const stressStatus: EntryStatus =
+    stressState === "running" ? "running" : stressState === "done" ? "needs_review" : "not_run";
+
+  const entries: RailEntry[] = [
+    ...SCENARIO_LIST.map((sc) => ({
+      id: sc.id,
+      name: sc.name,
+      category: ENTRY_CATEGORY[sc.id] ?? "Customer care",
+      status: statusOf(sc.id),
+    })),
+    {
+      id: STRESS_ENTRY_ID,
+      name: "20-case stress test",
+      category: ENTRY_CATEGORY[STRESS_ENTRY_ID],
+      status: stressStatus,
+      passNote:
+        stressState === "done"
+          ? `${STRESS_TEST.passed} of ${STRESS_TEST.total} passed`
+          : undefined,
+    },
+  ];
+
+  const statuses = entries.map((e) => e.status);
+  const passedCount = statuses.filter((s) => s === "passed").length;
+  const remainingCount = statuses.filter((s) => s === "not_run" || s === "stopped").length;
+  const scenariosRun = SCENARIO_LIST.filter((sc) => {
+    const st = statusOf(sc.id);
+    return st === "passed" || st === "needs_review" || st === "running";
+  }).length;
+
+  const chip = ready
+    ? { status: "completed", label: "Ready for activation" }
+    : locked
+      ? { status: "active", label: "Validation in progress" }
+      : { status: "idle", label: `${scenariosRun} of ${SCENARIO_LIST.length} scenarios run` };
 
   /* ── Drive the run: pre-pause slice while "running", post-pause while
         "resuming". Also reconciles a mid-run refresh by resuming from the
         persisted eventCount. Handle cancelled on unmount/phase change. ── */
   useEffect(() => {
+    if (stopped) return;
     if (phase !== "running" && phase !== "resuming") return;
     const scenario = runScenarioId ? SANDBOX_SCENARIOS[runScenarioId] : undefined;
     if (!scenario) return;
@@ -118,21 +212,17 @@ export default function SandboxScreen() {
     // Actions are stable store references; eventCount is read via getState so
     // the timeline is not restarted on every revealed event.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, runScenarioId, reduced]);
+  }, [phase, runScenarioId, reduced, stopped]);
 
   /* Cancel a stress run left in flight when leaving the page. */
   useEffect(() => () => stressHandle.current?.cancel(), []);
 
-  const onRun = () => {
-    if (!canRun) return;
-    setView("run");
-    startSandboxRun(selectedId);
-  };
+  /* Growing past 1024px: the output column takes over from the drawer. */
+  useEffect(() => {
+    if (wide) setOutputOpen(false);
+  }, [wide]);
 
-  const onStress = () => {
-    if (!canStress) return;
-    setView("stress");
-    if (stressState === "done") return;
+  const startStress = () => {
     setStressLocal("running");
     setStressCase(0);
     stressHandle.current = runTimeline(
@@ -147,20 +237,70 @@ export default function SandboxScreen() {
     });
   };
 
+  const onRun = () => {
+    if (locked) return;
+    if (isStressSelected) {
+      startStress();
+      return;
+    }
+    setStopped(false);
+    startSandboxRun(selectedId);
+  };
+
+  const canStop = isStressSelected
+    ? stressState === "running"
+    : runScenarioId === selectedId && (phase === "running" || phase === "resuming") && !stopped;
+
+  const onStop = () => {
+    if (isStressSelected) {
+      if (stressState !== "running") return;
+      stressHandle.current?.cancel();
+      setStressLocal(null);
+      setStressCase(0);
+      return;
+    }
+    if (!canStop) return;
+    setStopped(true);
+  };
+
   const onContinue = () => {
     finishValidation();
     router.push("/app/deploy");
   };
 
-  const onTablistKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-    e.preventDefault();
-    setView((v) => (v === "run" ? "stress" : "run"));
-  };
+  const selectedStatus = isStressSelected ? stressStatus : statusOf(selectedId);
+  const runLabel =
+    selectedStatus === "running"
+      ? "Running…"
+      : !isStressSelected && selectedStatus === "needs_review"
+        ? "Paused for your approval"
+        : selectedStatus === "passed" ||
+            selectedStatus === "stopped" ||
+            (isStressSelected && stressState === "done")
+          ? "Run again"
+          : "Run test";
+  const canRun = !locked;
+  const runIsPrimary = canRun && !bannerVisible;
+
+  const entryName = isStressSelected
+    ? "20-case stress test"
+    : (selectedScenario?.name ?? "Scenario");
+
+  const output = (
+    <OutputPanel
+      isStress={isStressSelected}
+      scenario={selectedScenario}
+      traceActive={traceActive}
+      phase={traceActive ? phase : "idle"}
+      displayCount={traceActive ? runDisplayCount : 0}
+      stopped={traceActive && stopped}
+      stressState={stressState}
+    />
+  );
 
   return (
     <main className="oa-page">
-      <header className="oa-between" style={{ marginBottom: 24, alignItems: "flex-start" }}>
+      <header className="oa-between" style={{ marginBottom: 20, alignItems: "flex-start" }}>
         <div style={{ display: "grid", gap: 6, maxWidth: 680 }}>
           <p className="oa-eyebrow">Test · Sandbox &amp; stress test</p>
           <h1 className="oa-h1">
@@ -173,19 +313,58 @@ export default function SandboxScreen() {
         </div>
       </header>
 
+      {/* ── Zone 1: header summary strip ── */}
+      <section className={styles.summary} aria-label="Validation summary">
+        <div className={styles.summaryItem}>
+          <p className="oa-micro">Tests passed</p>
+          <p className={styles.summaryValue}>
+            {passedCount}
+            <span className={styles.summaryOf}>of {TOTAL_TESTS}</span>
+          </p>
+          <p className={styles.summaryNote}>3 scenarios plus the stress test.</p>
+        </div>
+        <div className={styles.summaryItem}>
+          <p className="oa-micro">Tests remaining</p>
+          <p className={styles.summaryValue}>{remainingCount}</p>
+          <p className={styles.summaryNote}>Not yet run in this sandbox.</p>
+        </div>
+        <div className={styles.summaryItem}>
+          <p className="oa-micro">Critical failures</p>
+          <p className={styles.summaryValue}>0</p>
+          <p className={styles.summaryNote}>
+            {stressState === "done"
+              ? "The one stress-test failure stopped safely; no customer contact."
+              : "None so far."}
+          </p>
+        </div>
+        <div className={styles.summaryItem}>
+          <p className="oa-micro">Ready for activation</p>
+          <div>
+            <StatusBadge status={chip.status} label={chip.label} />
+          </div>
+          <p className={styles.summaryNote}>
+            {ready
+              ? "Continue whenever you are ready."
+              : "Complete at least one scenario run."}
+          </p>
+        </div>
+      </section>
+
       {bannerVisible && (
         <motion.section
           className={styles.banner}
           initial={reduced ? false : { opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: DUR.card, ease: EASE }}
-          aria-label="Validation summary"
+          aria-label="Validation complete"
         >
           <span className={styles.bannerIcon} aria-hidden>
             <ShieldCheck size={20} />
           </span>
           <div className={styles.bannerBody}>
-            <h2 className="oa-h3">Validation complete — the workforce behaved exactly as designed</h2>
+            <h2 className="oa-h3">
+              Validation complete: the workforce behaved exactly as designed
+            </h2>
             <p className="oa-sub">
               {runScenario
                 ? `“${runScenario.name}” completed within policy, with risky actions held for your decision.`
@@ -202,81 +381,58 @@ export default function SandboxScreen() {
       )}
 
       <div className={styles.layout}>
-        <ScenarioPanel
-          scenarios={SCENARIO_LIST}
+        {/* ── Zone 2: left rail ── */}
+        <ScenarioRail
+          entries={entries}
           selectedId={selectedId}
           onSelect={(id) => setSelectedLocal(id)}
-          selectionLocked={runActive || stressState === "running"}
-          runScenarioId={runScenarioId}
-          phase={phase}
+          locked={locked}
+        />
+
+        {/* ── Zone 3: main panel ── */}
+        <ScenarioMain
+          selectedId={selectedId}
+          scenario={selectedScenario}
+          traceActive={traceActive}
+          phase={traceActive ? phase : "idle"}
+          displayCount={traceActive ? runDisplayCount : 0}
+          pauseIdx={pauseIdxSelected}
+          stopped={traceActive && stopped}
+          stressState={stressState}
+          stressCase={stressCase}
+          runLabel={runLabel}
           runIsPrimary={runIsPrimary}
           canRun={canRun}
           onRun={onRun}
-          stressState={stressState}
-          canStress={canStress}
-          onStress={onStress}
+          canStop={canStop}
+          onStop={onStop}
+          showOutputButton={!wide}
+          onOpenOutput={() => setOutputOpen(true)}
         />
 
-        <div className={styles.mainCol}>
-          {stressState === "done" && (
-            <div className={styles.viewRow}>
-              <div
-                className="oa-tabs"
-                role="tablist"
-                aria-label="Sandbox views"
-                onKeyDown={onTablistKeyDown}
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  id="sbx-tab-run"
-                  aria-selected={activeView === "run"}
-                  aria-controls="sbx-view-panel"
-                  className={`oa-tab ${activeView === "run" ? "oa-tab--active" : ""}`}
-                  onClick={() => setView("run")}
-                >
-                  Scenario run
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  id="sbx-tab-stress"
-                  aria-selected={activeView === "stress"}
-                  aria-controls="sbx-view-panel"
-                  className={`oa-tab ${activeView === "stress" ? "oa-tab--active" : ""}`}
-                  onClick={() => setView("stress")}
-                >
-                  Stress test
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div
-            id="sbx-view-panel"
-            {...(stressState === "done"
-              ? {
-                  role: "tabpanel",
-                  "aria-labelledby": activeView === "run" ? "sbx-tab-run" : "sbx-tab-stress",
-                }
-              : {})}
-          >
-            {activeView === "stress" && stressState !== "idle" ? (
-              <StressPanel
-                state={stressState === "running" ? "running" : "done"}
-                caseNum={stressCase}
-              />
-            ) : (
-              <EventTimeline
-                scenario={runScenario}
-                displayCount={displayCount}
-                phase={phase}
-                pauseIdx={pauseIdx}
-              />
-            )}
+        {/* ── Zone 4: output panel (right column at >=1024px) ── */}
+        <aside className={styles.outputCol} aria-label="Test output">
+          <div className={styles.railHead}>
+            <p className="oa-micro">Output</p>
+            <span className="oa-sub" style={{ fontSize: 11.5 }}>
+              {entryName}
+            </span>
           </div>
-        </div>
+          {output}
+        </aside>
       </div>
+
+      {/* Output drawer below 1024px */}
+      {!wide && (
+        <Drawer
+          open={outputOpen}
+          onClose={() => setOutputOpen(false)}
+          title="Output"
+          eyebrow={entryName}
+        >
+          {output}
+        </Drawer>
+      )}
     </main>
   );
 }

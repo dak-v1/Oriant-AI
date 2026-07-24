@@ -6,8 +6,9 @@
  * are not on the owning agent's fixture).
  */
 import { useEffect, useState } from "react";
-import type { AgentDef, AgentWorkflowDef } from "@/lib/mock/types";
-import { AGENT_LIBRARY } from "@/lib/mock/fixtures/agent-library";
+import type { AgentDef, AgentWorkflowDef, PlanAgent } from "@/lib/mock/types";
+import { AGENT_LIBRARY, PLAN_OUTCOMES } from "@/lib/mock/fixtures/agent-library";
+import { WF, WF_NAME } from "@/lib/mock/fixtures/ids";
 import { NL_COMMANDS } from "@/lib/mock/fixtures/workflow-plan";
 import { money } from "@/lib/mock/pricing";
 
@@ -38,7 +39,40 @@ export function formatCostDelta(delta: { setup: number; monthly: number }): stri
   const parts: string[] = [];
   if (delta.setup !== 0) parts.push(part(delta.setup, " setup"));
   if (delta.monthly !== 0) parts.push(part(delta.monthly, "/mo"));
-  return parts.length ? `${parts.join(" · ")} — illustrative` : "No cost change";
+  return parts.length ? `${parts.join(" · ")} (illustrative)` : "No cost change";
+}
+
+/* ── Outcome summary strip (improvement spec §12.1) ──
+ * Each expected outcome is backed by specific workflows. The mapping is
+ * fixture-order dependent by design: PLAN_OUTCOMES and WF live in the same
+ * fixture set and change together. */
+
+const OUTCOME_WORKFLOW_IDS: Record<string, readonly string[]> = {
+  [PLAN_OUTCOMES[0]]: [WF.customerResponse],
+  [PLAN_OUTCOMES[1]]: [WF.appointmentScheduling],
+  [PLAN_OUTCOMES[2]]: [WF.contentPlanning, WF.campaignDrafting],
+  [PLAN_OUTCOMES[3]]: [WF.invoiceSummary, WF.paymentReminders, WF.weeklyInvoiceDigest],
+  [PLAN_OUTCOMES[4]]: [WF.complaintResolution],
+};
+
+export interface OutcomeSupport {
+  outcome: string;
+  /** Names of the plan workflows that deliver this outcome. */
+  workflowNames: string[];
+}
+
+/** Outcomes currently supported by at least one workflow in the plan (max 4). */
+export function outcomeSupport(agents: PlanAgent[], max = 4): OutcomeSupport[] {
+  const inPlan = new Set(agents.flatMap((a) => a.workflowOrder));
+  const out: OutcomeSupport[] = [];
+  for (const outcome of PLAN_OUTCOMES) {
+    if (out.length >= max) break;
+    const ids = (OUTCOME_WORKFLOW_IDS[outcome] ?? []).filter((id) => inPlan.has(id));
+    if (ids.length > 0) {
+      out.push({ outcome, workflowNames: ids.map((id) => WF_NAME[id] ?? id) });
+    }
+  }
+  return out;
 }
 
 /**

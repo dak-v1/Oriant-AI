@@ -9,7 +9,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, CornerDownLeft, Sparkles, X } from "lucide-react";
+import { ArrowRight, CornerDownLeft, MessageSquareText, X } from "lucide-react";
 import { COMMANDS } from "@/lib/mock/fixtures/reports";
 import type { CommandFixture } from "@/lib/mock/types";
 import { runTimeline, stageSteps } from "@/lib/mock/services/timeline";
@@ -102,7 +102,7 @@ export default function CommandPalette({
               transition={{ duration: DUR.card, ease: EASE }}
             >
               <div className={styles.paletteHead}>
-                <Sparkles size={17} aria-hidden style={{ color: "var(--oa-blue)", flex: "none" }} />
+                <MessageSquareText size={17} aria-hidden style={{ color: "var(--oa-blue)", flex: "none" }} />
                 <input
                   ref={inputRef}
                   className={styles.paletteInput}
@@ -156,7 +156,7 @@ export default function CommandPalette({
                       ))}
                     </div>
                     <p className="oa-sub">
-                      Commands run against prepared demo data — nothing is sent to a live system.
+                      Commands run against prepared demo data; nothing is sent to a live system.
                     </p>
                   </>
                 )}

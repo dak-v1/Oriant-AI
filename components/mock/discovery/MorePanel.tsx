@@ -97,7 +97,7 @@ export default function MorePanel() {
       simulateUploadMore();
       toast({
         title: `${UPLOAD_FACT_IDS.length} new facts added`,
-        detail: "From BrightPath-SOP-Manual.pdf — see What Oriant knows.",
+        detail: "From BrightPath-SOP-Manual.pdf. See What Oriant knows.",
         tone: "ok",
       });
     });
@@ -193,11 +193,11 @@ export default function MorePanel() {
             <span style={{ fontSize: 14, fontWeight: 700 }}>
               Drop a document here, or browse
             </span>
-            <span className="oa-sub">PDF, PNG or DOCX — SOPs and org charts work best</span>
+            <span className="oa-sub">PDF, PNG or DOCX. SOPs and org charts work best</span>
           </button>
         )}
         <span className="oa-sim-note">
-          Simulated upload — no file leaves this demo.
+          Simulated upload. No file leaves this demo.
         </span>
       </section>
 
@@ -206,7 +206,7 @@ export default function MorePanel() {
         <div style={{ display: "grid", gap: 4 }}>
           <h3 className="oa-h3">Invite an employee</h3>
           <p className="oa-sub">
-            Someone closer to the work can answer a topic directly — their reply lands in
+            Someone closer to the work can answer a topic directly. Their reply lands in
             What Oriant knows with its own provenance.
           </p>
         </div>
@@ -262,7 +262,7 @@ export default function MorePanel() {
               aria-live="polite"
             >
               <Loader2 size={14} aria-hidden className="oa-spin" style={{ color: "var(--oa-blue)" }} />
-              Invite sent — waiting for Priya&apos;s reply…
+              Invite sent. Waiting for Priya&apos;s reply…
             </motion.div>
           ) : (
             <motion.div key="send" exit={{ opacity: 0 }}>
@@ -276,7 +276,7 @@ export default function MorePanel() {
 
         <span className="oa-sim-note">
           <UserPlus size={12} aria-hidden />
-          Simulated invite — no real message is sent.
+          Simulated invite. No real message is sent.
         </span>
       </section>
     </div>

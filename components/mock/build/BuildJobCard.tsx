@@ -88,7 +88,7 @@ export default function BuildJobCard({
       <div className={styles.cardFoot}>
         {failed ? (
           <span className={styles.cancelNote}>
-            <AlertTriangle size={13} aria-hidden /> Cancelled — retry when ready
+            <AlertTriangle size={13} aria-hidden /> Cancelled. Retry when ready
           </span>
         ) : completed ? (
           <span className={styles.footNote}>

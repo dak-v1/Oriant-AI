@@ -1,43 +1,45 @@
 "use client";
 /**
- * PresetConfig — per-agent configuration for PRESET agents (spec §11.4).
- * A calm configuration document, not a dense admin form: operating mode,
- * triggers, channels, workflows, human approvals, people, schedule and a
- * read-only policy card — with a live Configuration summary rail (desktop)
- * and a sticky save bar carrying this agent's illustrative cost.
+ * PresetConfig — per-agent configuration for PRESET agents (spec §11.4,
+ * improvement spec §12.5 + §13). A calm configuration document: operating
+ * mode, the "When it runs" trigger chooser, channels, workflows, human
+ * approvals, people, schedule, read-only test scenarios and policy, with a
+ * live Configuration summary rail (desktop) and a sticky save bar carrying
+ * this agent's illustrative cost. Connections (with mock credential
+ * placeholders) appear only after the configuration has been saved.
  */
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  CalendarClock,
+  Calendar,
   Check,
   Eye,
-  Gauge,
-  Hand,
-  Link2,
+  File,
+  FileText,
+  Inbox,
   Lock,
+  Megaphone,
+  MessageSquare,
   PenLine,
+  Play,
+  Plug,
   Plus,
   ShieldCheck,
   SlidersHorizontal,
+  User,
   UserCheck,
   X,
-  Zap,
 } from "lucide-react";
-import type {
-  AgentConfig,
-  AgentDef,
-  OperatingMode,
-  PlanAgent,
-  TriggerKind,
-} from "@/lib/mock/types";
+import type { AgentConfig, AgentDef, OperatingMode, PlanAgent } from "@/lib/mock/types";
 import { useDemoStore } from "@/lib/mock/store";
 import { INTEGRATIONS } from "@/lib/mock/fixtures/integrations";
 import { OWNER, PEOPLE } from "@/lib/mock/fixtures/ids";
 import { money } from "@/lib/mock/pricing";
 import { DUR, EASE, STAGGER } from "@/lib/mock/motion";
 import { toast } from "@/components/mock/ui/Toaster";
+import TriggerSection, { TRIGGER_TYPE_META } from "./TriggerSection";
+import ConnectionsCard from "./ConnectionsCard";
 import styles from "./agents.module.css";
 
 type ConfigDraft = Omit<AgentConfig, "workflowsEnabled">;
@@ -60,24 +62,6 @@ const MODE_META: Record<OperatingMode, { label: string; hint: string; icon: Reac
   },
 };
 
-const TRIGGER_ORDER: TriggerKind[] = [
-  "event",
-  "schedule",
-  "threshold",
-  "manual",
-  "dependency",
-  "approval",
-];
-
-const TRIGGER_META: Record<TriggerKind, { label: string; hint: string; icon: React.ReactNode }> = {
-  event: { label: "Event", hint: "Something happens in a connected system", icon: <Zap size={13} aria-hidden /> },
-  schedule: { label: "Schedule", hint: "Runs at set times", icon: <CalendarClock size={13} aria-hidden /> },
-  threshold: { label: "Threshold", hint: "A number crosses a limit", icon: <Gauge size={13} aria-hidden /> },
-  manual: { label: "Manual", hint: "Someone asks it to run", icon: <Hand size={13} aria-hidden /> },
-  dependency: { label: "Dependency", hint: "Another workflow finishes first", icon: <Link2 size={13} aria-hidden /> },
-  approval: { label: "Approval", hint: "A decision is approved", icon: <ShieldCheck size={13} aria-hidden /> },
-};
-
 const QUIET_HOURS_BASE = [
   "No quiet hours",
   "19:00–08:00 and Sundays",
@@ -89,9 +73,24 @@ const QUIET_HOURS_BASE = [
 const FREQUENCY_BASE = [
   "Continuous during business hours (Mon–Sat 08:00–18:00)",
   "Every weekday 08:30",
-  "Weekly — Fridays 09:00",
-  "Event-driven — as qualifying work arrives",
+  "Weekly, Fridays 09:00",
+  "Event-driven, as qualifying work arrives",
 ];
+
+/** Channel-card icon by integration category (operational icons only). */
+const CHANNEL_ICON: Record<string, React.ReactNode> = {
+  "Customer communication": <Inbox size={14} aria-hidden />,
+  Scheduling: <Calendar size={14} aria-hidden />,
+  "CRM and sales": <User size={14} aria-hidden />,
+  Finance: <FileText size={14} aria-hidden />,
+  "Storage and documents": <File size={14} aria-hidden />,
+  Marketing: <Megaphone size={14} aria-hidden />,
+  "Internal collaboration": <MessageSquare size={14} aria-hidden />,
+  "MCP and internal tools": <Plug size={14} aria-hidden />,
+};
+
+/** Replace em dashes arriving from stored config values with plain phrasing. */
+const stripDash = (s: string) => s.replace(/\s*—\s*/g, ", ").replace(/—/g, "-");
 
 export default function PresetConfig({ def, agent }: { def: AgentDef; agent: PlanAgent }) {
   const router = useRouter();
@@ -105,11 +104,17 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
   const [draft, setDraft] = useState<ConfigDraft>(() => {
     const { workflowsEnabled: _wf, ...rest } = agent.config;
     void _wf;
-    return structuredClone(rest);
+    const clean = structuredClone(rest);
+    clean.quietHours = stripDash(clean.quietHours);
+    clean.runFrequency = stripDash(clean.runFrequency);
+    clean.triggerDetails = clean.triggerDetails ?? {};
+    return clean;
   });
   const [newApproval, setNewApproval] = useState("");
 
   const patch = (p: Partial<ConfigDraft>) => setDraft((d) => ({ ...d, ...p }));
+
+  const configured = agent.status !== "needs_configuration";
 
   const channelOptions = useMemo(() => {
     const names = def.integrations
@@ -117,6 +122,12 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
       .filter((n): n is string => Boolean(n));
     return Array.from(new Set([...def.defaultConfig.channels, ...names, ...draft.channels]));
   }, [def, draft.channels]);
+
+  const channelMeta = useMemo(() => {
+    const m = new Map<string, { category: string; kind: "app" | "mcp" }>();
+    for (const d of Object.values(INTEGRATIONS)) m.set(d.name, { category: d.category, kind: d.kind });
+    return m;
+  }, []);
 
   const people = useMemo(
     () =>
@@ -135,6 +146,12 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
     [draft.runFrequency],
   );
 
+  /** Rules offered by the Approval trigger select (own rules + preset list). */
+  const approvalRuleOptions = useMemo(
+    () => Array.from(new Set([...draft.approvalActions, ...def.humanApprovals])),
+    [draft.approvalActions, def.humanApprovals],
+  );
+
   const workflowsOn = agent.workflowOrder.filter(
     (id) => agent.config.workflowsEnabled[id] ?? true,
   ).length;
@@ -145,7 +162,7 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
 
   const summaryLine = [
     MODE_META[draft.operatingMode].label,
-    `${draft.triggers.length} trigger${draft.triggers.length === 1 ? "" : "s"}`,
+    `${draft.triggers.length} trigger type${draft.triggers.length === 1 ? "" : "s"}`,
     `${workflowsOn}/${agent.workflowOrder.length} workflows on`,
     `${draft.approvalActions.length} approval action${draft.approvalActions.length === 1 ? "" : "s"}`,
     `Owner ${draft.processOwner}`,
@@ -156,18 +173,15 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
     markAgentConfigured(def.id);
     toast({
       title: "Configuration saved",
-      detail: `${def.name} is ready to build — ${MODE_META[draft.operatingMode].label.toLowerCase()}, ${workflowsOn} workflow${workflowsOn === 1 ? "" : "s"} enabled.`,
+      detail: `${def.name} is ready to build: ${MODE_META[draft.operatingMode].label.toLowerCase()}, ${workflowsOn} workflow${workflowsOn === 1 ? "" : "s"} enabled. Connections are now available on this agent's page.`,
       tone: "ok",
+      action: {
+        label: "Set up connections",
+        onClick: () => router.push(`/app/planner/agents/${def.id}`),
+      },
     });
     router.push("/app/planner");
   };
-
-  const toggleTrigger = (t: TriggerKind) =>
-    patch({
-      triggers: draft.triggers.includes(t)
-        ? draft.triggers.filter((x) => x !== t)
-        : [...draft.triggers, t],
-    });
 
   const toggleChannel = (name: string) =>
     patch({
@@ -194,8 +208,15 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
   return (
     <div className={styles.layout}>
       <div className={styles.docCol}>
+        {/* 0 — Connections: revealed only once the configuration is saved (§13) */}
+        {configured && (
+          <motion.div {...anim(0)}>
+            <ConnectionsCard def={def} />
+          </motion.div>
+        )}
+
         {/* 1 — Operating mode */}
-        <motion.section {...anim(0)} className={`oa-card ${styles.card}`}>
+        <motion.section {...anim(configured ? 1 : 0)} className={`oa-card ${styles.card}`}>
           <div style={{ display: "grid", gap: 3 }}>
             <h3 className="oa-h3">Operating mode</h3>
             <p className="oa-sub">How much this agent does on its own.</p>
@@ -209,25 +230,27 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
                   type="button"
                   role="radio"
                   aria-checked={on}
-                  className={`${styles.modeCard} ${on ? styles.modeCardOn : ""}`}
+                  className={`oa-selectable ${styles.modeCard} ${on ? "oa-selectable--selected" : ""}`}
                   onClick={() => patch({ operatingMode: mode })}
                 >
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                      fontSize: 13.5,
-                      fontWeight: 750,
-                      color: on ? "var(--oa-blue-dark)" : "var(--oa-ink)",
-                    }}
-                  >
-                    {MODE_META[mode].icon}
-                    {MODE_META[mode].label}
-                    {on && <Check size={13} aria-hidden style={{ marginLeft: "auto" }} />}
-                  </span>
-                  <span className="oa-sub" style={{ fontSize: 12.5 }}>
-                    {MODE_META[mode].hint}
+                  <span className="oa-radio" aria-hidden />
+                  <span style={{ display: "grid", gap: 4, minWidth: 0 }}>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 7,
+                        fontSize: 13.5,
+                        fontWeight: 750,
+                        color: on ? "var(--oa-blue-dark)" : "var(--oa-ink)",
+                      }}
+                    >
+                      {MODE_META[mode].icon}
+                      {MODE_META[mode].label}
+                    </span>
+                    <span className="oa-sub" style={{ fontSize: 12.5 }}>
+                      {MODE_META[mode].hint}
+                    </span>
                   </span>
                 </button>
               );
@@ -235,57 +258,61 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
           </div>
         </motion.section>
 
-        {/* 2 — Triggers */}
-        <motion.section {...anim(1)} className={`oa-card ${styles.card}`}>
+        {/* 2 — When it runs (improvement spec §12.5, P-03) */}
+        <motion.section {...anim(configured ? 2 : 1)} className={`oa-card ${styles.card}`}>
           <div style={{ display: "grid", gap: 3 }}>
-            <h3 className="oa-h3">Triggers</h3>
-            <p className="oa-sub">What starts this agent&rsquo;s work.</p>
+            <h3 className="oa-h3">When it runs</h3>
+            <p className="oa-sub">Choose what starts this agent, then set the details for each type.</p>
           </div>
-          <div className="oa-cluster" style={{ gap: 8 }}>
-            {TRIGGER_ORDER.map((t) => {
-              const on = draft.triggers.includes(t);
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  className={`oa-chip ${on ? "oa-chip--selected" : ""}`}
-                  aria-pressed={on}
-                  title={TRIGGER_META[t].hint}
-                  onClick={() => toggleTrigger(t)}
-                >
-                  {TRIGGER_META[t].icon}
-                  {TRIGGER_META[t].label}
-                  {on && <Check size={13} aria-hidden />}
-                </button>
-              );
-            })}
-          </div>
-          <p className="oa-sub" style={{ fontSize: 12 }}>
-            {draft.triggers.length === 0
-              ? "Pick at least one trigger so the agent knows when to start."
-              : draft.triggers.map((t) => `${TRIGGER_META[t].label} — ${TRIGGER_META[t].hint.toLowerCase()}`).join(" · ")}
-          </p>
+          <TriggerSection
+            def={def}
+            triggers={draft.triggers}
+            details={draft.triggerDetails ?? {}}
+            approvalOptions={approvalRuleOptions}
+            onChange={(next) => patch(next)}
+          />
         </motion.section>
 
         {/* 3 — Channels and systems */}
-        <motion.section {...anim(2)} className={`oa-card ${styles.card}`}>
+        <motion.section {...anim(configured ? 3 : 2)} className={`oa-card ${styles.card}`}>
           <div style={{ display: "grid", gap: 3 }}>
             <h3 className="oa-h3">Channels and systems</h3>
             <p className="oa-sub">Where this agent is allowed to work, from its required connections.</p>
           </div>
-          <div className="oa-cluster" style={{ gap: 8 }}>
+          <div className={styles.channelGrid} role="group" aria-label="Channels and systems">
             {channelOptions.map((name) => {
               const on = draft.channels.includes(name);
+              const meta = channelMeta.get(name);
               return (
                 <button
                   key={name}
                   type="button"
-                  className={`oa-chip ${on ? "oa-chip--selected" : ""}`}
                   aria-pressed={on}
+                  className={`oa-selectable ${styles.channelCard} ${on ? "oa-selectable--selected" : ""}`}
                   onClick={() => toggleChannel(name)}
                 >
-                  {name}
-                  {on && <Check size={13} aria-hidden />}
+                  <span
+                    className={styles.triggerIcon}
+                    aria-hidden
+                    style={
+                      on
+                        ? { background: "var(--oa-soft-blue)", color: "var(--oa-blue-dark)" }
+                        : undefined
+                    }
+                  >
+                    {(meta && CHANNEL_ICON[meta.category]) ?? <Plug size={14} aria-hidden />}
+                  </span>
+                  <span style={{ display: "grid", gap: 2, minWidth: 0 }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 750, overflowWrap: "anywhere" }}>
+                      {name}
+                    </span>
+                    <span className="oa-sub" style={{ fontSize: 11.5 }}>
+                      {meta?.category ?? "Connected system"}
+                    </span>
+                  </span>
+                  <span className="oa-check-badge" aria-hidden>
+                    <Check size={13} />
+                  </span>
                 </button>
               );
             })}
@@ -293,7 +320,7 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
         </motion.section>
 
         {/* 4 — Workflows enabled */}
-        <motion.section {...anim(3)} className={`oa-card ${styles.card}`}>
+        <motion.section {...anim(configured ? 4 : 3)} className={`oa-card ${styles.card}`}>
           <div style={{ display: "grid", gap: 3 }}>
             <h3 className="oa-h3">Workflows enabled</h3>
             <p className="oa-sub">
@@ -311,7 +338,7 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
                     type="button"
                     role="switch"
                     aria-checked={enabled}
-                    aria-label={`${wf.name} — ${enabled ? "enabled" : "disabled"}`}
+                    aria-label={`${wf.name}, ${enabled ? "enabled" : "disabled"}`}
                     className={`oa-switch ${enabled ? "oa-switch--on" : ""}`}
                     style={{ marginTop: 3 }}
                     onClick={() => toggleAgentWorkflow(def.id, wfId)}
@@ -320,7 +347,7 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
                     <div className="oa-cluster" style={{ gap: 8 }}>
                       <span style={{ fontSize: 14, fontWeight: 750 }}>{wf.name}</span>
                       <span className="oa-tag oa-tag--neutral">
-                        {TRIGGER_META[wf.trigger.kind].label}
+                        {TRIGGER_TYPE_META[wf.trigger.kind].label}
                       </span>
                     </div>
                     <p className="oa-sub" style={{ fontSize: 12.5 }}>{wf.trigger.label}</p>
@@ -333,11 +360,11 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
         </motion.section>
 
         {/* 5 — Human approvals */}
-        <motion.section {...anim(4)} className={`oa-card ${styles.card}`}>
+        <motion.section {...anim(configured ? 5 : 4)} className={`oa-card ${styles.card}`}>
           <div style={{ display: "grid", gap: 3 }}>
             <h3 className="oa-h3">Actions requiring human approval</h3>
             <p className="oa-sub">
-              These always queue for a person — the agent cannot perform them alone.
+              These always queue for a person. The agent cannot perform them alone.
             </p>
           </div>
           <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 8 }}>
@@ -345,20 +372,19 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
               <li
                 key={a}
                 className="oa-panel"
-                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px" }}
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px 6px 14px" }}
               >
                 <ShieldCheck size={15} aria-hidden style={{ color: "var(--oa-teal-deep)", flex: "none" }} />
                 <span style={{ flex: 1, fontSize: 13.5, fontWeight: 650 }}>{a}</span>
                 <button
                   type="button"
                   className="oa-btn oa-btn--ghost oa-btn--icon"
-                  style={{ minHeight: 28, minWidth: 28 }}
                   aria-label={`Remove approval requirement: ${a}`}
                   onClick={() =>
                     patch({ approvalActions: draft.approvalActions.filter((x) => x !== a) })
                   }
                 >
-                  <X size={13} aria-hidden />
+                  <X size={14} aria-hidden />
                 </button>
               </li>
             ))}
@@ -366,7 +392,13 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
           {approvalSuggestions.length > 0 && (
             <div className="oa-cluster" style={{ gap: 8 }}>
               {approvalSuggestions.map((a) => (
-                <button key={a} type="button" className="oa-chip" onClick={() => addApproval(a)}>
+                <button
+                  key={a}
+                  type="button"
+                  className="oa-btn oa-btn--ghost oa-btn--sm"
+                  style={{ whiteSpace: "normal", textAlign: "left" }}
+                  onClick={() => addApproval(a)}
+                >
                   <Plus size={13} aria-hidden />
                   {a}
                 </button>
@@ -397,7 +429,7 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
         </motion.section>
 
         {/* 6 — People */}
-        <motion.section {...anim(5)} className={`oa-card ${styles.card}`}>
+        <motion.section {...anim(configured ? 6 : 5)} className={`oa-card ${styles.card}`}>
           <div style={{ display: "grid", gap: 3 }}>
             <h3 className="oa-h3">People</h3>
             <p className="oa-sub">Who owns the process, and who clears the approvals.</p>
@@ -433,7 +465,7 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
         </motion.section>
 
         {/* 7 — Schedule */}
-        <motion.section {...anim(6)} className={`oa-card ${styles.card}`}>
+        <motion.section {...anim(configured ? 7 : 6)} className={`oa-card ${styles.card}`}>
           <div style={{ display: "grid", gap: 3 }}>
             <h3 className="oa-h3">Schedule</h3>
             <p className="oa-sub">When the agent may work, and how often it runs.</p>
@@ -468,13 +500,49 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
           </div>
         </motion.section>
 
-        {/* 8 — Data access & forbidden (policy, read-only) */}
-        <motion.section {...anim(7)} className={`oa-card oa-card--flat ${styles.card}`}>
+        {/* 8 — Test scenarios (read-only, §13) + budget guide */}
+        <motion.section {...anim(configured ? 8 : 7)} className={`oa-card ${styles.card}`}>
+          <div className="oa-between" style={{ gap: 10 }}>
+            <div style={{ display: "grid", gap: 3 }}>
+              <h3 className="oa-h3">Test scenarios</h3>
+              <p className="oa-sub">How this agent will be exercised in the sandbox after the build.</p>
+            </div>
+            <span className="oa-tag oa-tag--neutral">Read-only</span>
+          </div>
+          <div>
+            {def.workflows.slice(0, 3).map((wf) => (
+              <div key={wf.id} className={styles.scenarioRow}>
+                <span
+                  className={styles.checkIcon}
+                  aria-hidden
+                  style={{ width: 28, height: 28, borderRadius: 8 }}
+                >
+                  <Play size={13} />
+                </span>
+                <div style={{ display: "grid", gap: 3, minWidth: 0 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 750 }}>{wf.name}</span>
+                  <span className="oa-sub" style={{ fontSize: 12.5 }}>
+                    {wf.trigger.label} → expected: {wf.handoff}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <hr className="oa-divider" />
+          <p className="oa-sub" style={{ fontSize: 12.5 }}>
+            Budget guide: plan for about {money(def.setupCost)} once for setup and{" "}
+            {money(def.monthlyCost)} per month while active. Illustrative demo figures, not a
+            quote.
+          </p>
+        </motion.section>
+
+        {/* 9 — Data access & forbidden (policy, read-only) */}
+        <motion.section {...anim(configured ? 9 : 8)} className={`oa-card oa-card--flat ${styles.card}`}>
           <div className="oa-between" style={{ gap: 10 }}>
             <div style={{ display: "grid", gap: 3 }}>
               <h3 className="oa-h3">Data access and hard limits</h3>
               <p className="oa-sub">
-                Set by your approval restrictions from Discovery — policy, not preference. To change
+                Set by your approval restrictions from Discovery: policy, not preference. To change
                 them, update the company report before approving the plan.
               </p>
             </div>
@@ -516,14 +584,14 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
             <div className={styles.stickySummary}>
               <span style={{ fontSize: 13.5, fontWeight: 750 }}>
                 {money(def.setupCost)} setup · {money(def.monthlyCost)}/month{" "}
-                <span className="oa-sub" style={{ fontWeight: 600 }}>— illustrative pricing</span>
+                <span className="oa-sub" style={{ fontWeight: 600 }}>(illustrative pricing)</span>
               </span>
               <span className={`oa-sub ${styles.stickyLine}`}>{summaryLine}</span>
             </div>
             <button type="button" className="oa-btn oa-btn--primary" onClick={save}>
               <Check size={15} aria-hidden />
               {agent.status === "needs_configuration"
-                ? "Save configuration — mark ready"
+                ? "Save configuration and mark ready"
                 : "Save configuration"}
             </button>
           </div>
@@ -539,10 +607,10 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
           <p className="oa-micro">Configuration summary</p>
           <SummaryRow label="Operating mode" value={MODE_META[draft.operatingMode].label} />
           <SummaryRow
-            label="Triggers"
+            label="When it runs"
             value={
               draft.triggers.length
-                ? draft.triggers.map((t) => TRIGGER_META[t].label).join(", ")
+                ? draft.triggers.map((t) => TRIGGER_TYPE_META[t].label).join(", ")
                 : "None selected"
             }
           />
@@ -565,7 +633,7 @@ export default function PresetConfig({ def, agent }: { def: AgentDef; agent: Pla
           <hr className="oa-divider" />
           <SummaryRow label="Setup" value={money(def.setupCost)} />
           <SummaryRow label="Monthly" value={`${money(def.monthlyCost)}/month`} />
-          <span className="oa-sim-note">Illustrative pricing — demo figures only.</span>
+          <span className="oa-sim-note">Illustrative pricing. Demo figures only.</span>
         </div>
       </aside>
     </div>

@@ -1,12 +1,14 @@
 "use client";
 /**
- * ReportExperience — the company report + Human Approval Gate 1 (spec §10).
+ * ReportExperience — the company report + Human Approval Gate 1 (spec §10,
+ * improvement spec §11).
  *
- * Split layout at ≥1024px: sticky outline (left) · editable document paper
- * (centre) · evidence rail for the active section (right). Below 1024px the
- * outline becomes a horizontal strip and evidence opens in a Drawer overlay.
- * A sticky footer carries completeness, fact totals, the gaps line and the
- * single primary action — Approve and send to Planner.
+ * Split layout at ≥1024px: sticky left column (Contents + Completeness) ·
+ * editable document paper (centre) · evidence rail for the active section
+ * (right). Below 1024px the left column renders above the document in normal
+ * flow and evidence opens in a Drawer. Review progress is fact-based
+ * ("18 of 30 facts confirmed"); the approval bar sits in normal flow at the
+ * end of the report so nothing ever obstructs content (R-02).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,7 +17,12 @@ import { FileCheck2, TriangleAlert } from "lucide-react";
 import type { ReportSectionId } from "@/lib/mock/types";
 import { useDemoStore } from "@/lib/mock/store";
 import { atLeast } from "@/lib/mock/state-machine";
-import { REPORT_SECTIONS, REPORT_SECTION_ORDER } from "@/lib/mock/fixtures/company-report";
+import {
+  REPORT_FACTS,
+  REPORT_FACTS_BY_SECTION,
+  REPORT_SECTIONS,
+  REPORT_SECTION_ORDER,
+} from "@/lib/mock/fixtures/company-report";
 import { DISCOVERY_QUESTIONS } from "@/lib/mock/fixtures/discovery-questions";
 import { DEMO_COMPANY } from "@/lib/mock/fixtures/demo-company";
 import { DEMO_TODAY } from "@/lib/mock/fixtures/ids";
@@ -27,6 +34,7 @@ import ReportOutline from "./ReportOutline";
 import ReportSectionCard from "./ReportSectionCard";
 import EvidencePanel from "./EvidencePanel";
 import ReportFooterBar from "./ReportFooterBar";
+import { effectiveFactStatus } from "./ReportFactList";
 import { formatDemoDate, formatDemoDateTime } from "./report-utils";
 import styles from "./report.module.css";
 
@@ -47,24 +55,25 @@ export default function ReportExperience() {
 
   const sectionEls = useRef<Partial<Record<ReportSectionId, HTMLElement | null>>>({});
 
-  /* ── derived totals (fixture counts, spec §10 bottom bar) ── */
-  const confirmedCount = REPORT_SECTION_ORDER.filter(
-    (id) => report.sections[id].status === "confirmed",
-  ).length;
+  const approved = report.status === "approved";
 
-  const factTotals = useMemo(
-    () =>
-      REPORT_SECTIONS.reduce(
-        (acc, s) => ({
-          confirmed: acc.confirmed + s.confirmedFacts,
-          assumptions: acc.assumptions + s.assumptions,
-        }),
-        { confirmed: 0, assumptions: 0 },
-      ),
-    [],
-  );
-
-  const gapCount = SECTION_BY_ID.get("missing-information")?.bullets.length ?? 0;
+  /* ── fact-level review totals (improvement spec §11.2/§11.3) ── */
+  const factStats = useMemo(() => {
+    let confirmed = 0;
+    let unresolved = 0;
+    for (const fact of REPORT_FACTS) {
+      const status = effectiveFactStatus(report.facts[fact.id], approved);
+      if (status === "confirmed") confirmed += 1;
+      if (status === "unreviewed" || status === "rejected") unresolved += 1;
+    }
+    return {
+      total: REPORT_FACTS.length,
+      confirmed,
+      needsReview: REPORT_FACTS.length - confirmed,
+      unresolved,
+      missingInfoCount: SECTION_BY_ID.get("missing-information")?.bullets.length ?? 0,
+    };
+  }, [report.facts, approved]);
 
   const statuses = useMemo(() => {
     const out = {} as Record<ReportSectionId, "draft" | "confirmed" | "rejected">;
@@ -108,6 +117,27 @@ export default function ReportExperience() {
     [reduced],
   );
 
+  /* "Go to next unresolved fact": first unreviewed or rejected fact in
+     document order (improvement spec §11.3). */
+  const jumpToUnresolved = useCallback(() => {
+    const facts = useDemoStore.getState().report.facts;
+    const isApproved = useDemoStore.getState().report.status === "approved";
+    for (const sectionId of REPORT_SECTION_ORDER) {
+      for (const fact of REPORT_FACTS_BY_SECTION[sectionId]) {
+        const status = effectiveFactStatus(facts[fact.id], isApproved);
+        if (status === "unreviewed" || status === "rejected") {
+          setActiveId(sectionId);
+          const el = document.getElementById(`fact-row-${fact.id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+            el.focus({ preventScroll: true });
+          }
+          return;
+        }
+      }
+    }
+  }, [reduced]);
+
   /* ── approval flow (Gate 1) ── */
   const handleApprove = () => {
     const store = useDemoStore.getState();
@@ -118,7 +148,7 @@ export default function ReportExperience() {
     // "planning" — advance only if the journey is not already past it.
     if (!atLeast(next.journey, "planning")) store.setJourney("planning");
     toast({
-      title: `Company Report v${next.report.version} — Approved`,
+      title: `Company Report v${next.report.version} approved`,
       detail: wasStale
         ? "The Workforce Planner will regenerate from this version."
         : "Sent to the AI Workforce Planner.",
@@ -128,14 +158,13 @@ export default function ReportExperience() {
   };
 
   const handleSaveDraft = () =>
-    toast({ title: "Draft saved", detail: "Autosave is on — every change is already kept.", tone: "ok" });
+    toast({ title: "Draft saved", detail: "Autosave is on; every change is already kept.", tone: "ok" });
 
   const appendNote = (id: ReportSectionId, text: string) => {
     const existing = useDemoStore.getState().report.sections[id].ownerNote;
     setSectionNote(id, existing ? `${existing}\n${text}` : text);
   };
 
-  const approved = report.status === "approved";
   const activeDef = SECTION_BY_ID.get(activeId) ?? REPORT_SECTIONS[0];
   const activeIndex = REPORT_SECTION_ORDER.indexOf(activeDef.id);
   const drawerDef = drawerFor ? SECTION_BY_ID.get(drawerFor) : undefined;
@@ -143,12 +172,13 @@ export default function ReportExperience() {
   return (
     <>
       <div className={styles.wrap}>
-        {/* ── Left: outline ── */}
+        {/* ── Left: Contents + Completeness ── */}
         <ReportOutline
           statuses={statuses}
           activeId={activeId}
-          confirmedCount={confirmedCount}
+          completeness={factStats}
           onJump={jumpTo}
+          onJumpToUnresolved={jumpToUnresolved}
         />
 
         {/* ── Centre: the document ── */}
@@ -167,7 +197,7 @@ export default function ReportExperience() {
               >
                 <TriangleAlert size={16} className={styles.bannerIcon} aria-hidden />
                 <p className={styles.bannerText}>
-                  <strong>Editing an approved report re-opens it</strong> — the workforce plan is
+                  <strong>Editing an approved report re-opens it.</strong> The workforce plan is
                   marked stale and will need regeneration after you re-approve.
                 </p>
               </motion.div>
@@ -184,7 +214,7 @@ export default function ReportExperience() {
               >
                 <FileCheck2 size={16} className={styles.bannerIcon} aria-hidden />
                 <p className={styles.bannerText}>
-                  <strong>Company Report v{report.version} — Approved</strong> on{" "}
+                  <strong>Company Report v{report.version} approved</strong> on{" "}
                   {formatDemoDateTime(report.approvedAt)}. Sections are locked; editing any section
                   re-opens the report as a new draft.
                 </p>
@@ -214,11 +244,11 @@ export default function ReportExperience() {
                     transition={{ duration: DUR.micro, ease: EASE }}
                   >
                     {approved ? (
-                      <StatusBadge status="approved" label={`Company Report v${report.version} — Approved`} />
+                      <StatusBadge status="approved" label={`Approved · v${report.version}`} />
                     ) : (
                       <span className={styles.versionChip}>
                         Draft v{report.version}
-                        {report.stale ? " — re-opened" : ""}
+                        {report.stale ? " · re-opened" : ""}
                       </span>
                     )}
                   </motion.span>
@@ -229,7 +259,7 @@ export default function ReportExperience() {
                   ? `Approved ${formatDemoDateTime(report.approvedAt)}`
                   : `Prepared ${formatDemoDate(DEMO_TODAY)}`}
                 <span aria-hidden>·</span>
-                {REPORT_SECTIONS.length} sections
+                {REPORT_SECTIONS.length} sections · {REPORT_FACTS.length} facts
                 <span aria-hidden>·</span>
                 Built from onboarding, your Lean Canvas and {DISCOVERY_QUESTIONS.length} interview
                 answers
@@ -255,11 +285,11 @@ export default function ReportExperience() {
             ))}
           </motion.article>
 
-          {/* Sticky approval footer */}
+          {/* Approval bar in normal flow at the end of the report (R-02) */}
           <ReportFooterBar
-            confirmedCount={confirmedCount}
-            factTotals={factTotals}
-            gapCount={gapCount}
+            factConfirmed={factStats.confirmed}
+            factTotal={factStats.total}
+            needsReview={factStats.needsReview}
             reportStatus={report.status}
             stale={report.stale}
             version={report.version}

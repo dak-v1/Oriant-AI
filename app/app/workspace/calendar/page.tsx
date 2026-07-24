@@ -10,12 +10,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import type { CalendarEvent, CalendarEventState } from "@/lib/mock/types";
+import type { CalendarEvent } from "@/lib/mock/types";
 import { useDemoStore } from "@/lib/mock/store";
 import { DEMO_MONTH_LABEL, DEMO_TODAY } from "@/lib/mock/fixtures/ids";
 import { DUR, EASE } from "@/lib/mock/motion";
 import Drawer from "@/components/mock/ui/Drawer";
-import MonthCalendar, { STATE_META } from "@/components/mock/calendar/MonthCalendar";
+import MonthCalendar from "@/components/mock/calendar/MonthCalendar";
+import {
+  STATE_META,
+  STATE_ORDER,
+  stateFill,
+} from "@/components/mock/calendar/stateMeta";
 import DayTimeline from "@/components/mock/calendar/DayTimeline";
 import styles from "@/components/mock/calendar/calendar.module.css";
 
@@ -28,8 +33,6 @@ const TEAM_FILTERS: { id: TeamFilter; label: string }[] = [
   { id: "marketing", label: "Marketing" },
   { id: "finance", label: "Finance" },
 ];
-
-const STATE_ORDER = Object.keys(STATE_META) as CalendarEventState[];
 
 const WEEKDAY_NAMES = [
   "Sunday",
@@ -125,7 +128,7 @@ export default function CalendarPage() {
             Automation <span className="oa-serif">calendar</span>
           </h1>
           <p className="oa-lead">
-            Every scheduled run and held decision across your AI workforce — one month at a
+            Every scheduled run and held decision across your AI workforce, one month at a
             glance.
           </p>
         </div>
@@ -136,7 +139,7 @@ export default function CalendarPage() {
             className="oa-btn oa-btn--ghost oa-btn--icon"
             disabled
             title="Demo month"
-            aria-label="Previous month — demo month only"
+            aria-label="Previous month (demo month only)"
           >
             <ChevronLeft size={15} aria-hidden />
           </button>
@@ -146,7 +149,7 @@ export default function CalendarPage() {
             className="oa-btn oa-btn--ghost oa-btn--icon"
             disabled
             title="Demo month"
-            aria-label="Next month — demo month only"
+            aria-label="Next month (demo month only)"
           >
             <ChevronRight size={15} aria-hidden />
           </button>
@@ -182,8 +185,8 @@ export default function CalendarPage() {
             const meta = STATE_META[state];
             return (
               <span key={state} className={styles.legendItem} title={meta.treatment}>
-                <span className={`${styles.legendSwatch} ${meta.cls}`} aria-hidden>
-                  <meta.Icon size={10} />
+                <span className={styles.legendSwatch} style={stateFill(state)} aria-hidden>
+                  <meta.icon size={10} />
                 </span>
                 {meta.label}
               </span>

@@ -1,12 +1,14 @@
 "use client";
 /**
- * StressPanel — the 20-case stress test (spec §15): a fast progress strip
- * (~4s), then three stat cards, the case list (passed collapsed; escalated
- * and failed expanded) and the reassuring failed-case review.
+ * StressPanel — main-panel content for the 20-case stress test entry (spec
+ * §14; S-01): the fast progress strip (~4s) while running, then the
+ * case-by-case list (escalated and failed first, passed behind an
+ * accordion). The result summary, stats and failure explanation render in
+ * the OUTPUT panel on the right.
  */
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { CheckCircle2, ChevronDown, ShieldCheck, TriangleAlert, XCircle } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ChevronDown } from "lucide-react";
 import { STRESS_TEST } from "@/lib/mock/fixtures/sandbox-scenarios";
 import { WF, WF_NAME } from "@/lib/mock/fixtures/ids";
 import type { StressCase } from "@/lib/mock/types";
@@ -42,10 +44,28 @@ export default function StressPanel({
   state,
   caseNum,
 }: {
-  state: "running" | "done";
+  state: "idle" | "running" | "done";
   caseNum: number;
 }) {
+  const reduced = useReducedMotion();
   const [passedOpen, setPassedOpen] = useState(false);
+
+  if (state === "idle") {
+    return (
+      <div className={`oa-card oa-card--flat ${styles.empty}`}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <h3 className="oa-h3">The case results appear here</h3>
+          <p className="oa-sub" style={{ maxWidth: 460 }}>
+            Run the stress test to replay all 20 edge cases against the built workflow. Each case
+            reports whether it passed, escalated to you, or stopped safely.
+          </p>
+        </div>
+        <span className="oa-sim-note">
+          Prepared demo result: 20 deterministic cases, replayed against the built workflow.
+        </span>
+      </div>
+    );
+  }
 
   /* ── Progress strip ── */
   if (state === "running") {
@@ -58,96 +78,46 @@ export default function StressPanel({
           <p className="oa-micro">20-case stress test · {WF_NAME[WF.complaintResolution]}</p>
           <h2 className="oa-h3" aria-live="polite">
             Case {shown} of {STRESS_TEST.total}
-            {current ? ` — ${current.name}` : ""}
+            {current ? `: ${current.name}` : ""}
           </h2>
         </div>
-        <div className="oa-progress" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Stress test progress">
+        <div
+          className="oa-progress"
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Stress test progress"
+        >
           <span style={{ width: `${pct}%` }} />
         </div>
         <span className="oa-sim-note">
-          Prepared demo result — 20 deterministic cases, replayed against the built workflow.
+          Prepared demo result: 20 deterministic cases, replayed against the built workflow.
         </span>
       </div>
     );
   }
 
-  /* ── Summary ── */
+  /* ── Case list (escalated + failed first; passed behind the accordion) ── */
   const attention = STRESS_TEST.cases.filter((c) => c.outcome !== "passed");
   const passed = STRESS_TEST.cases.filter((c) => c.outcome === "passed");
-  const failedCase = STRESS_TEST.cases.find((c) => c.outcome === "failed");
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 14 }}
+      initial={reduced ? false : { opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: DUR.card, ease: EASE }}
-      style={{ display: "grid", gap: 16 }}
+      style={{ display: "grid", gap: 12 }}
     >
       <div className="oa-between">
-        <div style={{ display: "grid", gap: 3 }}>
-          <p className="oa-micro">20-case stress test · {WF_NAME[WF.complaintResolution]}</p>
-          <h2 className="oa-h3">
-            {STRESS_TEST.passed} of {STRESS_TEST.total} cases handled exactly as designed
-          </h2>
-        </div>
+        <p className="oa-micro">Cases needing attention</p>
         <span className="oa-sim-note">Prepared demo result</span>
       </div>
-
-      <div className={styles.statGrid}>
-        <div className={`oa-card oa-card--flat ${styles.statCard}`}>
-          <div className={styles.statTop}>
-            <CheckCircle2 size={16} aria-hidden style={{ color: "var(--oa-teal-deep)" }} />
-            <span className="oa-micro">Passed</span>
-          </div>
-          <span className={styles.statNum} style={{ color: "var(--oa-teal-deep)" }}>
-            {STRESS_TEST.passed}
-          </span>
-          <p className="oa-sub">Handled end to end within policy.</p>
-        </div>
-        <div className={`oa-card oa-card--flat ${styles.statCard}`}>
-          <div className={styles.statTop}>
-            <TriangleAlert size={16} aria-hidden style={{ color: "var(--oa-amber-ink)" }} />
-            <span className="oa-micro">Escalated correctly</span>
-          </div>
-          <span className={styles.statNum} style={{ color: "var(--oa-amber-ink)" }}>
-            {STRESS_TEST.escalated}
-          </span>
-          <p className="oa-sub">Handed to you exactly when the rules require.</p>
-        </div>
-        <div className={`oa-card oa-card--flat ${styles.statCard}`}>
-          <div className={styles.statTop}>
-            <XCircle size={16} aria-hidden style={{ color: "var(--oa-red-ink)" }} />
-            <span className="oa-micro">Failed</span>
-          </div>
-          <span className={styles.statNum} style={{ color: "var(--oa-red-ink)" }}>
-            {STRESS_TEST.failed}
-          </span>
-          <p className="oa-sub">Stopped safely — no customer was contacted.</p>
-        </div>
-      </div>
-
-      {/* Escalated + failed expanded; passed collapsed by default. */}
       <div className={styles.caseList} aria-label="Cases needing attention">
         {attention.map((c) => (
           <CaseRow key={c.id} c={c} />
         ))}
       </div>
-
-      {failedCase && (
-        <div className={`oa-card ${styles.failReview}`}>
-          <span className={styles.failIcon} aria-hidden>
-            <ShieldCheck size={19} />
-          </span>
-          <div className={styles.failBody}>
-            <h3 className="oa-h3">Failed-case review — case #{failedCase.id}</h3>
-            <p className={styles.failQuote}>{STRESS_TEST.failureExplanation}</p>
-            <p className="oa-sub">
-              This is exactly what the sandbox is for: the gap surfaced here, safely, instead of in
-              front of a real customer.
-            </p>
-          </div>
-        </div>
-      )}
 
       <div>
         <button

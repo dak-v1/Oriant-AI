@@ -47,6 +47,7 @@
   align-items: center;
   gap: 10px;
   width: 100%;
+  min-height: 44px;
   padding: 9px 10px;
   border-radius: 12px;
   font-size: 13.5px;
@@ -113,6 +114,7 @@
   display: inline-flex;
   align-items: center;
   gap: 9px;
+  min-height: 44px;
   padding: 7px 12px;
   border-radius: 12px;
   border: 1px solid var(--oa-border);
@@ -165,9 +167,9 @@
 .iconBtn {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 44px; /* spec §19.1: 44px icon-button target */
+  height: 44px;
+  border-radius: 12px;
   border: 1px solid var(--oa-border);
   background: var(--oa-surface);
   color: var(--oa-muted-strong);
@@ -196,6 +198,7 @@
   align-items: center;
   gap: 10px;
   width: 100%;
+  min-height: 44px;
   text-align: left;
   padding: 9px 10px;
   border-radius: 10px;
@@ -223,6 +226,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  min-height: 36px;
   padding: 5px 12px;
   border-radius: 999px;
   font-size: 11.5px;
@@ -243,10 +247,12 @@
 
 /* ── Floating command button ── */
 
+/* Ask Oriant — unmistakably a button (improvement spec §16.2): raised solid
+   surface with a visible boundary, icon + label, hover elevation, 46px tall. */
 .cmdFab {
   position: fixed;
   right: 22px;
-  bottom: 22px;
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
   z-index: 50;
   display: inline-flex;
   align-items: center;
@@ -255,14 +261,20 @@
   padding: 0 18px;
   border-radius: 999px;
   background: var(--oa-ink);
+  border: 1.5px solid rgba(243, 244, 240, 0.35);
   color: #f3f4f0;
   font-size: 13.5px;
   font-weight: 750;
   box-shadow: var(--oa-shadow-pop);
   cursor: pointer;
-  transition: transform 0.2s var(--oa-ease), background 0.2s var(--oa-ease);
+  transition: transform 0.2s var(--oa-ease), background 0.2s var(--oa-ease),
+    box-shadow 0.2s var(--oa-ease);
 }
-.cmdFab:hover { transform: translateY(-2px); background: #060a12; }
+.cmdFab:hover {
+  transform: translateY(-2px);
+  background: #060a12;
+  box-shadow: 0 34px 64px -28px rgba(16, 24, 40, 0.55);
+}
 .cmdKbd {
   font-size: 10px;
   font-weight: 800;
@@ -352,7 +364,8 @@
   }
   .mobileItemActive { color: var(--oa-blue-dark); background: var(--oa-soft-blue); }
   .mobileItem:disabled { opacity: 0.4; }
-  .cmdFab { bottom: 76px; right: 14px; }
+  /* Sit above the bottom navigation + device safe area (spec §16.2). */
+  .cmdFab { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); right: 14px; }
   .phaseLabel, .autosave { display: none; }
 
   /* Compact company control: mark only — the full name doesn't fit a phone. */

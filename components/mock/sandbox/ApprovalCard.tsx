@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
-import { Check, ChevronDown, Loader2, Sparkles, UserCheck } from "lucide-react";
+import { Check, ChevronDown, Loader2, RefreshCw, UserCheck } from "lucide-react";
 import type { SandboxEvent, SandboxScenario } from "@/lib/mock/types";
 import { useDemoStore } from "@/lib/mock/store";
 import { runTimeline, type TimelineHandle } from "@/lib/mock/services/timeline";
@@ -72,8 +72,8 @@ export default function ApprovalCard({
         </div>
         <button
           type="button"
-          className="oa-sim-note"
-          style={{ cursor: "pointer", justifySelf: "start" }}
+          className="oa-btn oa-btn--ghost oa-btn--sm"
+          style={{ justifySelf: "start" }}
           aria-expanded={finalOpen}
           onClick={() => setFinalOpen((v) => !v)}
         >
@@ -114,7 +114,7 @@ export default function ApprovalCard({
     if (revising) return;
     approveSandboxAction();
     toast({
-      title: "Resolution approved — run resuming",
+      title: "Resolution approved, run resuming",
       detail: comment.trim()
         ? "Your note was recorded with the approval."
         : "Only the approved text will be used from here.",
@@ -132,7 +132,7 @@ export default function ApprovalCard({
       <div className={styles.approvalBody}>
         <div style={{ display: "grid", gap: 6 }}>
           <h3 className="oa-h3" tabIndex={-1} ref={headingRef}>
-            The workflow paused — a human decision is required before any compensation is offered.
+            The workflow paused: a human decision is required before anything is sent.
           </h3>
           <p className="oa-sub">{pauseEvent.detail}</p>
         </div>
@@ -144,7 +144,7 @@ export default function ApprovalCard({
             </label>
             <span className="oa-tag oa-tag--neutral">{resolutionRevised ? "v2 · agent revision" : "v1"}</span>
             <span className="oa-sub" style={{ marginLeft: "auto", fontSize: 11.5 }}>
-              Editable — only the approved text is ever used
+              Editable. Only the approved text is ever used
             </span>
           </div>
           <textarea
@@ -162,8 +162,7 @@ export default function ApprovalCard({
             <div style={{ display: "grid", gap: 6, justifyItems: "start" }}>
               <button
                 type="button"
-                className="oa-sim-note"
-                style={{ cursor: "pointer" }}
+                className="oa-btn oa-btn--ghost oa-btn--sm"
                 aria-expanded={prevOpen}
                 onClick={() => setPrevOpen((v) => !v)}
               >
@@ -206,7 +205,7 @@ export default function ApprovalCard({
               onClick={onAskUpdate}
               disabled={resolutionRevised}
             >
-              <Sparkles size={14} aria-hidden />
+              <RefreshCw size={14} aria-hidden />
               {resolutionRevised ? "Updated by the agent" : "Ask agent to update"}
             </button>
           )}
@@ -222,7 +221,7 @@ export default function ApprovalCard({
           </button>
         </div>
         <span className="oa-sim-note">
-          Simulated approval gate — nothing reaches the customer, in the sandbox or otherwise.
+          Simulated approval gate. Nothing reaches the customer, in the sandbox or otherwise.
         </span>
       </div>
     </div>

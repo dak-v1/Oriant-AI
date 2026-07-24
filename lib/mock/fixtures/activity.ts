@@ -16,7 +16,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.finance,
     agentName: AGENT_NAME[AGENT.finance],
     team: "finance",
-    message: "Payment received — Tan Heng Renovations settled INV-1163 ($380).",
+    message: "Payment received: Tan Heng Renovations settled INV-1163 ($380).",
     tone: "done",
   },
   {
@@ -25,7 +25,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.marketing,
     agentName: AGENT_NAME[AGENT.marketing],
     team: "marketing",
-    message: "Drafted August \"Monsoon-Ready Home\" campaign — headline, email and two social posts.",
+    message: "Drafted August \"Monsoon-Ready Home\" campaign: headline, email and two social posts.",
     tone: "done",
   },
   {
@@ -34,7 +34,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.admin,
     agentName: AGENT_NAME[AGENT.admin],
     team: "admin",
-    message: "Technician double-booking found for Saturday — Jonathan Lim's reschedule needs your OK by 17:30.",
+    message: "Technician double-booking found for Saturday. Jonathan Lim's reschedule needs your OK by 17:30.",
     tone: "alert",
   },
   {
@@ -52,7 +52,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.finance,
     agentName: AGENT_NAME[AGENT.finance],
     team: "finance",
-    message: "Reviewed the INV-1187 dispute — $95 write-off request sent for your approval.",
+    message: "Reviewed the INV-1187 dispute and sent a $95 write-off request for your approval.",
     tone: "wait",
   },
   {
@@ -61,7 +61,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.admin,
     agentName: AGENT_NAME[AGENT.admin],
     team: "admin",
-    message: "Two customers asked to reschedule next week — proposed new slots sent for confirmation.",
+    message: "Two customers asked to reschedule next week. Proposed new slots sent for confirmation.",
     tone: "done",
   },
   {
@@ -70,7 +70,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.recovery,
     agentName: AGENT_NAME[AGENT.recovery],
     team: "customer_care",
-    message: "Refund proposal for Daniel Tan ready — $180 exceeds your auto-approval limit.",
+    message: "Refund proposal for Daniel Tan ready: $180 exceeds your auto-approval limit.",
     tone: "wait",
   },
   {
@@ -79,7 +79,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.admin,
     agentName: AGENT_NAME[AGENT.admin],
     team: "admin",
-    message: "Drafted renewal quote for Rajesh Kumar ($756/year) — queued for your review Monday.",
+    message: "Drafted renewal quote for Rajesh Kumar ($756/year), queued for your review Monday.",
     tone: "wait",
   },
   {
@@ -88,7 +88,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.marketing,
     agentName: AGENT_NAME[AGENT.marketing],
     team: "marketing",
-    message: "Collected engagement stats for last week's posts — reach up 18% on the repaint photos.",
+    message: "Collected engagement stats for last week's posts: reach up 18% on the repaint photos.",
     tone: "info",
   },
   {
@@ -97,7 +97,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.recovery,
     agentName: AGENT_NAME[AGENT.recovery],
     team: "customer_care",
-    message: "Resolution plan for Mrs Wong drafted — needs your decision by 12:00.",
+    message: "Resolution plan for Mrs Wong drafted; it needs your decision by 12:00.",
     tone: "wait",
   },
   {
@@ -115,7 +115,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.finance,
     agentName: AGENT_NAME[AGENT.finance],
     team: "finance",
-    message: "Drafted Friday payment reminder batch (12 invoices) — waiting for your approval.",
+    message: "Drafted Friday payment reminder batch (12 invoices), waiting for your approval.",
     tone: "wait",
   },
   {
@@ -124,7 +124,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.finance,
     agentName: AGENT_NAME[AGENT.finance],
     team: "finance",
-    message: "Weekly overdue invoice summary ready — 8 invoices, $4,310 outstanding, posted to Slack.",
+    message: "Weekly overdue invoice summary ready: 8 invoices, $4,310 outstanding, posted to Slack.",
     tone: "done",
   },
   {
@@ -133,7 +133,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.recovery,
     agentName: AGENT_NAME[AGENT.recovery],
     team: "customer_care",
-    message: "Flagged Mrs Wong's aircon complaint as high-value — gathering job history from three teams.",
+    message: "Flagged Mrs Wong's aircon complaint as high-value; gathering job history from three teams.",
     tone: "info",
   },
   {
@@ -142,7 +142,7 @@ export const ACTIVITY_FEED: ActivityEvent[] = [
     agentId: AGENT.admin,
     agentName: AGENT_NAME[AGENT.admin],
     team: "admin",
-    message: "Confirmed 9 of today's appointments by WhatsApp — all customers replied.",
+    message: "Confirmed 9 of today's appointments by WhatsApp. All customers replied.",
     tone: "done",
   },
   {
@@ -164,7 +164,7 @@ export const ACTIVATION_BURST: ActivityEvent[] = [
     agentId: AGENT.admin,
     agentName: AGENT_NAME[AGENT.admin],
     team: "admin",
-    message: "Admin Operations Agent is active — reading Gmail and Google Calendar to pick up today's requests.",
+    message: "Admin Operations Agent is active, reading Gmail and Google Calendar to pick up today's requests.",
     tone: "done",
   },
   {
@@ -173,7 +173,7 @@ export const ACTIVATION_BURST: ActivityEvent[] = [
     agentId: AGENT.marketing,
     agentName: AGENT_NAME[AGENT.marketing],
     team: "marketing",
-    message: "Marketing Agent is active — reviewing last month's posts to seed the first content plan.",
+    message: "Marketing Agent is active, reviewing last month's posts to seed the first content plan.",
     tone: "info",
   },
   {
@@ -182,7 +182,7 @@ export const ACTIVATION_BURST: ActivityEvent[] = [
     agentId: AGENT.finance,
     agentName: AGENT_NAME[AGENT.finance],
     team: "finance",
-    message: "Finance Follow-up Agent is active — scanning QuickBooks for invoices overdue by 14+ days.",
+    message: "Finance Follow-up Agent is active, scanning QuickBooks for invoices overdue by 14+ days.",
     tone: "info",
   },
   {
@@ -191,14 +191,14 @@ export const ACTIVATION_BURST: ActivityEvent[] = [
     agentId: AGENT.recovery,
     agentName: AGENT_NAME[AGENT.recovery],
     team: "customer_care",
-    message: "Service Recovery Coordinator is active — watching all channels for high-value complaints.",
+    message: "Service Recovery Coordinator is active, watching all channels for high-value complaints.",
     tone: "info",
   },
 ];
 
 /** Mock phone notification for APPROVAL.refund (§19.2 — clearly simulated, never a real send). */
 export const WHATSAPP_PREVIEW: { title: string; body: string; time: string } = {
-  title: "Oriant — approval needed",
+  title: "Oriant: approval needed",
   body: "Refund request: $180 to Daniel Tan for a missed plumbing appointment. Due today 14:30. Open Oriant to Review or Approve.",
   time: "11:30",
 };

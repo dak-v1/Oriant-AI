@@ -1,9 +1,11 @@
 "use client";
 /**
- * PlanCanvas — the centre operations narrative (spec §11.1, §11.6): intro
- * block with expected outcomes and pinned plan rules, agent cards connected
- * by animated, clickable handoff connectors, Reorder.Group drag-to-reorder
- * (with a keyboard path on each drag handle) and the library drop zone.
+ * PlanCanvas — the centre workflow canvas (spec §11.1, §11.6, improvement
+ * spec §12.2, §12.4): intro block with pinned plan rules, slim agent cards
+ * connected by clickable handoff connectors carrying mini-node markers
+ * (Trigger / Human approval / Connected tools), Reorder.Group drag-to-reorder
+ * with lift shadow (plus Move up / Move down and arrow-key paths), and a
+ * visible dashed drop target while a library card is being dragged.
  */
 import { useEffect, useRef, useState } from "react";
 import {
@@ -13,21 +15,33 @@ import {
   useDragControls,
   useReducedMotion,
 } from "framer-motion";
-import { ArrowDown, Check, ShieldCheck } from "lucide-react";
-import { AGENT_LIBRARY, PLAN_OUTCOMES } from "@/lib/mock/fixtures/agent-library";
-import type { PlanAgent } from "@/lib/mock/types";
+import { ArrowDown, Plug, Plus, ShieldCheck, UserCheck, Zap } from "lucide-react";
+import { AGENT_LIBRARY } from "@/lib/mock/fixtures/agent-library";
+import type { PlanAgent, TriggerKind } from "@/lib/mock/types";
 import { useDemoStore } from "@/lib/mock/store";
 import { toast } from "@/components/mock/ui/Toaster";
 import { DUR, EASE, STAGGER } from "@/lib/mock/motion";
 import AgentPlanCard from "./AgentPlanCard";
-import type { PlannerSelection } from "./planner-utils";
+import { workflowDefById, type PlannerSelection } from "./planner-utils";
 import styles from "./planner.module.css";
 
-/* ── Connector between two agent cards (spec §11.6) ── */
+const TRIGGER_WORD: Record<TriggerKind, string> = {
+  event: "Event trigger",
+  schedule: "Scheduled",
+  threshold: "Threshold",
+  manual: "Manual",
+  dependency: "Dependency",
+  approval: "Approval",
+};
+
+/* ── Connector between two agent cards (spec §11.6, §12.4 mini-nodes) ── */
 
 function Connector({
   fromId,
   toId,
+  fromApprovals,
+  toTrigger,
+  toolCount,
   hidden,
   selected,
   onClick,
@@ -35,6 +49,11 @@ function Connector({
 }: {
   fromId: string;
   toId: string;
+  /** Count of human-approval actions on the upstream agent. */
+  fromApprovals: number;
+  /** Primary trigger kind of the downstream agent (first workflow). */
+  toTrigger: TriggerKind | null;
+  toolCount: number;
   hidden: boolean;
   selected: boolean;
   onClick: () => void;
@@ -52,9 +71,9 @@ function Connector({
       aria-label={`Inspect the handoff from ${fromName} to ${toName}`}
       aria-pressed={selected}
     >
-      <svg className={styles.connectorSvg} width="24" height="56" viewBox="0 0 24 56" aria-hidden>
+      <svg className={styles.connectorSvg} width="24" height="64" viewBox="0 0 24 64" aria-hidden>
         <path
-          d="M12 2 V54"
+          d="M12 2 V62"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.6"
@@ -63,9 +82,29 @@ function Connector({
           style={{ animation: reduced ? undefined : "oa-dash 1.6s linear infinite" }}
         />
       </svg>
-      <span className={styles.connectorPill}>
-        <ArrowDown size={11} aria-hidden />
-        Handoff
+      <span className={styles.miniNodes}>
+        <span className={`${styles.miniNode} ${styles.miniNodeHandoff}`}>
+          <ArrowDown size={11} aria-hidden />
+          Handoff
+        </span>
+        {toTrigger && (
+          <span className={`${styles.miniNode} ${styles.miniNodeTrigger}`}>
+            <Zap size={11} aria-hidden />
+            {TRIGGER_WORD[toTrigger]}
+          </span>
+        )}
+        {fromApprovals > 0 && (
+          <span className={`${styles.miniNode} ${styles.miniNodeApproval}`}>
+            <UserCheck size={11} aria-hidden />
+            Human approval
+          </span>
+        )}
+        {toolCount > 0 && (
+          <span className={`${styles.miniNode} ${styles.miniNodeTool}`}>
+            <Plug size={11} aria-hidden />
+            {toolCount} tools
+          </span>
+        )}
       </span>
     </button>
   );
@@ -79,6 +118,7 @@ function CanvasRow({
   count,
   agent,
   prevId,
+  prevAgent,
   selection,
   onSelect,
   approved,
@@ -93,6 +133,7 @@ function CanvasRow({
   count: number;
   agent: PlanAgent;
   prevId: string | null;
+  prevAgent: PlanAgent | null;
   selection: PlannerSelection;
   onSelect: (sel: PlannerSelection) => void;
   approved: boolean;
@@ -110,11 +151,15 @@ function CanvasRow({
     selection?.type === "edge" && selection.fromId === prevId && selection.toId === id;
   const agentSelected = selection?.type === "agent" && selection.agentId === id;
 
+  const firstWorkflow = agent.workflowOrder.length
+    ? workflowDefById(def, agent.workflowOrder[0])
+    : null;
+
   return (
     <Reorder.Item
       value={id}
       as="div"
-      className={styles.rowWrap}
+      className={`${styles.rowWrap} ${draggingId === id ? styles.rowDragging : ""}`}
       dragListener={false}
       dragControls={controls}
       layout
@@ -125,6 +170,7 @@ function CanvasRow({
         transition: { duration: DUR.card, ease: EASE, delay: index * STAGGER },
       }}
       exit={reduced ? undefined : { opacity: 0, scale: 0.98, transition: { duration: DUR.micro } }}
+      whileDrag={reduced ? undefined : { scale: 1.012 }}
       onDragStart={onDragStartRow}
       onDragEnd={onDragEndRow}
       style={{ position: "relative", zIndex: draggingId === id ? 30 : undefined }}
@@ -133,6 +179,9 @@ function CanvasRow({
         <Connector
           fromId={prevId}
           toId={id}
+          fromApprovals={prevAgent?.config.approvalActions.length ?? 0}
+          toTrigger={firstWorkflow?.trigger.kind ?? null}
+          toolCount={def.integrations.length}
           hidden={draggingId !== null}
           selected={Boolean(edgeSelected)}
           onClick={() => onSelect({ type: "edge", fromId: prevId, toId: id })}
@@ -145,6 +194,16 @@ function CanvasRow({
         selected={Boolean(agentSelected)}
         approved={approved}
         onSelect={() => onSelect({ type: "agent", agentId: id })}
+        move={
+          approved
+            ? null
+            : {
+                up: () => onMove(-1),
+                down: () => onMove(1),
+                canUp: index > 0,
+                canDown: index < count - 1,
+              }
+        }
         dragHandle={
           approved
             ? null
@@ -178,12 +237,16 @@ export default function PlanCanvas({
   onSelect,
   approved,
   dropActive,
+  libraryDragging,
   dropRef,
 }: {
   selection: PlannerSelection;
   onSelect: (sel: PlannerSelection) => void;
   approved: boolean;
+  /** A library card is hovering over the drop zone. */
   dropActive: boolean;
+  /** A library card is being dragged anywhere (shows the drop target). */
+  libraryDragging: boolean;
   dropRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const agents = useDemoStore((s) => s.plan.agents);
@@ -238,22 +301,14 @@ export default function PlanCanvas({
     >
       <div className={`oa-card oa-card--flat ${styles.intro}`}>
         <p className="oa-eyebrow">Operations narrative</p>
-        <h2 className={`oa-h2 ${styles.introTitle}`}>How your AI workforce will run</h2>
+        <h2 className={`oa-h3 ${styles.introTitle}`}>How your AI workforce will run</h2>
         <p className="oa-sub">
           Work flows top to bottom: each agent hands its output to the next step, and anything
           sensitive pauses for a person. Select a card or a handoff connector to inspect it.
         </p>
-        <div className="oa-cluster" style={{ gap: 6 }}>
-          {PLAN_OUTCOMES.map((outcome) => (
-            <span key={outcome} className={styles.outcomeChip}>
-              <Check size={11} aria-hidden />
-              {outcome}
-            </span>
-          ))}
-        </div>
         {planRules.length > 0 && (
           <div className={styles.ruleList}>
-            <p className="oa-micro">Plan rules — human approval</p>
+            <p className="oa-micro">Plan rules: human approval</p>
             <AnimatePresence initial={false}>
               {planRules.map((rule) => (
                 <motion.p
@@ -273,20 +328,6 @@ export default function PlanCanvas({
         )}
       </div>
 
-      <AnimatePresence initial={false}>
-        {dropActive && (
-          <motion.p
-            className={styles.dropHint}
-            initial={reduced ? false : { opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: DUR.micro, ease: EASE }}
-          >
-            Release to add the agent to your plan
-          </motion.p>
-        )}
-      </AnimatePresence>
-
       <Reorder.Group
         axis="y"
         values={order}
@@ -298,6 +339,7 @@ export default function PlanCanvas({
           {order.map((id, index) => {
             const agent = agents.find((a) => a.agentId === id);
             if (!agent) return null;
+            const prevId = index > 0 ? order[index - 1] : null;
             return (
               <CanvasRow
                 key={id}
@@ -305,7 +347,8 @@ export default function PlanCanvas({
                 index={index}
                 count={order.length}
                 agent={agent}
-                prevId={index > 0 ? order[index - 1] : null}
+                prevId={prevId}
+                prevAgent={prevId ? agents.find((a) => a.agentId === prevId) ?? null : null}
                 selection={selection}
                 onSelect={onSelect}
                 approved={approved}
@@ -319,6 +362,22 @@ export default function PlanCanvas({
           })}
         </AnimatePresence>
       </Reorder.Group>
+
+      <AnimatePresence initial={false}>
+        {!approved && libraryDragging && (
+          <motion.p
+            className={`${styles.placeholder} ${dropActive ? styles.placeholderActive : ""}`}
+            initial={reduced ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: DUR.micro, ease: EASE }}
+            role="status"
+          >
+            <Plus size={15} aria-hidden />
+            {dropActive ? "Release to add to your plan" : "Drop to add to plan"}
+          </motion.p>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

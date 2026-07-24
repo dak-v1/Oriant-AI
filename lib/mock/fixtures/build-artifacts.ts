@@ -21,9 +21,9 @@ export const BUILD_FIXTURES: Record<string, BuildFixture> = {
       { at: 4500, text: "Compiling approval policies: schedule changes after confirmation stay human-approved", tone: "info" },
       { at: 5400, text: "Approval policies compiled (approval-policies.json)", tone: "ok" },
       { at: 6300, text: "Mapping integrations: Gmail, Google Calendar, HubSpot, WhatsApp Business", tone: "info" },
-      { at: 7200, text: "WhatsApp Business not yet connected — drafts will queue until activation", tone: "warn" },
+      { at: 7200, text: "WhatsApp Business not yet connected; drafts will queue until activation", tone: "warn" },
       { at: 7900, text: "Generating test cases (8 scenarios)", tone: "info" },
-      { at: 8600, text: "Validation passed — package ready for review", tone: "ok" },
+      { at: 8600, text: "Validation passed; package ready for review", tone: "ok" },
     ],
     artifacts: [
       {
@@ -93,7 +93,7 @@ workflows:
       {
         name: "prompts.md",
         language: "markdown",
-        content: `# Prompt templates — Admin Operations Agent
+        content: `# Prompt templates: Admin Operations Agent
 
 ## Customer Response Drafting
 
@@ -134,7 +134,7 @@ Tue 28 Jul 9:30am or Wed 29 Jul 11:00am. Shall I confirm one of these?"
     },
     {
       "action": "schedule_change_after_customer_confirmation",
-      "reason": "Owner rule from Discovery — confirmed bookings stay human-approved",
+      "reason": "Owner rule from Discovery: confirmed bookings stay human-approved",
       "approver": "Sarah Chen"
     },
     {
@@ -225,7 +225,7 @@ cases:
       "id": "hubspot",
       "mode": "read_and_annotate",
       "scopes": ["crm.objects.contacts.read", "crm.objects.notes.write"],
-      "account": "BrightPath Home Services — SG portal"
+      "account": "BrightPath Home Services (SG portal)"
     },
     {
       "id": "whatsapp-business",
@@ -268,10 +268,10 @@ cases:
       { at: 4300, text: "Prompt templates written to prompts.md", tone: "ok" },
       { at: 5400, text: "Locking publish actions: public content always requires owner approval", tone: "info" },
       { at: 6500, text: "Approval policies compiled (approval-policies.json)", tone: "ok" },
-      { at: 7600, text: "No ad-spend permissions granted — budget actions excluded from manifest", tone: "warn" },
+      { at: 7600, text: "No ad-spend permissions granted; budget actions excluded from manifest", tone: "warn" },
       { at: 8600, text: "Mapping integrations: HubSpot, Google Drive", tone: "info" },
       { at: 9600, text: "Generating test cases (7 scenarios)", tone: "info" },
-      { at: 10500, text: "Validation passed — package ready for review", tone: "ok" },
+      { at: 10500, text: "Validation passed; package ready for review", tone: "ok" },
     ],
     artifacts: [
       {
@@ -339,7 +339,7 @@ workflows:
       {
         name: "prompts.md",
         language: "markdown",
-        content: `# Prompt templates — Marketing Agent
+        content: `# Prompt templates: Marketing Agent
 
 ## Content Planning
 
@@ -358,7 +358,7 @@ without a signed consent note in the brief.
 ## Campaign Drafting
 
 **System intent.** Draft two variants per brief: one lead with price, one
-lead with outcome. Keep SGD prices exactly as given in the brief — do not
+lead with outcome. Keep SGD prices exactly as given in the brief. Do not
 round or discount. End every draft with the standard booking call to action.
 
 **Never.** Never invent promotions, percentages or deadlines. Never imply
@@ -375,7 +375,7 @@ guaranteed results.
   "alwaysRequireApproval": [
     {
       "action": "any_public_content",
-      "reason": "Owner rule from Discovery — public campaign content stays with a person",
+      "reason": "Owner rule from Discovery: public campaign content stays with a person",
       "approver": "Sarah Chen"
     },
     {
@@ -455,7 +455,7 @@ cases:
       "id": "hubspot",
       "mode": "read_only_segments",
       "scopes": ["crm.objects.contacts.read"],
-      "account": "BrightPath Home Services — SG portal"
+      "account": "BrightPath Home Services (SG portal)"
     },
     {
       "id": "google-drive",
@@ -498,10 +498,10 @@ cases:
       { at: 4700, text: "Prompt templates written to prompts.md", tone: "ok" },
       { at: 5900, text: "Compiling approval policies: reminder batches and write-off flags stay human-approved", tone: "info" },
       { at: 7100, text: "Approval policies compiled (approval-policies.json)", tone: "ok" },
-      { at: 8300, text: "Read-only QuickBooks scope verified — no write access to amounts or payments", tone: "ok" },
-      { at: 9400, text: "Payment-plan exclusion list has 1 entry — confirm it stays current after activation", tone: "warn" },
+      { at: 8300, text: "Read-only QuickBooks scope verified; no write access to amounts or payments", tone: "ok" },
+      { at: 9400, text: "Payment-plan exclusion list has 1 entry; confirm it stays current after activation", tone: "warn" },
       { at: 10500, text: "Generating test cases (7 scenarios)", tone: "info" },
-      { at: 11800, text: "Validation passed — package ready for review", tone: "ok" },
+      { at: 11800, text: "Validation passed; package ready for review", tone: "ok" },
     ],
     artifacts: [
       {
@@ -570,7 +570,7 @@ workflows:
       {
         name: "prompts.md",
         language: "markdown",
-        content: `# Prompt templates — Finance Follow-up Agent
+        content: `# Prompt templates: Finance Follow-up Agent
 
 ## Overdue Invoice Summary
 
@@ -579,19 +579,19 @@ Lead with totals (count, SGD value), then age bands, then anything unusual.
 Flat, factual tone. Amounts always in SGD with a dollar sign.
 
 **Grounding.** Only QuickBooks data pulled in this run. If a figure cannot be
-read, say "not available" — never estimate money.
+read, say "not available"; never estimate money.
 
 ## Payment Reminder Drafting
 
 **Tone ladder.**
-- 1–14 days: friendly nudge — "just a gentle reminder"
+- 1–14 days: friendly nudge, "just a gentle reminder"
 - 15–30 days: clear ask with due date and PayNow/bank details
 - 31–60 days: firm but polite; offers a call with Wei Ling to discuss
-- 60+ days: no draft — flag for owner decision instead
+- 60+ days: no draft; flag for owner decision instead
 
 **Never.** Never mention late fees or legal action (BrightPath does not use
 them). Never draft for a customer on the agreed payment-plan list. Never
-change an amount — quote QuickBooks exactly.
+change an amount; quote QuickBooks exactly.
 `,
       },
       {
@@ -609,7 +609,7 @@ change an amount — quote QuickBooks exactly.
     },
     {
       "action": "any_writeoff_suggestion",
-      "reason": "Owner rule from Discovery — invoice write-offs are always a human decision",
+      "reason": "Owner rule from Discovery: invoice write-offs are always a human decision",
       "approver": "Sarah Chen"
     },
     {
@@ -725,10 +725,10 @@ cases:
       { at: 6500, text: "Compensation actions locked: issue_refund and promise_compensation are forbidden", tone: "info" },
       { at: 7800, text: "Approval gate inserted before any compensation proposal reaches a customer", tone: "ok" },
       { at: 9100, text: "Escalation rules set: missing information or persistent negative sentiment -> owner", tone: "info" },
-      { at: 10400, text: "Sentiment threshold uses a conservative default — tune after first live week", tone: "warn" },
+      { at: 10400, text: "Sentiment threshold uses a conservative default; tune after first live week", tone: "warn" },
       { at: 11700, text: "Prompt templates written to prompts.md", tone: "ok" },
       { at: 13000, text: "Generating test cases (8 scenarios, includes missing-data case)", tone: "info" },
-      { at: 14300, text: "Validation passed — package ready for review", tone: "ok" },
+      { at: 14300, text: "Validation passed; package ready for review", tone: "ok" },
     ],
     artifacts: [
       {
@@ -787,20 +787,20 @@ workflows:
       {
         name: "prompts.md",
         language: "markdown",
-        content: `# Prompt templates — Service Recovery Coordinator
+        content: `# Prompt templates: Service Recovery Coordinator
 
 ## Case assessment
 
 **System intent.** You coordinate serious complaints for BrightPath Home
-Services. Your job is to assemble the full picture — customer value, what
-went wrong, what it cost the customer — and propose a fair resolution for
+Services. Your job is to assemble the full picture (customer value, what
+went wrong, what it cost the customer) and propose a fair resolution for
 the owner to decide. You are a coordinator, not a negotiator: you never
 commit BrightPath to anything.
 
 **Grounding order.** 1) job record facts, 2) invoice status, 3) customer
 history, 4) technician notes, 5) the customer's own words. State each fact
 with its source. If any required record is missing, stop and raise a data
-gap — do not reconstruct events from memory or the message alone.
+gap; do not reconstruct events from memory or the message alone.
 
 ## Resolution drafting
 
@@ -809,11 +809,11 @@ dates), b) what BrightPath will do and when, c) proposed goodwill gesture
 marked "pending owner approval", d) a direct line for the customer.
 
 **Compensation guidance.** Service credits in $20 steps, cap $100 without a
-separate owner note. Refunds are never proposed as final — always "subject
+separate owner note. Refunds are never proposed as final, always "subject
 to approval". Never mention compensation to the customer before approval.
 
 **Tone.** Sincere and specific. Never blame the technician or the customer.
-Never use the phrase "we apologise for any inconvenience" — name the actual
+Never use the phrase "we apologise for any inconvenience"; name the actual
 inconvenience.
 `,
       },
@@ -832,12 +832,12 @@ inconvenience.
     },
     {
       "action": "refund",
-      "reason": "Owner rule from Discovery — refunds above $100 always human; this agent proposes only",
+      "reason": "Owner rule from Discovery: refunds above $100 always human; this agent proposes only",
       "approver": "Sarah Chen"
     },
     {
       "action": "schedule_change_after_confirmation",
-      "reason": "Recovery visits may move confirmed bookings — owner decides",
+      "reason": "Recovery visits may move confirmed bookings; owner decides",
       "approver": "Sarah Chen"
     },
     {
@@ -917,7 +917,7 @@ cases:
       "id": "hubspot",
       "mode": "read_history_and_annotate",
       "scopes": ["crm.objects.contacts.read", "crm.objects.notes.write"],
-      "account": "BrightPath Home Services — SG portal"
+      "account": "BrightPath Home Services (SG portal)"
     },
     {
       "id": "quickbooks",

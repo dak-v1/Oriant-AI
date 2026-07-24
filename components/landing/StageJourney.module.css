@@ -574,16 +574,44 @@
   color: var(--lp-bg);
 }
 
-/* ── Build ───────────────────────────────────────────────────────────────── */
+/* ── Build (spec §3.1): plan in → generated configuration → connect tools ── */
 
-.build {
-  max-width: 440px;
+.buildFlow {
+  max-width: 500px;
   display: flex;
   flex-direction: column;
+  gap: 14px;
+}
+
+.buildTop {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-.fileCard {
+.buildPlanChip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: var(--lp-radius-chip);
+  border: 1px solid var(--lp-teal);
+  background: var(--lp-soft-teal);
+  color: var(--lp-teal-deep);
+  font-size: 12.5px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.buildArrow {
+  flex: none;
+  color: var(--lp-muted-strong);
+}
+
+.buildGenCard {
+  flex: 1;
+  min-width: 0;
   background: var(--lp-surface);
   border: 1px solid var(--lp-border);
   border-radius: 14px;
@@ -591,44 +619,105 @@
   box-shadow: var(--lp-shadow-card);
 }
 
-.fileHead {
+.buildCardHead {
   display: flex;
   align-items: center;
   gap: 8px;
   color: var(--lp-muted-strong);
+  min-width: 0;
 }
 
-.fileName {
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+.buildOutputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 12px;
+  margin-top: 10px;
+}
+
+.buildOutputRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 650;
   color: var(--lp-ink);
+  white-space: nowrap;
 }
 
-.fileTag {
+.buildOutputRow svg {
+  flex: none;
+  color: var(--lp-accent-dark);
+}
+
+.buildToolsCard {
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: var(--lp-shadow-card);
+}
+
+.buildApproveNote {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
   color: var(--lp-teal-deep);
-  letter-spacing: 0.1em;
+  white-space: nowrap;
 }
 
-.fileLines {
+.buildToolChips {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 7px;
   margin-top: 10px;
 }
 
-/* Rows "type in" via scaleX from the left (transform-only, never width). */
-.fileLine {
-  display: block;
-  height: 7px;
-  border-radius: 4px;
-  background: var(--lp-soft-blue);
-  transform-origin: left center;
+.buildToolChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--lp-radius-chip);
+  border: 1px solid var(--lp-border);
+  background: var(--lp-bg);
+  color: var(--lp-ink);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.fileLines .fileLine:nth-child(even) {
-  background: var(--lp-soft-teal);
+.buildToolChip svg {
+  color: var(--lp-muted-strong);
+}
+
+.buildSeq {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 5px 7px;
+  padding: 0 4px;
+}
+
+.buildSeqStep {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lp-muted-strong);
+  white-space: nowrap;
+}
+
+.buildSeqDone {
+  color: var(--lp-teal-deep);
+}
+
+.buildSeqArrow {
+  flex: none;
+  color: var(--lp-border-strong);
 }
 
 /* ── Deploy ──────────────────────────────────────────────────────────────── */
@@ -937,6 +1026,35 @@
 
   .deployArrow {
     transform: rotate(90deg);
+  }
+
+  /* Build stage stacks: plan chip above the generated-configuration card. */
+  .buildTop {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .buildPlanChip {
+    align-self: flex-start;
+  }
+
+  .buildArrow {
+    align-self: center;
+    transform: rotate(90deg);
+  }
+
+  .buildOutputs {
+    grid-template-columns: 1fr;
+  }
+
+  .buildCardHead {
+    flex-wrap: wrap;
+  }
+
+  .buildApproveNote {
+    margin-left: 0;
+    width: 100%;
   }
 
   .manageGrid {

@@ -21,14 +21,14 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
     description:
       "Mrs Adeline Wong, a maintenance-plan customer for six years, complains on WhatsApp after her aircon servicing was rescheduled twice. Watch the coordinator gather context across teams and pause before proposing any compensation.",
     input: [
-      { label: "Customer", value: "Mrs Adeline Wong — Bukit Timah, maintenance plan $4,800/yr, 6 years" },
+      { label: "Customer", value: "Mrs Adeline Wong, Bukit Timah, maintenance plan $4,800/yr, 6 years" },
       { label: "Channel", value: "WhatsApp Business, received 09:14" },
       {
         label: "Message",
         value:
           "This is the second time my aircon servicing has been pushed back. First 14 July, then 18, now you tell me 21 July also cannot. I have been a customer for six years. Very disappointed.",
       },
-      { label: "Job reference", value: "JB-2231 — annual aircon servicing, 3 units" },
+      { label: "Job reference", value: "JB-2231: annual aircon servicing, 3 units" },
       { label: "Severity", value: "High (auto-classified) + high-value customer flag" },
     ],
     events: [
@@ -48,7 +48,7 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
         actor: "Customer Care Intake",
         title: "Complaint classified",
         detail:
-          "Severity: high (repeat failure + explicit disappointment). Customer flag: high-value ($4,800/yr plan). Routine reply drafting is skipped — case routed to recovery.",
+          "Severity: high (repeat failure + explicit disappointment). Customer flag: high-value ($4,800/yr plan). Routine reply drafting is skipped; case routed to recovery.",
       },
       {
         id: "ev-complaint-03",
@@ -88,7 +88,7 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
         target: "QuickBooks (read-only)",
         title: "Invoice status requested",
         detail:
-          "Returned: INV-8804, $360 annual servicing, paid in advance on 02 Jul. Customer has paid for work not yet delivered — raises fairness weight of the case.",
+          "Returned: INV-8804, $360 annual servicing, paid in advance on 02 Jul. Customer has paid for work not yet delivered, which raises the fairness weight of the case.",
       },
       {
         id: "ev-complaint-07",
@@ -106,7 +106,7 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
         at: 8600,
         kind: "draft",
         actor: RECOVERY,
-        title: "Resolution drafted — no customer contact yet",
+        title: "Resolution drafted, no customer contact yet",
         detail:
           "Draft: named apology for 14 → 18 → 21 Jul slips, protected goodwill visit Sat 25 Jul 9:00–11:00, and a $60 service credit on the next invoice, marked pending owner approval throughout.",
       },
@@ -126,7 +126,7 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
         at: 11000,
         kind: "approval_pause",
         actor: RECOVERY,
-        title: "Paused — waiting for owner approval",
+        title: "Paused: waiting for owner approval",
         detail:
           "The coordinator has stopped before any customer contact. Review the proposed resolution, edit it, or ask the agent to update it. Nothing reaches Mrs Wong until you approve.",
       },
@@ -138,7 +138,7 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
         actor: OWNER.name + " (Owner)",
         title: "Resolution approved",
         detail:
-          "Approved with the goodwill visit and $60 service credit. Approval logged with timestamp and approver — the case file records exactly what was authorised.",
+          "Approved with the goodwill visit and $60 service credit. Approval logged with timestamp and approver. The case file records exactly what was authorised.",
       },
       {
         id: "ev-complaint-12",
@@ -179,9 +179,9 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
       },
     ],
     proposedResolution:
-      "Dear Mrs Wong, you are right that this fell short — your servicing slipped from 14 to 18 to 21 July, and that should not happen to any customer, least of all one who has been with us six years. We have protected a priority visit this Saturday 25 July, 9:00–11:00am, to complete all three units. We would also like to add a $60 service credit to your next invoice as a goodwill gesture (pending final confirmation). My direct line is below if Saturday does not suit you. — BrightPath Home Services",
+      "Dear Mrs Wong, you are right that this fell short: your servicing slipped from 14 to 18 to 21 July, and that should not happen to any customer, least of all one who has been with us six years. We have protected a priority visit this Saturday 25 July, 9:00–11:00am, to complete all three units. We would also like to add a $60 service credit to your next invoice as a goodwill gesture (pending final confirmation). My direct line is below if Saturday does not suit you. - BrightPath Home Services",
     revisedResolution:
-      "Dear Mrs Wong, you are right that this fell short — your servicing slipped from 14 to 18 to 21 July, and that should not happen to any customer, least of all one who has been with us six years. Our senior technician, Ahmad, will personally handle a protected priority visit this Saturday 25 July, 9:00–11:00am, to complete all three units. We would also like to add a $60 service credit to your next invoice as a goodwill gesture (pending final confirmation), and I will call you on Monday to make sure everything was done to your satisfaction. My direct line is below if Saturday does not suit you. — BrightPath Home Services",
+      "Dear Mrs Wong, you are right that this fell short: your servicing slipped from 14 to 18 to 21 July, and that should not happen to any customer, least of all one who has been with us six years. Our senior technician, Ahmad, will personally handle a protected priority visit this Saturday 25 July, 9:00–11:00am, to complete all three units. We would also like to add a $60 service credit to your next invoice as a goodwill gesture (pending final confirmation), and I will call you on Monday to make sure everything was done to your satisfaction. My direct line is below if Saturday does not suit you. - BrightPath Home Services",
     metrics: [
       { label: "Simulated handling time", value: "3m 45s (vs ~2 days manual)" },
       { label: "Data sources consulted", value: "3 systems + 1 team" },
@@ -197,9 +197,9 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
     agentId: AGENT.admin,
     name: "Appointment request in the morning rush",
     description:
-      "A booking request lands on WhatsApp during the busy Monday-style morning window. The Admin Operations Agent finds slots, holds one, and drafts the confirmation — no approval pause needed for routine scheduling.",
+      "A booking request lands on WhatsApp during the busy Monday-style morning window. The Admin Operations Agent finds slots, holds one, and drafts the confirmation; no approval pause needed for routine scheduling.",
     input: [
-      { label: "Customer", value: "Mr Rajan Pillai — Serangoon, ad-hoc customer, 2 prior jobs" },
+      { label: "Customer", value: "Mr Rajan Pillai, Serangoon, ad-hoc customer, 2 prior jobs" },
       { label: "Channel", value: "WhatsApp Business, received 08:47" },
       {
         label: "Message",
@@ -222,7 +222,7 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
         kind: "agent_step",
         actor: ADMIN,
         title: "Request parsed",
-        detail: "Service: general servicing, 2 units, ~90 minutes. Constraint: weekday, start before 11:00. Customer verified in CRM — 2 prior completed jobs, no open issues.",
+        detail: "Service: general servicing, 2 units, ~90 minutes. Constraint: weekday, start before 11:00. Customer verified in CRM: 2 prior completed jobs, no open issues.",
       },
       {
         id: "ev-appt-03",
@@ -281,13 +281,13 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
         kind: "result",
         actor: ADMIN,
         title: "Booking prepared end to end",
-        detail: "One enquiry handled without a single manual calendar check. Coordinator review is the only remaining step — roughly 20 minutes of back-and-forth avoided.",
+        detail: "One enquiry handled without a single manual calendar check. Coordinator review is the only remaining step; roughly 20 minutes of back-and-forth avoided.",
       },
     ],
     proposedResolution:
-      "Hi Mr Pillai, confirming your aircon servicing for both units on Tue 28 July, arrival window 9:30–10:00am, technician Ahmad. General servicing for 2 units is $130. Please ensure access to both units and clear the area below them. Reply here if anything changes. — BrightPath Home Services",
+      "Hi Mr Pillai, confirming your aircon servicing for both units on Tue 28 July, arrival window 9:30–10:00am, technician Ahmad. General servicing for 2 units is $130. Please ensure access to both units and clear the area below them. Reply here if anything changes. - BrightPath Home Services",
     revisedResolution:
-      "Hi Mr Pillai, confirming your aircon servicing for both units on Tue 28 July, arrival window 9:30–10:00am, technician Ahmad. General servicing for 2 units is $130. Please ensure access to both units and clear the area below them. We will also send you a reminder on Monday evening. Reply here if anything changes. — BrightPath Home Services",
+      "Hi Mr Pillai, confirming your aircon servicing for both units on Tue 28 July, arrival window 9:30–10:00am, technician Ahmad. General servicing for 2 units is $130. Please ensure access to both units and clear the area below them. We will also send you a reminder on Monday evening. Reply here if anything changes. - BrightPath Home Services",
     metrics: [
       { label: "Simulated handling time", value: "45s (vs ~20 min manual)" },
       { label: "Calendar checks automated", value: "5 days scanned" },
@@ -304,8 +304,8 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
     description:
       "The weekly Friday 09:00 run: the Finance Follow-up Agent summarises overdue invoices, drafts a reminder batch, and pauses for batch approval before anything is sent.",
     input: [
-      { label: "Trigger", value: "Schedule — Friday 09:00 SGT weekly run" },
-      { label: "Source", value: "QuickBooks (read-only) — BrightPath Home Services Pte Ltd" },
+      { label: "Trigger", value: "Schedule: Friday 09:00 SGT weekly run" },
+      { label: "Source", value: "QuickBooks (read-only), BrightPath Home Services Pte Ltd" },
       { label: "Scope", value: "All open invoices past due date as of 24 Jul" },
       { label: "Standing rule", value: "Customers on agreed payment plans are excluded" },
     ],
@@ -316,7 +316,7 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
         kind: "trigger",
         actor: "Scheduler",
         title: "Friday 09:00 run started",
-        detail: "Weekly overdue-invoice run triggered on schedule — the same routine the finance team previously did by hand every Friday.",
+        detail: "Weekly overdue-invoice run triggered on schedule, the same routine the finance team previously did by hand every Friday.",
       },
       {
         id: "ev-inv-02",
@@ -333,7 +333,7 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
         kind: "agent_step",
         actor: FINANCE,
         title: "Invoices grouped, one excluded",
-        detail: "Age bands: 3 invoices at 1–14 days, 2 at 15–30, 2 at 31–60. Lim Renovation Pte Ltd ($520, 18 days) excluded — agreed payment plan on file.",
+        detail: "Age bands: 3 invoices at 1–14 days, 2 at 15–30, 2 at 31–60. Lim Renovation Pte Ltd ($520, 18 days) excluded: agreed payment plan on file.",
       },
       {
         id: "ev-inv-04",
@@ -341,7 +341,7 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
         kind: "draft",
         actor: FINANCE,
         title: "Reminder batch drafted",
-        detail: "6 reminders drafted with tone matched to age band — gentle nudge for recent, firmer with payment details for older. All amounts quoted exactly from QuickBooks.",
+        detail: "6 reminders drafted with tone matched to age band: gentle nudge for recent, firmer with payment details for older. All amounts quoted exactly from QuickBooks.",
       },
       {
         id: "ev-inv-05",
@@ -349,7 +349,7 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
         kind: "agent_step",
         actor: FINANCE,
         title: "One invoice flagged for the owner",
-        detail: "INV-8791 (Mdm Halimah Rashid, $860, 41 days) flagged: third reminder cycle. Any write-off discussion is an owner decision — the agent only flags, never writes off.",
+        detail: "INV-8791 (Mdm Halimah Rashid, $860, 41 days) flagged: third reminder cycle. Any write-off discussion is an owner decision; the agent only flags, never writes off.",
       },
       {
         id: "ev-inv-06",
@@ -365,7 +365,7 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
         at: 7200,
         kind: "approval_pause",
         actor: FINANCE,
-        title: "Paused — reminder batch needs approval",
+        title: "Paused: reminder batch needs approval",
         detail: "Per policy, the Friday batch is approved as one decision before any reminder is sent. Review the six drafts, edit any of them, or ask the agent to update the batch.",
       },
       /* ── Resume: offsets restart near 0 after the approval ── */
@@ -398,7 +398,7 @@ export const SANDBOX_SCENARIOS: Record<string, SandboxScenario> = {
     proposedResolution:
       "Reminder batch for Friday 24 Jul: 6 reminders covering $3,420 of overdue invoices. 3 gentle nudges (1–14 days), 2 standard reminders with PayNow and bank details (15–30 days), 1 firm-but-polite reminder offering a call with Wei Ling (31–60 days). Lim Renovation excluded (payment plan). INV-8791 held for your separate decision.",
     revisedResolution:
-      "Reminder batch for Friday 24 Jul: 6 reminders covering $3,420 of overdue invoices. 3 gentle nudges (1–14 days), 2 standard reminders with PayNow and bank details (15–30 days), 1 firm-but-polite reminder offering a call with Wei Ling (31–60 days) — softened for Tan Family (long-time customer) per your note, with the PayNow QR link added to all six. Lim Renovation excluded (payment plan). INV-8791 held for your separate decision.",
+      "Reminder batch for Friday 24 Jul: 6 reminders covering $3,420 of overdue invoices. 3 gentle nudges (1–14 days), 2 standard reminders with PayNow and bank details (15–30 days), 1 firm-but-polite reminder offering a call with Wei Ling (31–60 days), softened for Tan Family (long-time customer) per your note, with the PayNow QR link added to all six. Lim Renovation excluded (payment plan). INV-8791 held for your separate decision.",
     metrics: [
       { label: "Overdue invoices found", value: "7 ($3,940)" },
       { label: "Reminders drafted", value: "6" },
@@ -432,11 +432,11 @@ export const STRESS_TEST: StressTestFixture = {
     { id: 14, name: "Complaint about a subcontracted job", outcome: "passed", note: "Subcontractor noted in case file; BrightPath still owns the reply." },
     { id: 15, name: "Non-customer complains about noise from a job site", outcome: "passed", note: "Routed to Field Operations; not a recovery case." },
     { id: 16, name: "Complaint in Mandarin", outcome: "passed", note: "Understood and drafted bilingual reply for review." },
-    { id: 17, name: "Complaint references booking with no job record", outcome: "failed", note: "Required job data missing — agent stopped before drafting; see explanation below." },
+    { id: 17, name: "Complaint references booking with no job record", outcome: "failed", note: "Required job data missing; agent stopped before drafting; see explanation below." },
     { id: 18, name: "Two complaints from one customer, different jobs", outcome: "passed", note: "Two separate case files; one combined approval request." },
     { id: 19, name: "Complaint withdrawn mid-run", outcome: "passed", note: "Case closed gracefully; thank-you note drafted for review." },
     { id: 20, name: "Schedule change requested after confirmed recovery visit", outcome: "passed", note: "Change held for approval per the confirmed-booking rule." },
   ],
   failureExplanation:
-    "Case 17 referenced booking JB-2304, but no matching job record existed in the sandbox data. The agent stopped exactly where it should: it did not guess what happened, did not draft a customer message, and did not propose compensation. It raised a data gap to the owner instead. The customer was never contacted. The fix is operational, not risky — make sure booking references are validated at intake so the coordinator always starts from a real job record.",
+    "Case 17 referenced booking JB-2304, but no matching job record existed in the sandbox data. The agent stopped exactly where it should: it did not guess what happened, did not draft a customer message, and did not propose compensation. It raised a data gap to the owner instead. The customer was never contacted. The fix is operational, not risky: make sure booking references are validated at intake so the coordinator always starts from a real job record.",
 };

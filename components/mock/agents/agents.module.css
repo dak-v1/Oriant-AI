@@ -41,28 +41,84 @@
 .card { padding: 20px 22px; display: grid; gap: 14px; }
 .paper { padding: clamp(22px, 3vw, 34px); display: grid; gap: 18px; }
 
-/* ── Preset: operating-mode radio cards ── */
+/* ── Preset: operating-mode radio cards (compact .oa-selectable) ── */
 
 .modeGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .modeCard {
-  display: grid;
-  gap: 8px;
-  align-content: start;
-  text-align: left;
   padding: 14px 15px;
-  border: 1px solid var(--oa-border);
+  gap: 10px;
   border-radius: var(--oa-r-inner);
-  background: var(--oa-surface);
-  cursor: pointer;
-  transition: border-color 0.2s var(--oa-ease), background 0.2s var(--oa-ease),
-    box-shadow 0.2s var(--oa-ease), transform 0.2s var(--oa-ease);
 }
-.modeCard:hover { border-color: var(--oa-border-strong); transform: translateY(-1px); }
-.modeCardOn {
-  border-color: var(--oa-blue);
-  background: var(--oa-soft-blue);
-  box-shadow: 0 0 0 3px rgba(49, 87, 213, 0.12);
+
+/* ── Preset: "When it runs" trigger types (spec §12.5) ──
+   Compact .oa-selectable cards; selection never changes card height —
+   per-type config fields render BELOW the grid, not inside the cards. */
+
+.triggerGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.triggerCard {
+  padding: 12px 42px 12px 14px; /* right padding clears the check badge */
+  gap: 10px;
+  border-radius: var(--oa-r-inner);
 }
+.triggerIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  transition: background 0.16s var(--oa-ease), color 0.16s var(--oa-ease);
+}
+.triggerConfig { padding: 14px 16px; display: grid; gap: 10px; }
+.triggerFieldRow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+/* ── Preset: channel / system choice cards ── */
+
+.channelGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.channelCard {
+  padding: 12px 42px 12px 14px;
+  gap: 10px;
+  align-items: center;
+  border-radius: var(--oa-r-inner);
+}
+
+/* ── Connections list (post-approval only, spec §13) ── */
+
+.connRow {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  padding: 13px 0;
+}
+.connRow + .connRow { border-top: 1px solid var(--oa-border); }
+.connBody { display: grid; gap: 7px; min-width: 0; flex: 1; justify-items: start; }
+.connActions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.connCred {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--oa-mono);
+  font-size: 11.5px;
+  color: var(--oa-muted-strong);
+  background: var(--oa-bg-alt);
+  border: 1px dashed var(--oa-border-strong);
+  border-radius: 8px;
+  padding: 4px 9px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* ── Test scenarios (read-only card) ── */
+
+.scenarioRow {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 10px 0;
+}
+.scenarioRow + .scenarioRow { border-top: 1px dashed var(--oa-border); }
 
 /* ── Preset: workflow rows ── */
 
@@ -147,12 +203,17 @@
   .layout { grid-template-columns: 1fr; }
   .rail { position: static; }
   .railDesktop { display: none; }
+  .triggerGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .channelGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 768px) {
   .modeGrid { grid-template-columns: 1fr; }
   .propGrid { grid-template-columns: 1fr; }
   .permSplit { grid-template-columns: 1fr; }
+  .triggerGrid { grid-template-columns: 1fr; }
+  .channelGrid { grid-template-columns: 1fr; }
+  .triggerFieldRow { grid-template-columns: 1fr; }
   /* keep clear of the sticky mobile nav bar */
   .stickyBar { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
   .stickyInner { padding: 12px 14px; }

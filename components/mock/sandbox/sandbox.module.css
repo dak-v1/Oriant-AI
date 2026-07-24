@@ -1,22 +1,67 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   Sandbox + stress test — layout & timeline geometry (spec §15, §20, §21).
-   Generic styling comes from .oa-* primitives; this module owns the two-column
-   split, the event-feed rail, the approval interception card and the stress
-   summary grids. Tokens only — no raw hex.
+   Sandbox validation workspace — layout & timeline geometry (spec §14; S-01).
+   Four zones: header summary strip · left test rail · main scenario panel
+   with the staged step timeline · right output panel (drawer below 1024px).
+   Generic styling comes from .oa-* primitives; tokens only — no raw hex.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Two-column split (≥1024 side by side, stacked below) ── */
+/* ── Header summary strip ── */
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--oa-border);
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-card);
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+.summaryItem {
+  background: var(--oa-surface);
+  padding: 14px 18px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.summaryValue {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--oa-ink);
+}
+.summaryOf {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--oa-muted);
+  letter-spacing: 0;
+}
+.summaryNote {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--oa-muted);
+  margin: 0;
+}
+
+/* ── Three-zone split (rail · main · output) ── */
 
 .layout {
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 288px minmax(0, 1fr) 324px;
+  grid-template-areas: "rail main output";
+  gap: 20px;
   align-items: start;
 }
 
-.left {
+.rail {
+  grid-area: rail;
   display: grid;
-  gap: 18px;
+  gap: 10px;
   align-content: start;
   position: sticky;
   top: 16px;
@@ -25,11 +70,32 @@
   padding: 2px;
   margin: -2px;
 }
+.railHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 2px 0;
+}
 
 .mainCol {
+  grid-area: main;
   display: grid;
-  gap: 16px;
+  gap: 18px;
   min-width: 0;
+}
+
+.outputCol {
+  grid-area: output;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  padding: 2px;
+  margin: -2px;
 }
 
 /* ── Completion banner ── */
@@ -62,56 +128,59 @@
   gap: 3px;
 }
 
-/* ── Scenario selector ── */
+/* ── Left rail rows (adopts .oa-selectable + .oa-radio; layout only here) ── */
 
-.scenarioList {
-  display: grid;
+.railRow {
+  padding: 13px 14px;
   gap: 10px;
+  border-radius: var(--oa-r-inner);
 }
-.scenarioCard {
-  text-align: left;
+.railBody {
   display: grid;
-  gap: 8px;
-  padding: 14px 16px;
-  width: 100%;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
 }
-.scenarioCard[disabled] {
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-.scenarioTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-.scenarioName {
-  margin: 0;
-  font-size: 14px;
+.railName {
+  font-size: 13.5px;
   font-weight: 750;
   letter-spacing: -0.01em;
-  line-height: 1.3;
+  line-height: 1.35;
+  color: var(--oa-ink);
 }
-.scenarioDesc {
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--oa-muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.scenarioMeta {
+.railMeta {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
 }
+.railStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.stNeutral { color: var(--oa-muted-strong); }
+.stActive  { color: var(--oa-blue-dark); }
+.stTeal    { color: var(--oa-teal-deep); }
+.stAmber   { color: var(--oa-amber-ink); }
+.stRed     { color: var(--oa-red-ink); }
 
-/* ── Input scenario key-value panel ── */
+/* ── Main panel ── */
 
+.mainHead {
+  display: grid;
+  gap: 8px;
+}
+.mainTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Input scenario key-value panel */
 .kvPanel {
   padding: 6px 16px;
 }
@@ -141,95 +210,122 @@
   overflow-wrap: anywhere;
 }
 
-/* ── Run controls ── */
-
-.runRow {
-  display: grid;
-  gap: 8px;
-}
-
-/* ── Result + logs ── */
-
-.resultCard {
-  padding: 16px 18px;
-  display: grid;
-  gap: 12px;
-}
-.metricList {
-  display: grid;
-}
-.metricRow {
+/* Expected behavior line */
+.expected {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 14px;
-  padding: 7px 0;
-  border-bottom: 1px dashed var(--oa-border);
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--oa-border);
+  border-left: 3px solid var(--oa-blue);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
 }
-.metricRow:last-child {
-  border-bottom: none;
+.expectedIcon {
+  color: var(--oa-blue-dark);
+  flex: none;
+  margin-top: 1px;
 }
-.metricLabel {
-  font-size: 12px;
+.expectedText {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
   color: var(--oa-muted-strong);
 }
-.metricValue {
-  font-size: 12.5px;
+.expectedText strong {
+  color: var(--oa-ink);
   font-weight: 750;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 
-.accBtn {
+/* Run controls — one aligned 44px row */
+.runRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.runNote {
+  display: grid;
+  gap: 2px;
+}
+
+/* ── Stage progress rail (Preparing → … → Result) ── */
+
+.stageScroller {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.stageRail {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 560px;
+}
+.stage {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
-  padding: 12px 16px;
-  font-size: 13px;
-  font-weight: 750;
-  color: var(--oa-ink);
-  border: 1px solid var(--oa-border);
-  border-radius: var(--oa-r-inner);
+  flex: 1;
+  min-width: 0;
+}
+.stage:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--oa-border);
+  margin: 0 10px;
+  min-width: 12px;
+}
+.stageDone:not(:last-child)::after {
+  background: var(--oa-teal-deep);
+  opacity: 0.5;
+}
+.stageDot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--oa-border-strong);
   background: var(--oa-surface);
-  cursor: pointer;
-  transition: border-color 0.2s var(--oa-ease);
-}
-.accBtn:hover {
-  border-color: var(--oa-border-strong);
-}
-.accChevron {
-  margin-left: auto;
-  transition: transform 0.25s var(--oa-ease);
-  color: var(--oa-muted);
-}
-.accChevronOpen {
-  transform: rotate(180deg);
-}
-
-.logBox {
-  max-height: 260px;
-  overflow: auto;
-  background: var(--oa-dark);
-  color: var(--oa-dark-muted);
-  border-radius: var(--oa-r-inner);
-  padding: 12px 14px;
-  font-family: var(--oa-mono);
-  font-size: 11.5px;
-  line-height: 1.6;
+  color: var(--oa-muted-strong);
   display: grid;
-  gap: 7px;
-}
-.logLine {
-  margin: 0;
-}
-.logTime {
-  color: var(--oa-muted);
+  place-items: center;
+  font-size: 10.5px;
+  font-weight: 800;
+  flex: none;
   font-variant-numeric: tabular-nums;
 }
-.logTitle {
-  color: #e6ebf3;
-  font-weight: 600;
+.stageDone .stageDot {
+  background: var(--oa-teal-deep);
+  border-color: var(--oa-teal-deep);
+  color: var(--oa-on-teal);
+}
+.stageActive .stageDot {
+  border-color: var(--oa-blue);
+  color: var(--oa-blue-dark);
+  box-shadow: 0 0 0 3px rgba(49, 87, 213, 0.14);
+}
+.stageSkipped .stageDot {
+  border-style: dashed;
+}
+.stageLabel {
+  display: grid;
+  gap: 1px;
+  font-size: 11.5px;
+  font-weight: 750;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+.stageActive .stageLabel { color: var(--oa-blue-dark); }
+.stageDone .stageLabel { color: var(--oa-ink); }
+.stageSub {
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--oa-muted);
+  white-space: nowrap;
 }
 
 /* ── Event timeline feed ── */
@@ -249,6 +345,26 @@
   border-radius: 2px;
   background: var(--oa-border);
 }
+.stageDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 54px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+}
+.stageDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--oa-border);
+}
+.stageDividerCheckpoint { color: var(--oa-amber-ink); }
+.stageDividerResult { color: var(--oa-teal-deep); }
+
 .event {
   position: relative;
   display: grid;
@@ -341,24 +457,6 @@
   line-height: 1.35;
 }
 
-.resumeDivider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-left: 54px;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--oa-teal-deep);
-}
-.resumeDivider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--oa-border);
-}
-
 .workingRow {
   display: flex;
   align-items: center;
@@ -386,7 +484,18 @@
   animation-delay: 0.36s;
 }
 
-/* ── Approval interception card (the §15 core moment) ── */
+.stoppedRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 54px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+}
+
+/* ── Approval interception card (kept functionally; lives in the Human
+      checkpoint stage of the timeline) ── */
 
 .approval {
   border: 1.5px solid var(--oa-amber-border);
@@ -415,12 +524,6 @@
   padding: 16px 18px 18px;
   display: grid;
   gap: 14px;
-}
-.approvalLead {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.5;
 }
 .versionRow {
   display: flex;
@@ -476,87 +579,179 @@
   color: var(--oa-ink);
 }
 
-/* ── Empty state ── */
+/* ── Timeline empty state ── */
 
 .empty {
-  padding: clamp(28px, 4vw, 44px);
+  padding: clamp(22px, 3vw, 32px);
   display: grid;
-  gap: 20px;
+  gap: 14px;
   justify-items: start;
 }
 .emptyIcon {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
   background: var(--oa-soft-blue);
   color: var(--oa-blue-dark);
   display: grid;
   place-items: center;
 }
-.emptySteps {
+
+/* ── Output panel ── */
+
+.outCard {
+  padding: 16px 18px;
   display: grid;
   gap: 12px;
 }
-.emptyStep {
+.outSection {
+  display: grid;
+  gap: 8px;
+}
+.outEmpty {
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.outRow {
   display: flex;
-  gap: 12px;
   align-items: flex-start;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--oa-muted-strong);
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
 }
-.stepNum {
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
-  background: var(--oa-soft-blue);
-  color: var(--oa-blue-dark);
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-  font-weight: 800;
+.outRowIcon {
   flex: none;
+  margin-top: 1px;
 }
-
-/* ── View tabs row ── */
-
-.viewRow {
+.outRowBody {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.outRowTitle {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+.outStat {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.outStatNum {
+  margin-left: auto;
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ── Stress test ── */
+.metricList {
+  display: grid;
+}
+.metricRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--oa-border);
+}
+.metricRow:last-child {
+  border-bottom: none;
+}
+.metricLabel {
+  font-size: 12px;
+  color: var(--oa-muted-strong);
+}
+.metricValue {
+  font-size: 12.5px;
+  font-weight: 750;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.accBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--oa-ink);
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+  cursor: pointer;
+  transition: border-color 0.2s var(--oa-ease);
+}
+.accBtn:hover {
+  border-color: var(--oa-border-strong);
+}
+.accChevron {
+  margin-left: auto;
+  transition: transform 0.25s var(--oa-ease);
+  color: var(--oa-muted);
+}
+.accChevronOpen {
+  transform: rotate(180deg);
+}
+
+.logBox {
+  max-height: 260px;
+  overflow: auto;
+  background: var(--oa-dark);
+  color: var(--oa-dark-muted);
+  border-radius: var(--oa-r-inner);
+  padding: 12px 14px;
+  font-family: var(--oa-mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  display: grid;
+  gap: 7px;
+}
+.logLine {
+  margin: 0;
+}
+.logTime {
+  color: var(--oa-muted);
+  font-variant-numeric: tabular-nums;
+}
+.logTitle {
+  color: #e6ebf3;
+  font-weight: 600;
+}
+
+.failQuote {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--oa-teal-deep);
+  background: var(--oa-bg);
+  border-radius: 0 var(--oa-r-inner) var(--oa-r-inner) 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--oa-muted-strong);
+}
+
+/* ── Stress test (main panel) ── */
 
 .progressCard {
   padding: clamp(20px, 3vw, 28px);
   display: grid;
   gap: 14px;
-}
-.statGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-.statCard {
-  padding: 16px 18px;
-  display: grid;
-  gap: 6px;
-  align-content: start;
-}
-.statTop {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.statNum {
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
 }
 .caseList {
   display: grid;
@@ -596,54 +791,46 @@
   flex: none;
   padding-top: 1px;
 }
-.failReview {
-  padding: 18px 20px;
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-}
-.failIcon {
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
-  background: var(--oa-soft-teal);
-  color: var(--oa-teal-deep);
-  display: grid;
-  place-items: center;
-  flex: none;
-}
-.failBody {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-.failQuote {
-  margin: 0;
-  padding: 10px 14px;
-  border-left: 3px solid var(--oa-teal-deep);
-  background: var(--oa-bg);
-  border-radius: 0 var(--oa-r-inner) var(--oa-r-inner) 0;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--oa-muted-strong);
-}
 
 /* ── Responsive (spec §21: 1440 / 1024 / 768 / 390) ── */
 
-@media (max-width: 1023px) {
+@media (max-width: 1279px) {
+  /* Keep the main panel readable: the output stacks below it. */
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: 244px minmax(0, 1fr);
+    grid-template-areas:
+      "rail main"
+      "rail output";
+    gap: 16px;
   }
-  .left {
+  .outputCol {
     position: static;
     max-height: none;
     overflow: visible;
   }
 }
 
-@media (max-width: 640px) {
-  .statGrid {
+@media (max-width: 1023px) {
+  .layout {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "rail"
+      "main";
+  }
+  .rail {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  /* Output moves into a drawer below 1024px. */
+  .outputCol {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .event {
     grid-template-columns: 34px minmax(0, 1fr);
@@ -657,8 +844,9 @@
   .feed::before {
     left: 16px;
   }
-  .resumeDivider,
-  .workingRow {
+  .stageDivider,
+  .workingRow,
+  .stoppedRow {
     padding-left: 44px;
   }
   .kvRow {
@@ -670,7 +858,10 @@
     padding-left: 14px;
     padding-right: 14px;
   }
-  .failReview {
-    flex-direction: column;
+}
+
+@media (max-width: 420px) {
+  .summary {
+    grid-template-columns: 1fr;
   }
 }

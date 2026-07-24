@@ -15,7 +15,7 @@ const RECOVERY_DESIGN_QUESTIONS: DiscoveryQuestion[] = [
     question: "What should this agent achieve when a serious complaint comes in?",
     reason: "The objective sets the line between coordinating a case and deciding it.",
     answer:
-      "Gather everything I need in one place — the customer's history, the job, the invoice and the technician's notes — and propose a fair resolution. The final decision on any compensation is always mine.",
+      "Gather everything I need in one place (the customer's history, the job, the invoice and the technician's notes) and propose a fair resolution. The final decision on any compensation is always mine.",
     factIds: [],
     sections: ["goals", "processes"],
   },
@@ -33,7 +33,7 @@ const RECOVERY_DESIGN_QUESTIONS: DiscoveryQuestion[] = [
     question: "What information does it need, and from which systems?",
     reason: "Required inputs define the read permissions the agent is granted.",
     answer:
-      "Customer history from HubSpot, the job record, invoice and payment status from QuickBooks, and the technician's notes — it should ask Operations for those through Slack.",
+      "Customer history from HubSpot, the job record, invoice and payment status from QuickBooks, and the technician's notes, which it should ask Operations for through Slack.",
     factIds: [],
     sections: ["systems", "processes"],
   },
@@ -222,7 +222,7 @@ export const AGENT_LIBRARY: Record<string, AgentDef> = {
       { integrationId: MCP.crm, purpose: "Read customer segments and service history for campaign targeting." },
     ],
     autonomyNote:
-      "Draft-only by default. The agent never publishes, posts or emails customers — it prepares work for humans to approve and ship.",
+      "Draft-only by default. The agent never publishes, posts or emails customers: it prepares work for humans to approve and ship.",
     humanApprovals: [
       "All public marketing content before publishing",
       "Weekly content plan sign-off",
@@ -267,7 +267,7 @@ export const AGENT_LIBRARY: Record<string, AgentDef> = {
       "Replaces the manual Friday routine: pulls overdue invoices from QuickBooks, produces an aging summary for the finance team, and drafts personalised payment reminders that go out only after batch approval.",
     fitScore: 91,
     fitReason:
-      "The Friday QuickBooks check and reminder drafting was described as a fixed weekly routine — exactly the repeatable, rule-bound work this preset automates.",
+      "The Friday QuickBooks check and reminder drafting was described as a fixed weekly routine, exactly the repeatable, rule-bound work this preset automates.",
     coveredOutcomes: [
       "Faster, consistent follow-up on overdue invoices",
       "A Friday summary the finance team no longer compiles by hand",
@@ -287,7 +287,7 @@ export const AGENT_LIBRARY: Record<string, AgentDef> = {
           "Post the summary to Wei Ling Goh in Slack",
         ],
         handoff: "The overdue list with aging buckets and flags feeds directly into Payment Reminder Drafting.",
-        onFailure: "If QuickBooks data cannot be read, the run stops and Wei Ling Goh is notified — no reminders are drafted.",
+        onFailure: "If QuickBooks data cannot be read, the run stops and Wei Ling Goh is notified. No reminders are drafted.",
         humanApprovals: ["Flagging an invoice as a write-off candidate"],
       },
       {
@@ -314,7 +314,7 @@ export const AGENT_LIBRARY: Record<string, AgentDef> = {
       { integrationId: MCP.files, purpose: "Attach invoice PDFs to reminders when needed." },
     ],
     autonomyNote:
-      "Reads freely, sends only after batch approval. Write-offs are never actioned — only flagged for a human decision.",
+      "Reads freely, sends only after batch approval. Write-offs are never actioned, only flagged for a human decision.",
     humanApprovals: [
       "Sending the Friday reminder batch",
       "Invoice write-offs",
@@ -336,7 +336,7 @@ export const AGENT_LIBRARY: Record<string, AgentDef> = {
       processOwner: PEOPLE.financeLead,
       approvalOwner: PEOPLE.financeLead,
       quietHours: "Weekends and 19:00–08:00",
-      runFrequency: "Weekly — Fridays 09:00",
+      runFrequency: "Weekly, Fridays 09:00",
       dataAccess: [
         "Invoices, payments and aging data (QuickBooks)",
         "Customer billing contacts (HubSpot)",
@@ -359,7 +359,7 @@ export const AGENT_LIBRARY: Record<string, AgentDef> = {
       "A custom-designed coordinator for serious complaints. It gathers the customer's history, job record, invoice status and technician notes from three teams, drafts a resolution with a proposed compensation, and presents Sarah one complete case file. It never commits money or contacts the customer without approval.",
     fitScore: 0,
     fitReason:
-      "No preset covers this: the process spans Customer Care, Operations and Finance, and carries strict financial guardrails — so it is designed from your discovery answers instead of matched from the library.",
+      "No preset covers this: the process spans Customer Care, Operations and Finance, and carries strict financial guardrails, so it is designed from your discovery answers instead of matched from the library.",
     coveredOutcomes: [
       "Clearer escalation path for serious complaints",
       "Decision-ready case files within hours instead of days",
@@ -382,7 +382,7 @@ export const AGENT_LIBRARY: Record<string, AgentDef> = {
           "Draft a resolution with a proposed compensation amount",
           "Submit the complete case file to Sarah Chen for approval",
         ],
-        handoff: "The complete case file — history, job record, invoice status, technician notes and draft resolution — lands in Sarah's approval queue.",
+        handoff: "The complete case file (history, job record, invoice status, technician notes and draft resolution) lands in Sarah's approval queue.",
         onFailure: "If any required input is still missing after four business hours, the case escalates to Sarah with everything gathered so far.",
         humanApprovals: [
           "Any compensation or refund",
@@ -423,7 +423,7 @@ export const AGENT_LIBRARY: Record<string, AgentDef> = {
       processOwner: PEOPLE.careLead,
       approvalOwner: OWNER.name,
       quietHours: "21:00–08:00 (overnight cases queue for the morning)",
-      runFrequency: "Event-driven — as qualifying complaints arrive",
+      runFrequency: "Event-driven, as qualifying complaints arrive",
       dataAccess: [
         "Customer history and complaints (HubSpot)",
         "Invoice and payment status (QuickBooks)",
@@ -438,7 +438,7 @@ export const AGENT_LIBRARY: Record<string, AgentDef> = {
     },
     customProposal: {
       whyCustom:
-        "Preset agents each work inside one team's routine. This process spans Customer Care, Operations and Finance, needs judgement about severity and compensation, and carries hard financial guardrails — it has to be designed around your rules, not matched from a library.",
+        "Preset agents each work inside one team's routine. This process spans Customer Care, Operations and Finance, needs judgement about severity and compensation, and carries hard financial guardrails. It has to be designed around your rules, not matched from a library.",
       objective:
         "Coordinate high-value complaint resolution end-to-end without making any financial commitment.",
       trigger:

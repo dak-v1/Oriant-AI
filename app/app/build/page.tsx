@@ -181,7 +181,7 @@ export default function BuildPage() {
       finishBuildPhase();
       toast({
         title: "All agent packages generated",
-        detail: "Every package validated — continue to sandbox testing.",
+        detail: "Every package validated. Continue to sandbox testing.",
         tone: "ok",
       });
     }
@@ -196,12 +196,12 @@ export default function BuildPage() {
             Agent <span className="oa-serif">Factory</span>
           </h1>
           <p className="oa-lead">
-            Your approved plan is being assembled into reviewable agent packages — nothing is built
+            Your approved plan is being assembled into reviewable agent packages; nothing is built
             beyond what you approved.
           </p>
           <span className="oa-sim-note">
             <FlaskConical size={12} aria-hidden />
-            Simulated build — deterministic demo output; no real systems are provisioned.
+            Simulated build: deterministic demo output; no real systems are provisioned.
           </span>
         </div>
         <div className={styles.headerActions}>

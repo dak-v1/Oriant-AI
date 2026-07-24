@@ -1,5 +1,5 @@
 /**
- * landing-content.ts — every piece of copy and structured data for the
+ * landing-content.ts: every piece of copy and structured data for the
  * Oriant.ai marketing landing page (v2 editorial redesign).
  * Components import from here; keep copy edits in this one file.
  */
@@ -28,11 +28,11 @@ export const HERO = {
   /** Rendered as two display lines. */
   headingLines: ["Your AI Operations Consultant", "for Growing Businesses"],
   subheadline:
-    "Learn how your business works, identify the highest-value AI opportunities, and deploy a customised AI workforce that collaborates with your team—all without technical expertise.",
+    "Learn how your business works, identify the highest-value AI opportunities, and deploy a customised AI workforce that collaborates with your team, all without technical expertise.",
   supportingLine: "Discover. Plan. Approve. Deploy. Manage.",
 } as const;
 
-/** Orchestrator field — the layered hero artwork (brief §6.2). */
+/** Orchestrator field: the layered hero artwork (brief §6.2). */
 export type FieldNodeId =
   | "discovery"
   | "interview"
@@ -51,13 +51,13 @@ export const FIELD_NODES: {
   id: FieldNodeId;
   label: string;
   annotation: string;
-  /** true for the human node — must look visually distinct from agents */
+  /** true for the human node; must look visually distinct from agents */
   human?: boolean;
 }[] = [
   { id: "discovery", label: "Discovery Agent", annotation: "Learns the business" },
   { id: "interview", label: "Interview Agent", annotation: "Fills the gaps by voice" },
   { id: "planner", label: "Planner Agent", annotation: "Designs the workforce" },
-  { id: "approval", label: "Human Approval", annotation: "You make the call", human: true },
+  { id: "approval", label: "Human Approval", annotation: "Owner review", human: true },
   { id: "executor", label: "Executor", annotation: "Carries out approved work" },
   { id: "deployment", label: "Deployment", annotation: "Ships agents safely" },
   { id: "dashboard", label: "Operations Dashboard", annotation: "One workspace" },
@@ -72,7 +72,7 @@ export const DEMO_VIDEO = {
   /** Older drop location still honoured by the player's fallback chain. */
   legacySrc: "/videos/oriant-product-demo.mp4",
   poster: "/video/product-demo-poster.jpg",
-  title: "Oriant.ai product walkthrough — discovery to deployed AI workforce",
+  title: "Oriant.ai product walkthrough: discovery to deployed AI workforce",
   /** Shown to all users while no demo video file exists (see public/video/README.txt). */
   fallbackNote: "Product walkthrough coming soon.",
 } as const;
@@ -168,7 +168,7 @@ export const STAGES: {
     id: "build",
     n: "04",
     title: "Build",
-    body: "Configuration, prompts, and workflow files are generated for every approved agent.",
+    body: "Your approved plan becomes generated configuration, and each agent is connected to your tools with owner-approved access.",
   },
   {
     id: "deploy",
@@ -189,6 +189,42 @@ export const STAGES: {
     body: "Approval requests reach you in WhatsApp, Telegram, email, or the Oriant workspace.",
   },
 ];
+
+/* ── Build stage detail (spec §3.1) ─────────────────────────────────────── */
+
+/** Everything the Build stage visual shows: the approved plan entering,
+ *  the generated configuration outputs, the owner-approved tool
+ *  connections, and the five-step build sequence. */
+export const BUILD_STAGE = {
+  input: "Approved plan",
+  outputsTitle: "Generated configuration",
+  outputs: [
+    "Agent instructions",
+    "Workflow configuration",
+    "Approval policy",
+    "Test cases",
+  ],
+  connectTitle: "Connect tools",
+  connectNote: "You approve every connection",
+  /** Icon ids resolve in the component; labels stay plain language. */
+  tools: [
+    { id: "email", label: "Email" },
+    { id: "calendar", label: "Calendar" },
+    { id: "crm", label: "CRM" },
+    { id: "accounting", label: "Accounting" },
+    { id: "storage", label: "Storage" },
+    { id: "messaging", label: "Messaging" },
+    { id: "mcp", label: "MCP connection" },
+  ],
+  /** Rendered with icon arrows between steps; the copy itself has none. */
+  sequence: [
+    "Generate configuration",
+    "Connect tools",
+    "Validate permissions",
+    "Test in sandbox",
+    "Ready for activation",
+  ],
+} as const;
 
 /* ── Capability composition (brief §11) ─────────────────────────────────── */
 
@@ -250,7 +286,7 @@ export const CAPABILITIES: {
     id: "improve",
     role: "compact",
     title: "Agents that improve",
-    body: "Every reviewed run sharpens future recommendations — with you in the loop.",
+    body: "Every reviewed run sharpens future recommendations, with you in the loop.",
   },
 ];
 
@@ -285,15 +321,27 @@ export const SHOWCASES_SECTION = {
   heading: "What an approved AI workforce looks like in practice",
 } as const;
 
+/** One structured workflow step (spec §3.3). `kind` drives styling and the
+ *  walk-through animation; `human` steps are where the walk pauses. */
+export type ShowcaseStepKind = "trigger" | "agent" | "human" | "tool" | "outcome";
+
+export type ShowcaseStep = {
+  kind: ShowcaseStepKind;
+  /** Fixed structural label: Trigger / Agent action / Human check /
+   *  Connected tool / Outcome. */
+  label: string;
+  /** Plain-language detail for this showcase. */
+  detail: string;
+  /** Icon id resolved in the component (operational icons only). */
+  icon: "inbox" | "file" | "calendar" | "pen" | "search" | "user" | "plug" | "check";
+};
+
 export const SHOWCASES: {
   id: string;
   category: string;
   title: string;
   problem: string;
-  agents: string[];
-  approvalPoint: string;
-  result: string;
-  integrations: string[];
+  steps: ShowcaseStep[];
   /** presentation surface for the showcase panel */
   theme: "light" | "dark";
 }[] = [
@@ -303,10 +351,38 @@ export const SHOWCASES: {
     title: "From repeated questions to an approved support workflow",
     problem:
       "The same order questions arrive every day, and exceptions still need a person's judgement.",
-    agents: ["Customer Support Agent", "Order Exception Agent", "Human Approval"],
-    approvalPoint: "Refunds and policy exceptions wait for your sign-off.",
-    result: "Routine replies drafted automatically; only the judgement calls reach you.",
-    integrations: ["Gmail", "Shopify", "WhatsApp"],
+    steps: [
+      {
+        kind: "trigger",
+        label: "Trigger",
+        detail: "A customer email about an order arrives in the inbox.",
+        icon: "inbox",
+      },
+      {
+        kind: "agent",
+        label: "Agent action",
+        detail: "The Support Agent checks the order and drafts a reply.",
+        icon: "pen",
+      },
+      {
+        kind: "human",
+        label: "Human check",
+        detail: "Refunds and policy exceptions wait for your sign-off.",
+        icon: "user",
+      },
+      {
+        kind: "tool",
+        label: "Connected tool",
+        detail: "Gmail and Shopify, connected with owner approval.",
+        icon: "plug",
+      },
+      {
+        kind: "outcome",
+        label: "Outcome",
+        detail: "Routine replies go out; only the judgement calls reach you.",
+        icon: "check",
+      },
+    ],
     theme: "light",
   },
   {
@@ -315,10 +391,38 @@ export const SHOWCASES: {
     title: "From invoice documents to review-ready payment tasks",
     problem:
       "Invoices pile up in inboxes and every one is retyped before it can be paid.",
-    agents: ["Document Processing Agent", "Invoice Preparation Agent", "Finance Approver"],
-    approvalPoint: "Every payment task is reviewed by your finance approver before it moves.",
-    result: "Invoices arrive as structured, review-ready tasks with the context attached.",
-    integrations: ["Gmail", "Xero", "QuickBooks"],
+    steps: [
+      {
+        kind: "trigger",
+        label: "Trigger",
+        detail: "An invoice document lands in the finance inbox.",
+        icon: "file",
+      },
+      {
+        kind: "agent",
+        label: "Agent action",
+        detail: "The Document Agent extracts the vendor, amount, and due date.",
+        icon: "search",
+      },
+      {
+        kind: "human",
+        label: "Human check",
+        detail: "Your finance approver reviews every payment task before it moves.",
+        icon: "user",
+      },
+      {
+        kind: "tool",
+        label: "Connected tool",
+        detail: "Gmail and Xero, connected with owner approval.",
+        icon: "plug",
+      },
+      {
+        kind: "outcome",
+        label: "Outcome",
+        detail: "Invoices become review-ready payment tasks; nothing is paid unapproved.",
+        icon: "check",
+      },
+    ],
     theme: "dark",
   },
   {
@@ -327,10 +431,38 @@ export const SHOWCASES: {
     title: "From campaign planning to scheduled, approved content",
     problem:
       "Campaign ideas stall because research, drafting, and brand review all compete for the same week.",
-    agents: ["Research Agent", "Content Agent", "Brand Review Agent", "Human Approval"],
-    approvalPoint: "Nothing is scheduled until you approve the final content.",
-    result: "A steady pipeline of drafted, brand-checked content waiting on your approval.",
-    integrations: ["Notion", "Google Drive", "Slack"],
+    steps: [
+      {
+        kind: "trigger",
+        label: "Trigger",
+        detail: "A weekly content slot opens on the calendar.",
+        icon: "calendar",
+      },
+      {
+        kind: "agent",
+        label: "Agent action",
+        detail: "The Content Agent drafts the post from your brand brief.",
+        icon: "pen",
+      },
+      {
+        kind: "human",
+        label: "Human check",
+        detail: "Nothing is scheduled until you approve the final content.",
+        icon: "user",
+      },
+      {
+        kind: "tool",
+        label: "Connected tool",
+        detail: "Notion and Slack, connected with owner approval.",
+        icon: "plug",
+      },
+      {
+        kind: "outcome",
+        label: "Outcome",
+        detail: "A steady pipeline of approved, scheduled content.",
+        icon: "check",
+      },
+    ],
     theme: "light",
   },
 ];
@@ -340,8 +472,8 @@ export const SHOWCASES: {
 export const APPROVALS_SECTION = {
   eyebrow: "Human control",
   headingLines: ["Your agents can move fast.", "You still make the important calls."],
-  body: "Approval requests carry their full context to wherever you work — review, comment, and approve from the queue, your calendar, WhatsApp, Telegram, or email.",
-  /** Status labels — never communicated by colour alone (brief §14). */
+  body: "Approval requests carry their full context to wherever you work. Review, comment, and approve from the queue, your calendar, WhatsApp, Telegram, or email.",
+  /** Status labels; never communicated by colour alone (brief §14). */
   states: [
     { id: "pending", label: "Pending" },
     { id: "approved", label: "Approved" },
@@ -356,42 +488,7 @@ export const IMPROVEMENT = {
   heading: "Agents that improve through every reviewed run",
   body: "Oriant uses completed tasks, owner edits, approval outcomes, failures, escalations, and operational context to recommend improvements. Nothing important changes without your review and approval.",
   loop: ["Run", "Observe", "Recommend", "Review", "Approve", "Improve"],
-  note: "Approved improvements are marked in teal — every one of them passed a human review.",
-} as const;
-
-/* ── Technology & execution (brief §16) ─────────────────────────────────── */
-
-export const TECHNOLOGY = {
-  eyebrow: "Technology",
-  heading: "A serious operating stack under a simple experience",
-  body: "Each layer of Oriant runs on infrastructure chosen for that job — explained here in plain terms, because you should know how your workforce is built and kept safe.",
-  layers: [
-    {
-      name: "Business context",
-      partner: null,
-      role: "Your discovery conversation, company report, and operating rules — the source of truth for everything below.",
-    },
-    {
-      name: "AI planning",
-      partner: "AI&",
-      role: "Business reasoning, discovery, and workforce planning in plain language.",
-    },
-    {
-      name: "Agent build",
-      partner: "Doubleword",
-      role: "Asynchronous generation of each agent's configuration, prompts, and workflow artefacts.",
-    },
-    {
-      name: "Safe validation",
-      partner: "Daytona",
-      role: "Every agent package is exercised in an isolated environment before it can go live.",
-    },
-    {
-      name: "Deployment & operations",
-      partner: "Nosana",
-      role: "Compute-intensive workloads — such as voice transcription — run on dedicated compute.",
-    },
-  ],
+  note: "Approved improvements are marked in teal: every one of them passed a human review.",
 } as const;
 
 /* ── FAQ (brief §18) ────────────────────────────────────────────────────── */
@@ -399,7 +496,7 @@ export const TECHNOLOGY = {
 export const FAQS = [
   {
     q: "What does Oriant.ai do?",
-    a: "Oriant learns how your business works, identifies the highest-value AI opportunities, plans a customised AI workforce, and helps you review, deploy, and manage it — with human approval built in.",
+    a: "Oriant learns how your business works, identifies the highest-value AI opportunities, plans a customised AI workforce, and helps you review, deploy, and manage it, with human approval built in.",
   },
   {
     q: "Do I need technical knowledge?",
@@ -454,9 +551,12 @@ export const FINAL_CTA = {
 
 export const FOOTER = {
   descriptor:
-    "Oriant.ai — AI operations planning and workforce management for growing businesses.",
+    "Oriant.ai: AI operations planning and workforce management for growing businesses.",
   contactNote:
     "Start a free discovery and receive a clear first plan for where AI can create the most value.",
+  /** Single subtle sponsor note (spec §3.4); the Tech Stack section is gone. */
+  attribution:
+    "Built with support from AI&, Doubleword, Daytona, and Nosana.",
   productLinks: [
     { label: "Product", href: "#product" },
     { label: "How It Works", href: "#how-it-works" },

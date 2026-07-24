@@ -157,7 +157,7 @@ export default function ApprovalsDark() {
               <div className={s.rows}>
                 <div className={s.row}>
                   <div className={s.rowMain}>
-                    <span className={s.rowTitle}>Refund over policy — $180</span>
+                    <span className={s.rowTitle}>Refund over policy: $180</span>
                     <span className={s.rowMeta}>Customer Support Agent</span>
                   </div>
                   <span className="lp-status lp-status--pending">
@@ -364,7 +364,7 @@ export default function ApprovalsDark() {
           </div>
 
           <p className={cx("lp-micro", s.caption)}>
-            Illustrative preview — approval rules are configured per business.
+            Illustrative preview. Approval rules are configured per business.
           </p>
         </SectionReveal>
       </div>

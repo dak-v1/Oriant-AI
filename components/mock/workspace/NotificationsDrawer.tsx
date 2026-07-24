@@ -89,7 +89,7 @@ export default function NotificationsDrawer({
     approveItem(APPROVAL.refund);
     toast({
       title: "Refund approved",
-      detail: "Recorded in the demo workspace — no real refund was made.",
+      detail: "Recorded in the demo workspace. No real refund was made.",
       tone: "ok",
     });
   };
@@ -121,7 +121,7 @@ export default function NotificationsDrawer({
         <section aria-label="Approvals needing your decision" style={{ display: "grid", gap: 10 }}>
           <p className="oa-micro">Needs your decision</p>
           {unread.length === 0 ? (
-            <p className="oa-sub">You&apos;re all caught up — no unread notifications.</p>
+            <p className="oa-sub">You&apos;re all caught up. No unread notifications.</p>
           ) : (
             <div className={styles.notifRows}>
               {unread.map((item) => (
@@ -166,7 +166,7 @@ export default function NotificationsDrawer({
           </div>
           <p className="oa-sub">
             When an approval is created, Oriant can alert your phone. This is how it would
-            look — try it with a test notification.
+            look. Try it with a test notification.
           </p>
 
           {/* Phone push preview */}
@@ -257,7 +257,7 @@ export default function NotificationsDrawer({
                     </button>
                   </div>
                 </div>
-                <span className="oa-sim-note">Simulated — no real message was sent.</span>
+                <span className="oa-sim-note">Mock notification: no real message is sent.</span>
               </motion.div>
             )}
           </AnimatePresence>

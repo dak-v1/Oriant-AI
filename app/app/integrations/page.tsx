@@ -15,7 +15,7 @@ export default function IntegrationsPage() {
           <h1 className="oa-h1">Tools and connections</h1>
           <p className="oa-lead">
             Connect the systems your plan relies on. Every card shows what agents can read, what
-            they may request — and what always waits for your approval.
+            they may request, and what always waits for your approval.
           </p>
         </div>
       </header>

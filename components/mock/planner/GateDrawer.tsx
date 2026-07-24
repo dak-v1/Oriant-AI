@@ -45,7 +45,7 @@ export default function GateDrawer({ open, onClose }: { open: boolean; onClose: 
     useDemoStore.getState().approvePlan();
     toast({
       title: "Workforce plan approved.",
-      detail: "Handing off to the Agent Factory — simulated build.",
+      detail: "Handing off to the Agent Factory (simulated build).",
       tone: "ok",
     });
     onClose();
@@ -74,7 +74,7 @@ export default function GateDrawer({ open, onClose }: { open: boolean; onClose: 
             className="oa-btn oa-btn--primary"
             disabled={!ready}
             onClick={approve}
-            title={ready ? undefined : "Resolve the readiness items first"}
+            title={ready ? undefined : "Resolve the unresolved items first"}
           >
             Approve plan and start build
             <ArrowRight size={15} aria-hidden />
@@ -82,6 +82,22 @@ export default function GateDrawer({ open, onClose }: { open: boolean; onClose: 
         </>
       }
     >
+      <div
+        className={`${styles.gateStatus} ${ready ? styles.gateStatusOk : styles.gateStatusWarn}`}
+        role="status"
+      >
+        {ready ? (
+          <CircleCheckBig size={15} aria-hidden />
+        ) : (
+          <TriangleAlert size={15} aria-hidden />
+        )}
+        {ready
+          ? "All items resolved. Approving hands the plan to the build phase."
+          : `${blockers.length} item${blockers.length === 1 ? "" : "s"} unresolved. Resolve ${
+              blockers.length === 1 ? "it" : "them"
+            } below before approving.`}
+      </div>
+
       <div className={styles.gateSection}>
         <p className="oa-micro">Agent readiness</p>
         {plan.agents.map((a) => {
@@ -138,7 +154,7 @@ export default function GateDrawer({ open, onClose }: { open: boolean; onClose: 
           </div>
         ))}
         <p className={styles.gateNote}>
-          Connections can be made now or during activation — none of them block the build.{" "}
+          Connections can be made now or during activation. None of them block the build.{" "}
           <Link href="/app/integrations" className="oa-blue-text" onClick={onClose} style={{ fontWeight: 700 }}>
             Open integrations
           </Link>
@@ -177,19 +193,19 @@ export default function GateDrawer({ open, onClose }: { open: boolean; onClose: 
             {money(totals.setup)} setup · {money(totals.monthly)}/mo
           </span>
         </p>
-        <p className={styles.gateNote}>Demo pricing — no charges, no guaranteed savings.</p>
+        <p className={styles.gateNote}>Demo pricing: no charges, no guaranteed savings.</p>
       </div>
 
       <div className={styles.gateSection}>
         <p className="oa-micro">Deployment mode</p>
         <div className={`${styles.insPanel} ${styles.insPanelTeal}`}>
-          <p className={styles.insPanelTitle}>Assist mode — approved actions only</p>
+          <p className={styles.insPanelTitle}>Assist mode: approved actions only</p>
           <p className={styles.insPanelBody}>
             Agents prepare and coordinate work with your team. Every action on your approval list
             waits for a person before anything reaches a customer or moves money.
           </p>
         </div>
-        <span className="oa-sim-note">Simulated build — no real agents are created.</span>
+        <span className="oa-sim-note">Simulated build. No real agents are created.</span>
       </div>
     </Drawer>
   );

@@ -35,9 +35,9 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
     valueLabel: "$180 refund",
     dueAt: DEMO_TODAY,
     dueTime: "14:30",
-    customer: "Daniel Tan — Tampines St 45",
+    customer: "Daniel Tan, Tampines St 45",
     source: [
-      { label: "Job", value: "#J-2214 — kitchen sink repair, booked 15 Jul" },
+      { label: "Job", value: "#J-2214: kitchen sink repair, booked 15 Jul" },
       { label: "Customer history", value: "Maintenance Plus member since 2024, 9 completed jobs" },
       { label: "Trigger", value: "Second missed window logged by Field Operations on 22 Jul" },
     ],
@@ -45,7 +45,7 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
       {
         version: 1,
         content:
-          "Refund the full $180 booking fee to Mr Tan's original payment method and send: \"Mr Tan, we're very sorry we missed two appointment windows this week. We have refunded your $180 booking fee in full — it will reach your card within 3–5 working days. We'd still like to complete the sink repair at a time that suits you.\"",
+          "Refund the full $180 booking fee to Mr Tan's original payment method and send: \"Mr Tan, we're very sorry we missed two appointment windows this week. We have refunded your $180 booking fee in full. It will reach your card within 3–5 working days. We'd still like to complete the sink repair at a time that suits you.\"",
         at: `${DEMO_MONTH}-23T17:20:00+08:00`,
         note: "Initial draft from complaint review",
       },
@@ -84,11 +84,11 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
     valueLabel: "Public content",
     dueAt: `${DEMO_MONTH}-28`,
     dueTime: "11:00",
-    customer: "Campaign — Monsoon-Ready Home Check",
+    customer: "Campaign: Monsoon-Ready Home Check",
     source: [
       { label: "Brief", value: "August push for gutter, roof and aircon checks before the wet season" },
       { label: "Audience", value: "612 past customers (Gmail list) + Facebook page followers" },
-      { label: "Channels", value: "Email, Facebook, Instagram — launch Tue 28 Jul" },
+      { label: "Channels", value: "Email, Facebook, Instagram (launch Tue 28 Jul)" },
     ],
     versions: [
       {
@@ -96,12 +96,12 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
         content:
           "Headline: \"Is your home ready for the monsoon?\" Email: \"The year-end rains arrive faster than most of us expect. Our Monsoon-Ready Home Check covers gutters, roof seals, and aircon drainage in one 90-minute visit. Book in August and your report is free.\" Social: \"Leaky window sills? Musty aircon? Get monsoon-ready with one visit from BrightPath. August slots now open.\"",
         at: `${DEMO_TODAY}T15:30:00+08:00`,
-        note: "First full draft — headline, email body and two social posts",
+        note: "First full draft: headline, email body and two social posts",
       },
     ],
     nextRevision: {
       content:
-        "Headline: \"Beat the monsoon — one visit, whole home checked.\" Email: \"The year-end rains arrive faster than most of us expect. Our Monsoon-Ready Home Check covers gutters, roof seals, and aircon drainage in one 90-minute visit — $88, report included. Maintenance Plus members book free.\" Social: \"One 90-minute visit. Gutters, roof, aircon — all monsoon-ready. $88 in August, free for Maintenance Plus members.\"",
+        "Headline: \"Beat the monsoon: one visit, whole home checked.\" Email: \"The year-end rains arrive faster than most of us expect. Our Monsoon-Ready Home Check covers gutters, roof seals, and aircon drainage in one 90-minute visit: $88, report included. Maintenance Plus members book free.\" Social: \"One 90-minute visit. Gutters, roof, aircon: all monsoon-ready. $88 in August, free for Maintenance Plus members.\"",
       note: "Sharper headline and added the $88 price anchor plus the Maintenance Plus member benefit.",
     },
     confidence: 0.82,
@@ -133,9 +133,9 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
     valueLabel: "$95 write-off",
     dueAt: DEMO_TODAY,
     dueTime: "16:30",
-    customer: "Grace Ho — Ang Mo Kio Ave 3",
+    customer: "Grace Ho, Ang Mo Kio Ave 3",
     source: [
-      { label: "Invoice", value: "INV-1187 — $95 balance, issued 11 May, 74 days overdue" },
+      { label: "Invoice", value: "INV-1187: $95 balance, issued 11 May, 74 days overdue" },
       { label: "Dispute", value: "Customer says the touch-up was included in the original repaint quote" },
       { label: "Contact log", value: "Two calls and three reminders since June; position unchanged" },
     ],
@@ -143,14 +143,14 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
       {
         version: 1,
         content:
-          "Write off the $95 balance on INV-1187 in QuickBooks with reason \"disputed scope — goodwill\". Send: \"Ms Ho, thank you for your patience while we reviewed this. We've closed the remaining balance on your invoice — no further payment is due. We appreciate your business and hope to see you again.\"",
+          "Write off the $95 balance on INV-1187 in QuickBooks with reason \"disputed scope (goodwill)\". Send: \"Ms Ho, thank you for your patience while we reviewed this. We've closed the remaining balance on your invoice. No further payment is due. We appreciate your business and hope to see you again.\"",
         at: `${DEMO_TODAY}T13:20:00+08:00`,
         note: "Draft after reviewing the dispute history",
       },
     ],
     nextRevision: {
       content:
-        "Write off the $95 balance on INV-1187 in QuickBooks with reason \"disputed scope — goodwill\". Send: \"Ms Ho, thank you for your patience while we reviewed this. You were right that the quote wording was unclear, so we've closed the remaining balance — nothing further is due and your account is fully settled. We've also tightened our quotes so this doesn't happen again.\"",
+        "Write off the $95 balance on INV-1187 in QuickBooks with reason \"disputed scope (goodwill)\". Send: \"Ms Ho, thank you for your patience while we reviewed this. You were right that the quote wording was unclear, so we've closed the remaining balance. Nothing further is due and your account is fully settled. We've also tightened our quotes so this doesn't happen again.\"",
       note: "Reworded the customer note to acknowledge the unclear quote and close the dispute politely.",
     },
     confidence: 0.78,
@@ -160,7 +160,7 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
       {
         author: PEOPLE.financeLead,
         at: `${DEMO_TODAY}T13:40:00+08:00`,
-        text: "I've called Grace twice — she's firm that the touch-up was included. Cheaper to close this out and keep the relationship.",
+        text: "I've called Grace twice; she's firm that the touch-up was included. Cheaper to close this out and keep the relationship.",
       },
     ],
     calendarEventId: CAL.writeoff,
@@ -182,9 +182,9 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
     valueLabel: "Confirmed booking",
     dueAt: DEMO_TODAY,
     dueTime: "17:30",
-    customer: "Jonathan Lim — Bishan St 22",
+    customer: "Jonathan Lim, Bishan St 22",
     source: [
-      { label: "Booking", value: "#J-2231 — quarterly aircon servicing, confirmed Wed 22 Jul" },
+      { label: "Booking", value: "#J-2231: quarterly aircon servicing, confirmed Wed 22 Jul" },
       { label: "Conflict", value: "Ravi assigned to an emergency water-heater job, Sat 08:30–12:30" },
       { label: "Alternative", value: "Ravi free Sat 14:00–16:00; no other technician covers Bishan on Saturday" },
     ],
@@ -192,14 +192,14 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
       {
         version: 1,
         content:
-          "Move the visit to Sat 25 Jul, 14:00–15:30 and send: \"Mr Lim, we're sorry — we need to shift your aircon servicing tomorrow from 9:30am to 2pm due to an emergency job. Same technician, same price. Does 2pm still work for you? If not, we'll find a slot on Sunday or Monday.\"",
+          "Move the visit to Sat 25 Jul, 14:00–15:30 and send: \"Mr Lim, we're sorry, but we need to shift your aircon servicing tomorrow from 9:30am to 2pm due to an emergency job. Same technician, same price. Does 2pm still work for you? If not, we'll find a slot on Sunday or Monday.\"",
         at: `${DEMO_TODAY}T14:45:00+08:00`,
         note: "Proposed after checking all technician calendars",
       },
     ],
     nextRevision: {
       content:
-        "Move the visit to Sat 25 Jul, 14:00–15:30 and send: \"Mr Lim, we're sorry — we need to shift your aircon servicing tomorrow from 9:30am to 2pm due to an emergency job. Same technician, same price, and we'll waive the filter-cleaning add-on as an apology. Does 2pm still work? If not, we'll find a Sunday or Monday slot.\" Also schedule a WhatsApp reminder one hour before the new slot.",
+        "Move the visit to Sat 25 Jul, 14:00–15:30 and send: \"Mr Lim, we're sorry, but we need to shift your aircon servicing tomorrow from 9:30am to 2pm due to an emergency job. Same technician, same price, and we'll waive the filter-cleaning add-on as an apology. Does 2pm still work? If not, we'll find a Sunday or Monday slot.\" Also schedule a WhatsApp reminder one hour before the new slot.",
       note: "Added a small apology gesture and a one-hour reminder before the new time.",
     },
     confidence: 0.91,
@@ -217,7 +217,7 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
     agentName: AGENT_NAME[AGENT.finance],
     workflowId: WF.paymentReminders,
     workflowName: WF_NAME[WF.paymentReminders],
-    title: "Friday payment reminder batch — 12 overdue invoices",
+    title: "Friday payment reminder batch: 12 overdue invoices",
     decision: "Send friendly payment reminders for 12 invoices overdue by 14+ days ($4,310 total)",
     reason:
       "The weekly batch is drafted every Friday morning and held for a quick owner check before anything is sent.",
@@ -225,17 +225,17 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
     valueLabel: "$4,310 outstanding",
     dueAt: DEMO_TODAY,
     dueTime: "14:00",
-    customer: "12 customers — full list in draft",
+    customer: "12 customers (full list in draft)",
     source: [
       { label: "Selection", value: "QuickBooks invoices overdue 14+ days, excluding disputed INV-1187" },
-      { label: "Largest", value: "INV-1201 — Novena Interiors Pte Ltd, $1,240, 31 days overdue" },
-      { label: "Last batch", value: "Fri 10 Jul — 10 reminders sent, 4 payments within 48 hours" },
+      { label: "Largest", value: "INV-1201: Novena Interiors Pte Ltd, $1,240, 31 days overdue" },
+      { label: "Last batch", value: "Fri 10 Jul: 10 reminders sent, 4 payments within 48 hours" },
     ],
     versions: [
       {
         version: 1,
         content:
-          "Send 12 personalised reminders at 14:00 via email (WhatsApp for the 3 customers who prefer it). Template: \"Hi [name], a gentle reminder that invoice [number] for [amount] was due on [date]. You can pay via the PayNow link below. If you've already paid, please ignore this — and thank you!\"",
+          "Send 12 personalised reminders at 14:00 via email (WhatsApp for the 3 customers who prefer it). Template: \"Hi [name], a gentle reminder that invoice [number] for [amount] was due on [date]. You can pay via the PayNow link below. If you've already paid, please ignore this, and thank you!\"",
         at: `${DEMO_TODAY}T09:15:00+08:00`,
         note: "Friday batch drafted from this morning's QuickBooks aging report",
       },
@@ -243,7 +243,7 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
     nextRevision: {
       content:
         "Send 12 reminders at 14:00, with tone split by age: invoices 14–30 days get the gentle template; invoices over 60 days get: \"Hi [name], invoice [number] for [amount] is now more than two months past due. Please settle via the PayNow link this week, or reply and we'll arrange a payment plan.\"",
-      note: "Split the tone by overdue age — gentler under 30 days, firmer past 60 days.",
+      note: "Split the tone by overdue age: gentler under 30 days, firmer past 60 days.",
     },
     confidence: 0.95,
     approvalRule: "Reminder batches are drafted for approval; nothing sends without sign-off",
@@ -252,7 +252,7 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
       {
         author: OWNER.name,
         at: `${DEMO_TODAY}T09:20:00+08:00`,
-        text: "Tone is right. Approved — send at 14:00 as planned.",
+        text: "Tone is right. Approved. Send at 14:00 as planned.",
       },
     ],
     calendarEventId: CAL.reminder,
@@ -274,9 +274,9 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
     valueLabel: "High-value customer",
     dueAt: DEMO_TODAY,
     dueTime: "12:00",
-    customer: "Mrs Adeline Wong — Bukit Timah Rd",
+    customer: "Mrs Adeline Wong, Bukit Timah Rd",
     source: [
-      { label: "Complaint", value: "WhatsApp message received 08:32 today — second delay this month" },
+      { label: "Complaint", value: "WhatsApp message received 08:32 today, the second delay this month" },
       { label: "Customer history", value: "Maintenance Plus member for 6 years, $2,150 spent in 12 months" },
       { label: "Inputs gathered", value: "Job history (Field Operations), plan terms (Finance), message thread (Customer Care)" },
     ],
@@ -301,7 +301,7 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
       {
         author: PEOPLE.careLead,
         at: `${DEMO_TODAY}T10:35:00+08:00`,
-        text: "Mrs Wong has been with us six years — the credit is the right call here.",
+        text: "Mrs Wong has been with us six years. The credit is the right call here.",
       },
       {
         author: PEOPLE.opsLead,
@@ -328,24 +328,24 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
     valueLabel: "3 posts",
     dueAt: `${DEMO_MONTH}-27`,
     dueTime: "10:00",
-    customer: "Weekly plan — 27 Jul to 2 Aug",
+    customer: "Weekly plan: 27 Jul to 2 Aug",
     source: [
       { label: "Inputs", value: "Last week's engagement stats, August campaign brief, booking trends" },
-      { label: "Best performer", value: "Before/after repaint photos — reach up 18% week on week" },
+      { label: "Best performer", value: "Before/after repaint photos: reach up 18% week on week" },
       { label: "Cadence", value: "Mon tips post, Wed service spotlight, Fri customer story" },
     ],
     versions: [
       {
         version: 1,
         content:
-          "Mon 27 Jul: \"5-minute checks that prevent big repair bills\" tips carousel. Wed 29 Jul: gutter-clearing service spotlight with before/after photos. Fri 31 Jul: customer story — the Serangoon family's full-home maintenance plan, with quote.",
+          "Mon 27 Jul: \"5-minute checks that prevent big repair bills\" tips carousel. Wed 29 Jul: gutter-clearing service spotlight with before/after photos. Fri 31 Jul: customer story on the Serangoon family's full-home maintenance plan, with quote.",
         at: `${DEMO_TODAY}T09:30:00+08:00`,
         note: "Weekly plan drafted from engagement stats and the August campaign brief",
       },
     ],
     nextRevision: {
       content:
-        "Mon 27 Jul: \"5-minute checks that prevent big repair bills\" tips carousel. Wed 29 Jul: monsoon-prep checklist post (teaser for the August campaign, no gutter overlap). Fri 31 Jul: customer story — the Serangoon family's full-home maintenance plan, with quote.",
+        "Mon 27 Jul: \"5-minute checks that prevent big repair bills\" tips carousel. Wed 29 Jul: monsoon-prep checklist post (teaser for the August campaign, no gutter overlap). Fri 31 Jul: customer story on the Serangoon family's full-home maintenance plan, with quote.",
       note: "Swapped the Wednesday gutter spotlight for a monsoon-prep checklist so it doesn't overlap the August campaign.",
     },
     confidence: 0.88,
@@ -355,7 +355,7 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
       {
         author: OWNER.name,
         at: `${DEMO_TODAY}T13:10:00+08:00`,
-        text: "Swap the Wednesday post — the August campaign already covers gutters. A monsoon checklist teaser would fit better.",
+        text: "Swap the Wednesday post; the August campaign already covers gutters. A monsoon checklist teaser would fit better.",
       },
     ],
     calendarEventId: CAL.contentPlan,
@@ -377,9 +377,9 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
     valueLabel: "$756/year renewal",
     dueAt: `${DEMO_MONTH}-27`,
     dueTime: "15:00",
-    customer: "Rajesh Kumar — Serangoon Gardens",
+    customer: "Rajesh Kumar, Serangoon Gardens",
     source: [
-      { label: "Plan", value: "Maintenance Plus, expires 31 Jul — currently $787/year" },
+      { label: "Plan", value: "Maintenance Plus, expires 31 Jul (currently $787/year)" },
       { label: "History", value: "3 years on the plan, 11 visits, zero missed payments" },
       { label: "Pricing basis", value: "Standard renewal $787 less 4% loyalty discount = $756" },
     ],
@@ -387,14 +387,14 @@ export const APPROVAL_ITEMS: Record<string, ApprovalItem> = {
       {
         version: 1,
         content:
-          "Send: \"Mr Kumar, your Maintenance Plus plan expires on 31 July. As a thank-you for three years with us, your renewal is $756/year — a 4% loyalty discount off the standard $787. Your quarterly visit schedule stays the same. Reply YES and we'll handle the rest.\"",
+          "Send: \"Mr Kumar, your Maintenance Plus plan expires on 31 July. As a thank-you for three years with us, your renewal is $756/year, a 4% loyalty discount off the standard $787. Your quarterly visit schedule stays the same. Reply YES and we'll handle the rest.\"",
         at: `${DEMO_TODAY}T11:05:00+08:00`,
         note: "Renewal drafted 7 days before plan expiry, per playbook",
       },
     ],
     nextRevision: {
       content:
-        "Send: \"Mr Kumar, your Maintenance Plus plan expires on 31 July. As a thank-you for three years with us, your renewal is $756/year — a 4% loyalty discount. You can also lock this price for 3 years. Included: 4 scheduled visits (Oct, Jan, Apr, Jul), priority booking and 10% off repairs. Reply YES and we'll handle the rest.\"",
+        "Send: \"Mr Kumar, your Maintenance Plus plan expires on 31 July. As a thank-you for three years with us, your renewal is $756/year, a 4% loyalty discount. You can also lock this price for 3 years. Included: 4 scheduled visits (Oct, Jan, Apr, Jul), priority booking and 10% off repairs. Reply YES and we'll handle the rest.\"",
       note: "Added a 3-year price-lock option and itemised what the plan includes.",
     },
     confidence: 0.9,

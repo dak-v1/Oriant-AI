@@ -114,7 +114,7 @@ export default function ActivationPanel() {
         })}
       </ul>
 
-      <span className="oa-sim-note">Simulated activation — nothing outside this demo is changed.</span>
+      <span className="oa-sim-note">Simulated activation: nothing outside this demo is changed.</span>
 
       <AnimatePresence>
         {done && (

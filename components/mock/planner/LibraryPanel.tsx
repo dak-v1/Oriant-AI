@@ -1,9 +1,11 @@
 "use client";
 /**
- * LibraryPanel — the left agent library (spec §11.1, §11.2, §11.3, §11.6):
- * search + Preset/Custom filters, fit-score meters, prices, covered-outcome
- * counts, and two paths into the plan — drag onto the canvas snap zone, or
- * the keyboard-friendly Add button. Adding a duplicate is a friendly no-op.
+ * LibraryPanel — the "Add more agents" tray beneath the command bar
+ * (improvement spec §12.1): search + Preset/Custom filters, fit-score
+ * meters, prices, covered-outcome counts, and two paths into the plan.
+ * Drag a card up onto the canvas drop target, or use the 44px Add button.
+ * Adding a duplicate is a friendly no-op. The tray scrolls horizontally so
+ * the canvas above stays the visual primary.
  */
 import { useRef, useState } from "react";
 import { motion, type PanInfo } from "framer-motion";
@@ -29,7 +31,7 @@ function addAgent(def: AgentDef) {
   if (st.plan.agents.some((a) => a.agentId === def.id)) {
     toast({
       title: `${def.name} is already in the plan.`,
-      detail: "Each agent appears once — adjust its workflows on the canvas instead.",
+      detail: "Each agent appears once. Adjust its workflows from the inspector instead.",
       tone: "info",
     });
     return;
@@ -49,12 +51,14 @@ function LibraryCard({
   dragEnabled,
   dropRef,
   onDropHover,
+  onDragStateChange,
 }: {
   def: AgentDef;
   inPlan: boolean;
   dragEnabled: boolean;
   dropRef: React.RefObject<HTMLDivElement | null>;
   onDropHover: (over: boolean) => void;
+  onDragStateChange: (dragging: boolean) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const rectRef = useRef<{ left: number; top: number; right: number; bottom: number } | null>(null);
@@ -100,10 +104,12 @@ function LibraryCard({
       onDragStart={() => {
         cacheRect();
         setDragging(true);
+        onDragStateChange(true);
       }}
       onDrag={(_e, info) => onDropHover(isOver(info))}
       onDragEnd={(_e, info) => {
         setDragging(false);
+        onDragStateChange(false);
         onDropHover(false);
         if (isOver(info)) addAgent(def);
       }}
@@ -163,10 +169,12 @@ function LibraryCard({
 export default function LibraryPanel({
   dropRef,
   onDropHover,
+  onDragStateChange,
   dragEnabled,
 }: {
   dropRef: React.RefObject<HTMLDivElement | null>;
   onDropHover: (over: boolean) => void;
+  onDragStateChange: (dragging: boolean) => void;
   dragEnabled: boolean;
 }) {
   const agents = useDemoStore((s) => s.plan.agents);
@@ -182,40 +190,47 @@ export default function LibraryPanel({
     );
 
   return (
-    <aside className={styles.libraryCol} aria-label="Agent library">
-      <div className={`oa-card oa-card--flat ${styles.libPanel}`}>
-        <div style={{ display: "grid", gap: 4 }}>
-          <h2 className="oa-h3">Agent library</h2>
-          <p className="oa-sub">Drag a card into the plan, or use Add.</p>
+    <section className={styles.tray} aria-label="Agent library">
+      <div className={`oa-card oa-card--flat ${styles.trayPanel}`}>
+        <div className={styles.trayHead}>
+          <div style={{ display: "grid", gap: 4 }}>
+            <h2 className="oa-h3">Add more agents</h2>
+            <p className="oa-sub">
+              {dragEnabled
+                ? "Drag a card onto the plan above, or use Add."
+                : "Use Add to place an agent in the plan."}
+            </p>
+          </div>
+
+          <div className={styles.trayTools}>
+            <div className={styles.libSearch}>
+              <Search size={14} className={styles.libSearchIcon} aria-hidden />
+              <input
+                type="search"
+                className="oa-input"
+                placeholder="Search agents"
+                aria-label="Search agents"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            <div className={styles.libFilters} role="group" aria-label="Filter agents by source">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className={`oa-chip ${filter === f.id ? "oa-chip--selected" : ""}`}
+                  aria-pressed={filter === f.id}
+                  onClick={() => setFilter(f.id)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className={styles.libSearch}>
-          <Search size={14} className={styles.libSearchIcon} aria-hidden />
-          <input
-            type="search"
-            className="oa-input"
-            placeholder="Search agents"
-            aria-label="Search agents"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-
-        <div className={styles.libFilters} role="group" aria-label="Filter agents by source">
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={`oa-chip ${filter === f.id ? "oa-chip--selected" : ""}`}
-              aria-pressed={filter === f.id}
-              onClick={() => setFilter(f.id)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        <div className={styles.libList}>
+        <div className={styles.trayList}>
           {defs.map((def) => (
             <LibraryCard
               key={def.id}
@@ -224,11 +239,12 @@ export default function LibraryPanel({
               dragEnabled={dragEnabled}
               dropRef={dropRef}
               onDropHover={onDropHover}
+              onDragStateChange={onDragStateChange}
             />
           ))}
           {defs.length === 0 && <p className={styles.libEmpty}>No agents match your search.</p>}
         </div>
       </div>
-    </aside>
+    </section>
   );
 }

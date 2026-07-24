@@ -132,7 +132,6 @@ export default function Toaster() {
             <button
               type="button"
               className="oa-btn oa-btn--ghost oa-btn--icon"
-              style={{ minHeight: 30, minWidth: 30 }}
               onClick={() => dismiss(t.id)}
               aria-label="Dismiss notification"
             >

@@ -1,6 +1,6 @@
 "use client";
 /**
- * Landing — marketing page.
+ * Landing: marketing page.
  * Port of the design's landing section (reference/Margo.dc.html:48-225),
  * data arrays copied from the prototype vals (reference lines 1455-1488).
  */
@@ -14,7 +14,7 @@ const heroStats = [
 ];
 
 const steps = [
-  { n: "01", title: "Tell Margo about the shop", body: "Company basics, goals, the tools you already use. Rough notes are plenty — she reads between the lines." },
+  { n: "01", title: "Tell Margo about the shop", body: "Company basics, goals, the tools you already use. Rough notes are plenty; she reads between the lines." },
   { n: "02", title: "She fills the gaps on a quick call", body: "A short voice interview asks only what’s missing. You see the transcript and fix it before it’s saved." },
   { n: "03", title: "You approve the brief", body: "Margo writes a plain-English company report. Edit any line, check the evidence, then approve the source of truth." },
   { n: "04", title: "She drafts the team & the price", body: "A workflow of preset and custom agents appears, with a live monthly estimate. Add, cut, or reshuffle." },
@@ -24,7 +24,7 @@ const steps = [
 
 const catalog = [
   { n: "01", name: "Front Desk", role: "Customer support", tag: "Preset", desc: "FAQs, order status, drafts or sends, clear escalation for the sensitive ones." },
-  { n: "02", name: "Subscriptions", role: "Retention", tag: "Preset", desc: "Pauses, swaps and reschedules on request — no ticket needed." },
+  { n: "02", name: "Subscriptions", role: "Retention", tag: "Preset", desc: "Pauses, swaps and reschedules on request, no ticket needed." },
   { n: "03", name: "Restock Radar", role: "Inventory", tag: "Preset", desc: "Watches stock, flags low roasts, drafts the reorder for approval." },
   { n: "04", name: "Reviews", role: "Marketing", tag: "Preset", desc: "On-brand replies to reviews and DMs, always held for approval." },
   { n: "05", name: "Monday Report", role: "Reporting", tag: "Preset", desc: "One weekly readout across sales, tickets and stock." },
@@ -34,7 +34,7 @@ const catalog = [
 const pillars = [
   { t: "Approved, not automatic", b: "AI drafts. Nothing becomes a decision until you approve the version." },
   { t: "Secrets stay yours", b: "Agents reference credentials by name. Real keys never touch a prompt or a file." },
-  { t: "Every move is on the record", b: "Who changed what, who approved it, and which version shipped — all logged." },
+  { t: "Every move is on the record", b: "Who changed what, who approved it, and which version shipped: all logged." },
 ];
 
 const prices = [
@@ -44,9 +44,9 @@ const prices = [
 ];
 
 const faqs = [
-  { q: "Does Margo run my business on autopilot?", a: "No — and that’s the point. She proposes; you approve. Anything risky, financial or irreversible waits for a person." },
+  { q: "Does Margo run my business on autopilot?", a: "No, and that’s the point. She proposes; you approve. Anything risky, financial or irreversible waits for a person." },
   { q: "Do I need to understand APIs or automations?", a: "Never. You describe the shop in plain words. Margo handles triggers, mappings and error handling behind the glass." },
-  { q: "Where do my API keys live?", a: "In a server-side vault. Generated agent files reference a credential by name — the real secret is never embedded." },
+  { q: "Where do my API keys live?", a: "In a server-side vault. Generated agent files reference a credential by name; the real secret is never embedded." },
   { q: "What if a task is too weird for a preset?", a: "That’s a custom agent: a short design interview produces an editable spec, built and tested like any other." },
 ];
 
@@ -58,8 +58,8 @@ export default function Landing() {
       {/* TICKER */}
       <div style={sx({ background: "var(--ink)", color: "var(--paper)", overflow: "hidden", whiteSpace: "nowrap", borderBottom: "1px solid var(--ink)" })}>
         <div style={sx({ display: "inline-flex", gap: 34, padding: "9px 0", fontFamily: "var(--mono)", fontSize: 12, letterSpacing: ".04em", animation: "marq 34s linear infinite", willChange: "transform" })}>
-          <span>✶ MEET MARGO — YOUR AI OPERATIONS MANAGER</span><span>✶ SHE LEARNS THE SHOP</span><span>✶ HIRES THE TEAM</span><span>✶ RUNS IT PAST YOU FIRST</span><span>✶ FOR SMALL BRANDS THAT OUTGREW THE SPREADSHEET</span>
-          <span>✶ MEET MARGO — YOUR AI OPERATIONS MANAGER</span><span>✶ SHE LEARNS THE SHOP</span><span>✶ HIRES THE TEAM</span><span>✶ RUNS IT PAST YOU FIRST</span><span>✶ FOR SMALL BRANDS THAT OUTGREW THE SPREADSHEET</span>
+          <span>✶ MEET MARGO: YOUR AI OPERATIONS MANAGER</span><span>✶ SHE LEARNS THE SHOP</span><span>✶ HIRES THE TEAM</span><span>✶ RUNS IT PAST YOU FIRST</span><span>✶ FOR SMALL BRANDS THAT OUTGREW THE SPREADSHEET</span>
+          <span>✶ MEET MARGO: YOUR AI OPERATIONS MANAGER</span><span>✶ SHE LEARNS THE SHOP</span><span>✶ HIRES THE TEAM</span><span>✶ RUNS IT PAST YOU FIRST</span><span>✶ FOR SMALL BRANDS THAT OUTGREW THE SPREADSHEET</span>
         </div>
       </div>
 
@@ -91,7 +91,7 @@ export default function Landing() {
         <h1 style={sx({ fontFamily: "var(--disp)", fontWeight: 800, fontSize: "clamp(48px,8.2vw,104px)", lineHeight: 0.9, letterSpacing: "-.035em", margin: "22px 0 0", maxWidth: "15ch", textWrap: "balance" })}>Hire the team you keep meaning to build.</h1>
         <div style={sx({ display: "grid", gridTemplateColumns: "1.15fr .85fr", gap: 48, alignItems: "end", marginTop: 30 })}>
           <div>
-            <p style={sx({ fontSize: 19, lineHeight: 1.5, color: "var(--ink2)", maxWidth: "46ch", margin: 0 })}>Margo sits down with you for twenty minutes, learns how the shop actually runs, then drafts a crew of AI agents to handle the busywork — every big decision still lands on your desk.</p>
+            <p style={sx({ fontSize: 19, lineHeight: 1.5, color: "var(--ink2)", maxWidth: "46ch", margin: 0 })}>Margo sits down with you for twenty minutes, learns how the shop actually runs, then drafts a crew of AI agents to handle the busywork, while every big decision still lands on your desk.</p>
             <div style={sx({ display: "flex", gap: 14, marginTop: 26, flexWrap: "wrap" })}>
               <button
                 onClick={s.enterApp}
@@ -128,7 +128,7 @@ export default function Landing() {
             </div>
             <div style={sx({ position: "absolute", right: 8, bottom: 8, width: 236, background: "var(--ink)", color: "var(--paper)", borderRadius: 13, padding: 16, boxShadow: "0 18px 40px -20px rgba(26,23,18,.55)", transform: "rotate(2.5deg)", animation: "floatB 6.6s ease-in-out .4s infinite" })}>
               <div style={sx({ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".1em", opacity: 0.7 })}>NEEDS YOUR SIGN-OFF</div>
-              <div style={sx({ fontSize: 13.5, lineHeight: 1.4, marginTop: 8 })}>Refund $48 to <b>M. Alvarez</b> — order arrived cracked.</div>
+              <div style={sx({ fontSize: 13.5, lineHeight: 1.4, marginTop: 8 })}>Refund $48 to <b>M. Alvarez</b> (order arrived cracked).</div>
               <div style={sx({ display: "flex", gap: 8, marginTop: 13 })}><span style={sx({ flex: 1, textAlign: "center", background: "var(--paper)", color: "var(--ink)", borderRadius: 8, padding: "7px 0", fontSize: 12, fontWeight: 600 })}>Approve</span><span style={sx({ flex: 1, textAlign: "center", border: "1px solid rgba(244,238,227,.4)", borderRadius: 8, padding: "7px 0", fontSize: 12 })}>Edit</span></div>
             </div>
           </div>
@@ -196,7 +196,7 @@ export default function Landing() {
       <section style={sx({ background: "var(--ink)", color: "var(--paper)" })}>
         <div className="reveal" style={sx({ maxWidth: 1180, margin: "0 auto", padding: "90px 40px" })}>
           <div style={sx({ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--paper)", opacity: 0.55 })}>✶ The deal</div>
-          <p style={sx({ fontFamily: "var(--disp)", fontWeight: 600, fontSize: "clamp(30px,4.6vw,54px)", lineHeight: 1.08, letterSpacing: "-.02em", margin: "22px 0 0", maxWidth: "20ch", textWrap: "balance" })}>Autopilot is a myth. Margo keeps her hands on the wheel — the final call stays yours.</p>
+          <p style={sx({ fontFamily: "var(--disp)", fontWeight: 600, fontSize: "clamp(30px,4.6vw,54px)", lineHeight: 1.08, letterSpacing: "-.02em", margin: "22px 0 0", maxWidth: "20ch", textWrap: "balance" })}>Autopilot is a myth. Margo keeps her hands on the wheel, and the final call stays yours.</p>
           <div style={sx({ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 30, marginTop: 54, borderTop: "1px solid rgba(244,238,227,.2)", paddingTop: 30 })}>
             {pillars.map((p) => (
               <div key={p.t}>

@@ -23,11 +23,12 @@ import {
   HelpCircle,
   Info,
   Phone,
+  Plug,
   Scale,
   ShieldCheck,
-  Sparkles,
   Target,
   Users,
+  Wrench,
   Zap,
 } from "lucide-react";
 import type { AgentDef, AgentDesignAnswers, PlanAgent } from "@/lib/mock/types";
@@ -200,8 +201,9 @@ export default function CustomDesign({ def, agent }: { def: AgentDef; agent: Pla
                 Design approved
               </p>
               <p className="oa-sub" style={{ color: "var(--oa-teal-deep)" }}>
-                This design is locked and queued for the build. To change it, revisit the workforce
-                plan before confirming.
+                This design is locked and queued for the build. Its connections are now unlocked in
+                the setup checklist below. To change the design, revisit the workforce plan before
+                confirming.
               </p>
             </div>
           </div>
@@ -212,7 +214,7 @@ export default function CustomDesign({ def, agent }: { def: AgentDef; agent: Pla
           editable={false}
           onSave={() => undefined}
         />
-        <SetupChecklist def={def} agent={agent} readOnly />
+        <SetupChecklist def={def} agent={agent} />
         <div>
           <Link href="/app/planner" className="oa-btn oa-btn--ghost">
             Back to workforce plan
@@ -240,13 +242,26 @@ export default function CustomDesign({ def, agent }: { def: AgentDef; agent: Pla
             submitDesignAnswers(def.id, { ...agent.designAnswers!, [field]: value })
           }
         />
-        <SetupChecklist def={def} agent={agent} readOnly={false} />
+        <div
+          className="oa-panel"
+          style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 16px" }}
+        >
+          <Plug
+            size={15}
+            aria-hidden
+            style={{ flex: "none", marginTop: 2, color: "var(--oa-muted-strong)" }}
+          />
+          <p className="oa-sub" style={{ margin: 0 }}>
+            Required connections and mock credential placeholders unlock after you approve this
+            design. Nothing is connected before then.
+          </p>
+        </div>
         <div className={styles.stickyBar}>
           <div className={`oa-card ${styles.stickyInner}`}>
             <div className={styles.stickySummary}>
               <span style={{ fontSize: 13.5, fontWeight: 750 }}>
                 {money(def.setupCost)} setup · {money(def.monthlyCost)}/month{" "}
-                <span className="oa-sub" style={{ fontWeight: 600 }}>— illustrative pricing</span>
+                <span className="oa-sub" style={{ fontWeight: 600 }}>(illustrative pricing)</span>
               </span>
               <span className={`oa-sub ${styles.stickyLine}`}>
                 Approving hands this design to the Agent Factory exactly as written above.
@@ -289,7 +304,7 @@ export default function CustomDesign({ def, agent }: { def: AgentDef; agent: Pla
               <span style={{ width: `${(given.length / Math.max(1, questions.length)) * 100}%` }} />
             </div>
             <span className="oa-sim-note">
-              Simulated design call — the answers are prepared demo content.
+              Simulated design call: the answers are prepared demo content.
             </span>
 
             {given.length > 0 && (
@@ -325,7 +340,7 @@ export default function CustomDesign({ def, agent }: { def: AgentDef; agent: Pla
                     <h2 className="oa-h2">{q.question}</h2>
                     <p className="oa-sub" style={{ display: "flex", gap: 7, alignItems: "flex-start" }}>
                       <Info size={13} aria-hidden style={{ flex: "none", marginTop: 3 }} />
-                      Why Oriant asks — {q.reason}
+                      Why Oriant asks: {q.reason}
                     </p>
                   </div>
                   <VoiceAnswer answer={q.answer} onConfirm={handleConfirm} />
@@ -372,7 +387,7 @@ export default function CustomDesign({ def, agent }: { def: AgentDef; agent: Pla
     >
       <section className={`oa-card ${styles.card}`} style={{ gap: 12 }}>
         <p className="oa-micro" style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-          <Sparkles size={13} aria-hidden style={{ color: "var(--oa-blue)" }} />
+          <Wrench size={13} aria-hidden style={{ color: "var(--oa-blue)" }} />
           Why this needs a custom agent
         </p>
         <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.65 }}>{proposal.whyCustom}</p>
@@ -418,7 +433,7 @@ export default function CustomDesign({ def, agent }: { def: AgentDef; agent: Pla
             style={{ display: "inline-flex", alignItems: "center", gap: 7, color: "var(--oa-amber-ink)" }}
           >
             <HelpCircle size={14} aria-hidden />
-            Missing information — settled in the design call
+            Missing information (settled in the design call)
           </p>
           <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>
             {proposal.missingInformation.map((m) => (

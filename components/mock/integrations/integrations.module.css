@@ -227,12 +227,16 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 44px; /* §19.1: 44px minimum button target */
+  padding: 0 10px;
+  margin-left: -10px; /* keep the label aligned with surrounding content */
+  border-radius: var(--oa-r-chip);
   font-size: 12.5px;
   font-weight: 750;
   color: var(--oa-muted-strong);
-  transition: color 0.2s var(--oa-ease);
+  transition: color 0.2s var(--oa-ease), background 0.2s var(--oa-ease);
 }
-.advBtn:hover { color: var(--oa-ink); }
+.advBtn:hover { color: var(--oa-ink); background: var(--oa-bg-alt); }
 .advChevron { transition: transform 0.25s var(--oa-ease); }
 .advChevronOpen { transform: rotate(180deg); }
 

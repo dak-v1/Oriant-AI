@@ -5,7 +5,7 @@
  * and a Skip animation escape hatch that is never gated behind the motion.
  */
 import { motion, useReducedMotion } from "framer-motion";
-import { Check, LoaderCircle, Sparkles } from "lucide-react";
+import { Check, ListChecks, LoaderCircle } from "lucide-react";
 import { DUR, EASE } from "@/lib/mock/motion";
 import styles from "./planner.module.css";
 
@@ -33,12 +33,12 @@ export default function GenerationOverlay({
         transition={{ duration: DUR.page, ease: EASE }}
       >
         <span className={styles.genOrb} aria-hidden>
-          <Sparkles size={22} />
+          <ListChecks size={22} />
         </span>
         <p className="oa-eyebrow">AI Workforce Planner</p>
         <h2 className="oa-h2">Planner is reading Company Report v{reportVersion}…</h2>
         <p className="oa-sub">
-          Matching your confirmed needs to preset agents — and designing what no preset covers.
+          Matching your confirmed needs to preset agents, and designing what no preset covers.
         </p>
 
         <div className="oa-progress" aria-hidden>
@@ -72,7 +72,7 @@ export default function GenerationOverlay({
         </ol>
 
         <div className={styles.genFoot}>
-          <span className="oa-sim-note">Simulated planning run — a prepared demo plan</span>
+          <span className="oa-sim-note">Simulated planning run: a prepared demo plan</span>
           <button type="button" className="oa-btn oa-btn--ghost oa-btn--sm" onClick={onSkip}>
             Skip animation
           </button>

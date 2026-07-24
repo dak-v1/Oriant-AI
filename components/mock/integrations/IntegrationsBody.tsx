@@ -45,6 +45,17 @@ export default function IntegrationsBody() {
   const statusOf = (def: IntegrationDef): IntegrationStatus =>
     integrations[def.id]?.status ?? def.defaultStatus;
 
+  /* Tabs: arrow-key support with roving tabindex (spec §19). */
+  const onTabKey = (e: React.KeyboardEvent) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const ids = INTEGRATION_TAB_ORDER.map((t) => t.id);
+    const idx = ids.indexOf(tab);
+    const next = ids[(idx + (e.key === "ArrowRight" ? 1 : ids.length - 1)) % ids.length];
+    setTab(next);
+    document.getElementById(`integrations-tab-${next}`)?.focus();
+  };
+
   /* Tab memberships (unfiltered — tab counts stay stable while searching). */
   const recommendedDefs = useMemo(
     () =>
@@ -105,7 +116,7 @@ export default function IntegrationsBody() {
               {readyCount} of {RECOMMENDED_APP_IDS.length} plan connections ready
             </p>
             <p className="oa-sub">
-              Connect now or during activation — nothing here blocks your plan approval.
+              Connect now or during activation; nothing here blocks your plan approval.
             </p>
           </div>
           <div className={styles.progressBar}>
@@ -152,7 +163,7 @@ export default function IntegrationsBody() {
           </span>
           <p className={styles.emptyTitle}>Nothing is connected yet.</p>
           <p className="oa-sub" style={{ maxWidth: 420 }}>
-            Start with the connections your plan recommends — or leave them for the activation
+            Start with the connections your plan recommends, or leave them for the activation
             checklist. Your plan does not wait on this screen.
           </p>
           <button
@@ -212,7 +223,7 @@ export default function IntegrationsBody() {
             <h3 className="oa-h3">What is an MCP connection?</h3>
             <p className={styles.purpose}>
               A secure tool connection that lets an agent use a specific system or capability. You
-              approve them in plain language here — protocols, servers and scopes stay inside
+              approve them in plain language here; protocols, servers and scopes stay inside
               Advanced.
             </p>
           </div>
@@ -243,7 +254,12 @@ export default function IntegrationsBody() {
       {/* Controls: the four tabs + search over the active tab */}
       <div className={styles.controls}>
         <div className={styles.tabsWrap}>
-          <div className="oa-tabs" role="tablist" aria-label="Connection groups">
+          <div
+            className="oa-tabs"
+            role="tablist"
+            aria-label="Connection groups"
+            onKeyDown={onTabKey}
+          >
             {INTEGRATION_TAB_ORDER.map((t) => (
               <button
                 key={t.id}
@@ -252,6 +268,7 @@ export default function IntegrationsBody() {
                 id={`integrations-tab-${t.id}`}
                 aria-selected={tab === t.id}
                 aria-controls={`integrations-panel-${t.id}`}
+                tabIndex={tab === t.id ? 0 : -1}
                 className={`oa-tab ${tab === t.id ? "oa-tab--active" : ""}`}
                 onClick={() => setTab(t.id)}
               >

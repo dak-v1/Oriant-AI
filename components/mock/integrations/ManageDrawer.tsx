@@ -39,7 +39,7 @@ export default function ManageDrawer({
     setIntegrationStatus(def.id, def.defaultStatus);
     toast({
       title: `${def.name} disconnected`,
-      detail: "Simulated — no real account access was changed.",
+      detail: "Simulated; no real account access was changed.",
       tone: "info",
     });
     onClose();
@@ -103,7 +103,7 @@ export default function ManageDrawer({
       </div>
 
       <p className="oa-sim-note" style={{ marginTop: 18 }}>
-        Simulated connection — disconnecting only updates this demo.
+        Simulated connection; disconnecting only updates this demo.
       </p>
     </Drawer>
   );

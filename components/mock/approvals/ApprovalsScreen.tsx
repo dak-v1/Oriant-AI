@@ -9,17 +9,27 @@
  * "On {date}" chip that filters the inbox; approving anywhere morphs the
  * card in place while the linked calendar pill and the activity feed update
  * from the same store change.
+ *
+ * Deep link (C-02): /app/workspace/approvals?focus=<approvalId> scrolls the
+ * card into view, opens its Review drawer and highlights it briefly. The
+ * route wraps this component in <Suspense> for useSearchParams.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, CalendarDays, Inbox, X } from "lucide-react";
-import type { ApprovalItem, CalendarEventState } from "@/lib/mock/types";
+import type { ApprovalItem } from "@/lib/mock/types";
 import { useDemoStore } from "@/lib/mock/store";
 import { APPROVAL_FILTERS } from "@/lib/mock/fixtures/approvals";
 import { DEMO_MONTH_LABEL, DEMO_TODAY } from "@/lib/mock/fixtures/ids";
 import { DUR, EASE } from "@/lib/mock/motion";
-import MonthCalendar, { STATE_META } from "@/components/mock/calendar/MonthCalendar";
+import MonthCalendar from "@/components/mock/calendar/MonthCalendar";
+import {
+  STATE_META,
+  STATE_ORDER,
+  stateFill,
+} from "@/components/mock/calendar/stateMeta";
 import StatusBadge from "@/components/mock/ui/StatusBadge";
 import { toast } from "@/components/mock/ui/Toaster";
 import ApprovalCard from "./ApprovalCard";
@@ -39,10 +49,9 @@ const FILTER_PRED: Record<string, (item: ApprovalItem) => boolean> = {
   due_today: (i) => i.dueAt === DEMO_TODAY,
 };
 
-const STATE_ORDER = Object.keys(STATE_META) as CalendarEventState[];
-
 export default function ApprovalsScreen() {
   const reduced = useReducedMotion();
+  const searchParams = useSearchParams();
   const approvals = useDemoStore((s) => s.workspace.approvals);
   const calendarEvents = useDemoStore((s) => s.workspace.calendarEvents);
   const approveItem = useDemoStore((s) => s.approveItem);
@@ -53,6 +62,20 @@ export default function ApprovalsScreen() {
   const [ownerDrafts, setOwnerDrafts] = useState<Record<string, string>>({});
   const [isMobile, setIsMobile] = useState(false);
   const [pane, setPane] = useState<"inbox" | "calendar">("inbox");
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  const handledFocus = useRef<string | null>(null);
+  const scrollTimer = useRef<number | null>(null);
+  const highlightTimer = useRef<number | null>(null);
+
+  /* Tabs: two-tab list with arrow-key support (spec §19). */
+  const onPaneTabKey = (e: React.KeyboardEvent) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const next = pane === "inbox" ? "calendar" : "inbox";
+    setPane(next);
+    document.getElementById(`approvals-tab-${next}`)?.focus();
+  };
 
   /* ≤768px: the split becomes Approvals / Calendar tabs (spec §21). */
   useEffect(() => {
@@ -62,6 +85,39 @@ export default function ApprovalsScreen() {
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
   }, []);
+
+  /* ?focus=<approvalId> (C-02): reset filters so the card is visible, open
+     its Review drawer, scroll it into view and highlight it briefly. */
+  const focusParam = searchParams.get("focus");
+  useEffect(() => {
+    if (!focusParam || handledFocus.current === focusParam) return;
+    handledFocus.current = focusParam;
+    if (!approvals[focusParam]) return;
+    setFilterId("all");
+    setSelectedDate(null);
+    setPane("inbox");
+    setReviewId(focusParam);
+    setHighlightId(focusParam);
+    scrollTimer.current = window.setTimeout(() => {
+      scrollTimer.current = null;
+      document
+        .getElementById(`oa-approval-${focusParam}`)
+        ?.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+    }, 80);
+    highlightTimer.current = window.setTimeout(() => {
+      highlightTimer.current = null;
+      setHighlightId(null);
+    }, 2400);
+  }, [focusParam, approvals, reduced]);
+
+  /* Cancel focus timers on unmount. */
+  useEffect(
+    () => () => {
+      if (scrollTimer.current !== null) window.clearTimeout(scrollTimer.current);
+      if (highlightTimer.current !== null) window.clearTimeout(highlightTimer.current);
+    },
+    [],
+  );
 
   const items = useMemo(() => Object.values(approvals), [approvals]);
   const allEvents = useMemo(() => Object.values(calendarEvents), [calendarEvents]);
@@ -125,7 +181,7 @@ export default function ApprovalsScreen() {
   const approve = (item: ApprovalItem) => {
     approveItem(item.id);
     toast({
-      title: "Approved — calendar and activity updated",
+      title: "Approved. Calendar and activity updated",
       detail: item.title,
       tone: "ok",
     });
@@ -213,6 +269,7 @@ export default function ApprovalsScreen() {
                   item={item}
                   index={i}
                   reduced={Boolean(reduced)}
+                  highlight={highlightId === item.id}
                   onReview={() => setReviewId(item.id)}
                   onApprove={() => approve(item)}
                 />
@@ -255,8 +312,8 @@ export default function ApprovalsScreen() {
             const meta = STATE_META[state];
             return (
               <span key={state} className={styles.legendItem} title={meta.treatment}>
-                <span className={`${styles.legendSwatch} ${meta.cls}`} aria-hidden>
-                  <meta.Icon size={9} />
+                <span className={styles.legendSwatch} style={stateFill(state)} aria-hidden>
+                  <meta.icon size={9} />
                 </span>
                 {meta.label}
               </span>
@@ -285,7 +342,6 @@ export default function ApprovalsScreen() {
               <button
                 type="button"
                 className="oa-btn oa-btn--ghost oa-btn--icon"
-                style={{ minHeight: 30, minWidth: 30 }}
                 aria-label="Clear selected date"
                 onClick={() => setSelectedDate(null)}
               >
@@ -299,8 +355,12 @@ export default function ApprovalsScreen() {
               <ul className={styles.dayList}>
                 {dayEvents.map((ev) => {
                   const linked = ev.approvalId ? approvals[ev.approvalId] : undefined;
+                  const meta = STATE_META[ev.state];
                   const inner = (
                     <>
+                      <span className={styles.dayIcon} style={stateFill(ev.state)} aria-hidden>
+                        <meta.icon size={10} />
+                      </span>
                       <span className={styles.dayTime}>{ev.time}</span>
                       <span className={styles.dayTitle}>{ev.title}</span>
                       <StatusBadge status={ev.state} />
@@ -357,11 +417,18 @@ export default function ApprovalsScreen() {
 
       {isMobile && (
         <div className={styles.mobileTabs}>
-          <div className="oa-tabs" role="tablist" aria-label="Approvals or calendar">
+          <div
+            className="oa-tabs"
+            role="tablist"
+            aria-label="Approvals or calendar"
+            onKeyDown={onPaneTabKey}
+          >
             <button
               type="button"
               role="tab"
+              id="approvals-tab-inbox"
               aria-selected={pane === "inbox"}
+              tabIndex={pane === "inbox" ? 0 : -1}
               className={`oa-tab ${pane === "inbox" ? "oa-tab--active" : ""}`}
               onClick={() => setPane("inbox")}
             >
@@ -370,7 +437,9 @@ export default function ApprovalsScreen() {
             <button
               type="button"
               role="tab"
+              id="approvals-tab-calendar"
               aria-selected={pane === "calendar"}
+              tabIndex={pane === "calendar" ? 0 : -1}
               className={`oa-tab ${pane === "calendar" ? "oa-tab--active" : ""}`}
               onClick={() => setPane("calendar")}
             >

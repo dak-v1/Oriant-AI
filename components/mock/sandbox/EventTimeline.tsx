@@ -1,12 +1,12 @@
 "use client";
 /**
- * EventTimeline — the animated vertical feed of sandbox events (spec §15,
- * §20 "event packets travel between agents, pause at human approval").
+ * EventTimeline — the step timeline of a sandbox run (spec §14; S-01).
  *
- * Renders the revealed slice of scenario events as cards on a rail; the
- * approval_pause event renders as the amber ApprovalCard inline. Auto-scrolls
- * as events land (instant when reduced motion) and marks the resume point
- * after the owner approves.
+ * Fixture events are grouped under the staged frame labels (Running trigger
+ * / Agent action / Human checkpoint / Result); a divider marks each stage
+ * change. The approval_pause event renders as the ApprovalCard inside the
+ * Human checkpoint stage. Auto-scrolls as events land (instant when reduced
+ * motion is on).
  */
 import { Fragment, useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -16,15 +16,22 @@ import {
   CheckCircle2,
   Database,
   FileText,
-  FlaskConical,
   Hand,
+  Inbox,
   Mail,
+  Square,
   UserCheck,
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { SandboxEvent, SandboxEventKind, SandboxScenario, SandboxRunState } from "@/lib/mock/types";
+import type {
+  SandboxEvent,
+  SandboxEventKind,
+  SandboxScenario,
+  SandboxRunState,
+} from "@/lib/mock/types";
 import { DUR, EASE } from "@/lib/mock/motion";
+import { STAGE_LABEL, stageOfKind, type StageId } from "./stages";
 import ApprovalCard from "./ApprovalCard";
 import styles from "./sandbox.module.css";
 
@@ -76,21 +83,41 @@ function EventCard({ ev, animate }: { ev: SandboxEvent; animate: boolean }) {
   );
 }
 
+function StageDivider({ stage, resumed }: { stage: StageId; resumed?: boolean }) {
+  const cls =
+    stage === "checkpoint"
+      ? styles.stageDividerCheckpoint
+      : stage === "result"
+        ? styles.stageDividerResult
+        : "";
+  return (
+    <div className={`${styles.stageDivider} ${cls}`} role="separator">
+      {STAGE_LABEL[stage]}
+      {resumed ? " · resumed after your approval" : ""}
+    </div>
+  );
+}
+
 export default function EventTimeline({
   scenario,
   displayCount,
   phase,
   pauseIdx,
+  stopped,
 }: {
-  scenario: SandboxScenario | null;
+  scenario: SandboxScenario;
+  /** Events revealed so far; 0 when this scenario has not been run. */
   displayCount: number;
   phase: SandboxRunState["phase"];
   pauseIdx: number;
+  /** True when the owner stopped the run early; the partial trace freezes. */
+  stopped: boolean;
 }) {
   const reduced = useReducedMotion();
   const endRef = useRef<HTMLDivElement | null>(null);
   const prevCount = useRef(displayCount);
-  const live = phase === "running" || phase === "resuming" || phase === "paused_for_approval";
+  const live =
+    !stopped && (phase === "running" || phase === "resuming" || phase === "paused_for_approval");
 
   /* Auto-scroll as new events land (and to the approval card on pause). */
   useEffect(() => {
@@ -103,55 +130,46 @@ export default function EventTimeline({
     });
   }, [displayCount, phase, live, reduced]);
 
-  if (!scenario || phase === "idle") {
+  const events = scenario.events.slice(0, Math.min(displayCount, scenario.events.length));
+
+  /* ── Not run yet: quiet prompt in place of the feed ── */
+  if (events.length === 0 && phase !== "running") {
     return (
-      <div className={`oa-card ${styles.empty}`}>
+      <div className={`oa-card oa-card--flat ${styles.empty}`}>
         <span className={styles.emptyIcon} aria-hidden>
-          <FlaskConical size={22} />
+          <Inbox size={20} />
         </span>
         <div style={{ display: "grid", gap: 6 }}>
-          <h2 className="oa-h3">Watch a workflow rehearse, step by step</h2>
+          <h3 className="oa-h3">The step timeline appears here</h3>
           <p className="oa-sub" style={{ maxWidth: 460 }}>
-            The sandbox replays a realistic BrightPath case through your generated agents so you
-            can see exactly what each one does — and where it stops for you.
+            Run this test to follow every trigger, hand-off and draft step by step. If a risky
+            action is proposed, the run pauses at a human checkpoint until you approve it.
           </p>
         </div>
-        <div className={styles.emptySteps}>
-          <div className={styles.emptyStep}>
-            <span className={styles.stepNum} aria-hidden>1</span>
-            <span>Pick a scenario on the left and review its input.</span>
-          </div>
-          <div className={styles.emptyStep}>
-            <span className={styles.stepNum} aria-hidden>2</span>
-            <span>Run the test and follow every trigger, hand-off and draft in this timeline.</span>
-          </div>
-          <div className={styles.emptyStep}>
-            <span className={styles.stepNum} aria-hidden>3</span>
-            <span>When a risky action is proposed, the run pauses until you approve it.</span>
-          </div>
-        </div>
         <span className="oa-sim-note">
-          Simulated environment — no real customers, messages or refunds are involved.
+          Simulated environment. No real customers, messages or refunds are involved.
         </span>
       </div>
     );
   }
 
-  const events = scenario.events.slice(0, Math.min(displayCount, scenario.events.length));
-
   return (
     <div>
       <div className={styles.feed} aria-live="polite">
+        {/* Preparing frame while the run spins up, before the first event. */}
+        {events.length === 0 && phase === "running" && !stopped && (
+          <StageDivider stage="preparing" />
+        )}
+
         {events.map((ev, i) => {
-          const showResume = pauseIdx >= 0 && i === pauseIdx + 1;
+          const stage = stageOfKind(ev.kind);
+          const prevStage = i > 0 ? stageOfKind(events[i - 1].kind) : null;
+          const newStage = stage !== prevStage;
+          const resumed = newStage && pauseIdx >= 0 && i === pauseIdx + 2 && stage === "agent";
           const isNewest = live && i === events.length - 1;
           return (
             <Fragment key={ev.id}>
-              {showResume && (
-                <div className={styles.resumeDivider} role="separator">
-                  Resumed after your approval
-                </div>
-              )}
+              {newStage && <StageDivider stage={stage} resumed={resumed} />}
               {ev.kind === "approval_pause" ? (
                 <motion.div
                   className={styles.event}
@@ -170,14 +188,22 @@ export default function EventTimeline({
             </Fragment>
           );
         })}
-        {(phase === "running" || phase === "resuming") && (
+
+        {(phase === "running" || phase === "resuming") && !stopped && (
           <div className={styles.workingRow}>
             <span className={styles.dots} aria-hidden>
               <span />
               <span />
               <span />
             </span>
-            Agents working — next step arriving…
+            Agents working, next step arriving…
+          </div>
+        )}
+
+        {stopped && (
+          <div className={styles.stoppedRow} role="status">
+            <Square size={13} aria-hidden />
+            Run stopped by you. Partial trace shown; run again to start over.
           </div>
         )}
       </div>

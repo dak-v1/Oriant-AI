@@ -43,7 +43,10 @@ export type ToolCategory =
   | "finance"
   | "storage"
   | "marketing"
-  | "collaboration";
+  | "collaboration"
+  | "commerce"
+  | "project"
+  | "other";
 
 export interface CompanyProfile {
   name: string;
@@ -59,12 +62,22 @@ export interface CompanyProfile {
   painPoints: string[];
 }
 
+/** Owner-added tool that is not in the catalog (improvement spec §7.2). */
+export interface CustomTool {
+  id: string;
+  name: string;
+  category: ToolCategory | "other";
+  purpose: string;
+}
+
 export interface OnboardingState {
   mode: AutomationMode | null;
   usedDemoCompany: boolean;
   /** Owner's opening answer (voice sim or typed). */
   intro: string;
   selectedToolIds: string[];
+  /** Owner-added tools outside the catalog ("Custom" badge). */
+  customTools: CustomTool[];
   /** Which onboarding summary sections have content (spec §7.2). */
   capturedSections: string[];
   consentAccepted: boolean;
@@ -216,6 +229,32 @@ export interface ReportSectionState {
   confidential: boolean;
 }
 
+/* Fact-level review (improvement spec §11.2): every individual fact carries its
+ * own review state so one wrong fact never forces a whole-section rejection. */
+
+export type FactSource = "owner" | "document" | "interview" | "inference";
+
+export type FactReviewStatus = "unreviewed" | "confirmed" | "edited" | "rejected";
+
+export interface ReportFactDef {
+  id: string;
+  sectionId: ReportSectionId;
+  label: string;
+  value: string;
+  source: FactSource;
+}
+
+export interface ReportFactState {
+  status: FactReviewStatus;
+  /** Owner-edited value (null = fixture value). */
+  editedValue: string | null;
+  /** Reason captured when a fact is rejected. */
+  reason: string;
+  confidential: boolean;
+  /** Display timestamp label, e.g. "Confirmed 10:42". */
+  reviewedAt: string | null;
+}
+
 export interface CompanyReportState {
   version: number;
   status: "draft" | "approved";
@@ -223,6 +262,8 @@ export interface CompanyReportState {
   /** Set when an approved report is edited → downstream stale. */
   stale: boolean;
   sections: Record<ReportSectionId, ReportSectionState>;
+  /** Fact-level review states, keyed by ReportFactDef id. Absent = unreviewed. */
+  facts: Record<string, ReportFactState>;
 }
 
 /* ═══════════════════════════ Planner ═══════════════════════════ */
@@ -271,6 +312,9 @@ export interface IntegrationRequirement {
 export interface AgentConfig {
   operatingMode: OperatingMode;
   triggers: TriggerKind[];
+  /** Plain-language configuration per selected trigger (improvement spec §12.5),
+   *  e.g. { event: "Runs when a new customer enquiry arrives" }. */
+  triggerDetails?: Partial<Record<TriggerKind, string>>;
   channels: string[];
   /** workflowId → enabled. */
   workflowsEnabled: Record<string, boolean>;
@@ -643,6 +687,27 @@ export interface DailyDigestFixture {
   reviews: string[];
   exceptions: string[];
   upcoming: string[];
+}
+
+/** Grouped owner-friendly digest (improvement spec §18). */
+export interface DailyDigestV2 {
+  date: string;
+  /** Coverage period label, e.g. "Covers today, 07:00 to 18:00 SGT". */
+  coverage: string;
+  /** Today at a glance stat rows. */
+  glance: { label: string; value: string; note?: string }[];
+  /** Needs your attention, sorted by priority + due time. */
+  attention: {
+    title: string;
+    due: string;
+    risk: RiskLevel;
+    approvalId: string | null;
+  }[];
+  /** Completed automatically, grouped by team. */
+  completedByTeam: { team: string; items: string[] }[];
+  comingUp: string[];
+  /** One or two concise recommendations. */
+  insights: string[];
 }
 
 export interface WeeklyReportFixture {

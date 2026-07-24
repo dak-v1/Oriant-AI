@@ -45,7 +45,7 @@ export default function BuildLog({
           <span className={styles.logTime} aria-hidden>
             --
           </span>
-          <span>Queued — waiting for a build slot…</span>
+          <span>Queued, waiting for a build slot…</span>
         </div>
       )}
       {lines.map((line, i) => (

@@ -12,7 +12,6 @@ import TriplePlatformMarquee from "@/components/landing/TriplePlatformMarquee";
 import WorkflowShowcases from "@/components/landing/WorkflowShowcases";
 import ApprovalsDark from "@/components/landing/ApprovalsDark";
 import ImprovementLoop from "@/components/landing/ImprovementLoop";
-import TechStack from "@/components/landing/TechStack";
 import FAQSection from "@/components/landing/FAQSection";
 import FinalCTA from "@/components/landing/FinalCTA";
 import LandingFooter from "@/components/landing/LandingFooter";
@@ -34,7 +33,6 @@ export default function Page() {
           <WorkflowShowcases />
           <ApprovalsDark />
           <ImprovementLoop />
-          <TechStack />
           <FAQSection />
           <FinalCTA />
         </main>
