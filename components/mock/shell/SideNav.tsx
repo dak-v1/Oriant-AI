@@ -9,6 +9,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
 import { NAV_SECTIONS, atLeast } from "@/lib/mock/state-machine";
+import BrandLogo from "@/components/brand/BrandLogo";
 import styles from "./shell.module.css";
 
 export default function SideNav({ ready }: { ready: boolean }) {
@@ -18,10 +19,12 @@ export default function SideNav({ ready }: { ready: boolean }) {
 
   return (
     <nav className={styles.nav} aria-label="Product phases">
-      <Link href="/" className={styles.wordmark} aria-label="Oriant.ai home">
-        <span className={styles.wordmarkDot} aria-hidden />
-        <span>
-          Oriant<span className={styles.wordmarkAi}>.ai</span>
+      <Link href="/" className={styles.wordmark} aria-label="Oriant home">
+        <span className={styles.wordmarkFull}>
+          <BrandLogo variant="lockup" size={24} />
+        </span>
+        <span className={styles.wordmarkStar}>
+          <BrandLogo variant="star" size={26} />
         </span>
       </Link>
 

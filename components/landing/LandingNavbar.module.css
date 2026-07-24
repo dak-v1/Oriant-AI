@@ -96,20 +96,43 @@
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  font-size: 19px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
   line-height: 1;
   white-space: nowrap;
 }
-.root[data-compact] .wordmark {
-  font-size: 17px; /* compact wordmark — snaps under the morph */
+/* The mark: a fixed-height window over the single ORIANT image. Its width
+   animates between the star and the full logo; overflow:hidden clips the
+   letters when collapsed. The image slides inside via a transform.
+   The entrance (fade + scale) is a self-contained one-shot animation with no
+   backwards fill, so the mark is never left invisible if the animation is
+   throttled or skipped. */
+.brandMark {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  flex: none;
+  transform-origin: left center;
+  animation: brandIn 0.6s var(--lp-ease) 1;
 }
-.wordmarkText {
-  color: var(--lp-ink);
+.brandLockup {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
 }
-.wordmarkAi {
-  color: var(--lp-accent);
+/* Entrance animates scale only (never opacity), so if the animation is frozen
+   or skipped the mark still shows at full opacity — never blank. */
+@keyframes brandIn {
+  0% {
+    transform: scale(0.6);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brandMark {
+    animation: none;
+  }
 }
 
 /* ── Desktop link row with CSS-only label y-swap ── */

@@ -21,6 +21,13 @@ export const metadata: Metadata = {
   title: "Oriant.ai - Your AI Operations Consultant",
   description:
     "Learn how your business works, identify high-value AI opportunities, and plan a customised AI workforce with human approval built in.",
+  icons: {
+    icon: [
+      { url: "/brand/favicon-64.png", type: "image/png", sizes: "64x64" },
+      { url: "/brand/favicon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: "/brand/favicon-180.png",
+  },
   openGraph: {
     title: "Oriant.ai - From business discovery to a working AI workforce",
     description:

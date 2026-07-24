@@ -24,21 +24,11 @@
 .wordmark {
   display: flex;
   align-items: center;
-  gap: 9px;
   padding: 6px 10px 18px;
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
 }
-.wordmarkDot {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--oa-blue);
-  transform: rotate(45deg);
-  flex: none;
-}
-.wordmarkAi { color: var(--oa-muted); font-weight: 650; }
+/* Full lockup on the expanded rail; just the star on the compact rail. */
+.wordmarkFull { display: inline-flex; }
+.wordmarkStar { display: none; }
 
 .navSection { display: grid; gap: 2px; margin-bottom: 6px; }
 
@@ -333,7 +323,10 @@
 @media (max-width: 1024px) {
   .shell { grid-template-columns: var(--oa-nav-w-compact) 1fr; }
   .nav { padding: 16px 8px; }
-  .wordmark span:not(:first-child) { display: none; }
+  /* Compact rail: swap the full lockup for just the compass star, centred. */
+  .wordmark { justify-content: center; padding: 6px 4px 18px; }
+  .wordmarkFull { display: none; }
+  .wordmarkStar { display: inline-flex; }
   .navHead span:nth-child(2), .navChildren, .navFoot { display: none; }
   .navHead { justify-content: center; padding: 9px 6px; }
 }

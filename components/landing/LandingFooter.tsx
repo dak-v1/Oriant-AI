@@ -11,6 +11,7 @@
 import Link from "next/link";
 import { ArrowUp } from "lucide-react";
 import { CTA, FOOTER } from "@/lib/landing-content";
+import BrandLogo from "@/components/brand/BrandLogo";
 import styles from "./LandingFooter.module.css";
 
 type FooterLink = { readonly label: string; readonly href: string };
@@ -44,9 +45,7 @@ export default function LandingFooter() {
         <div className={styles.grid}>
           {/* ── Zone 1: brand ── */}
           <div className={styles.brand}>
-            <p className={styles.wordmark}>
-              Oriant<span className={styles.wordmarkAi}>.ai</span>
-            </p>
+            <BrandLogo variant="lockup" tone="light" size={28} className={styles.wordmark} />
             <p className={styles.descriptor}>{FOOTER.descriptor}</p>
           </div>
 

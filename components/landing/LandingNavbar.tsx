@@ -26,9 +26,11 @@
  * refocuses the toggle. The scroll listener is rAF-throttled and passive.
  */
 
+/* eslint-disable @next/next/no-img-element -- the animated brand mark uses
+   motion.img on fixed-size local PNGs; next/image can't drive the reveal. */
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { CTA, NAV_LINKS } from "@/lib/landing-content";
 import { DUR, EASE } from "./motion";
@@ -38,9 +40,37 @@ import styles from "./LandingNavbar.module.css";
 const MORPH = 0.4;
 const morphLayout = { layout: { duration: MORPH, ease: EASE } };
 
+/* Brand mark geometry. The mark is ONE cohesive image (lockup.png = the
+   "ORIANT" wordmark with the compass star as the letter A). A fixed-height
+   window with overflow:hidden reveals it: expanded the window is the full
+   logo width; collapsed it narrows to just the star and the image slides so
+   the star (which sits at 44.8%-67.9% of the width) fills the window. The
+   image itself is never split. */
+const MARK_H = 26;
+const LOCKUP_W = Math.round(MARK_H * (982 / 260)); // full ORIANT width
+const STAR_FRAC_L = 0.4484; // star left edge, fraction of lockup width
+const STAR_FRAC_R = 0.6788; // star right edge
+const STAR_W = Math.round((STAR_FRAC_R - STAR_FRAC_L) * LOCKUP_W); // collapsed window
+const STAR_SHIFT = Math.round(STAR_FRAC_L * LOCKUP_W); // image slide to reveal star
+
 export default function LandingNavbar() {
   const [compact, setCompact] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const reduced = useReducedMotion();
+
+  /* Intro: the mark mounts showing just the star, then expands to the full
+     ORIANT logo shortly after load. The mark is ALWAYS visible (opacity is
+     never gated on JS) so it can never get stuck blank; only the expand is
+     timed. From then on the wordmark follows the scroll state, compressing
+     back to the star. A self-contained CSS entrance adds the fade/scale. */
+  const [introDone, setIntroDone] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setIntroDone(true), reduced ? 0 : 520);
+    return () => clearTimeout(t);
+  }, [reduced]);
+
+  const wordShown = introDone && !compact;
+  const markEase = reduced ? "none" : "var(--lp-ease)";
 
   const wordmarkRef = useRef<HTMLAnchorElement>(null);
   const linksRowRef = useRef<HTMLDivElement>(null);
@@ -146,9 +176,40 @@ export default function LandingNavbar() {
             transition={morphLayout}
             className={styles.wordmarkWrap}
           >
-            <Link href="/" ref={wordmarkRef} className={styles.wordmark}>
-              <span className={styles.wordmarkText}>Oriant</span>
-              <span className={styles.wordmarkAi}>.ai</span>
+            <Link
+              href="/"
+              ref={wordmarkRef}
+              className={styles.wordmark}
+              aria-label="Oriant home"
+            >
+              {/* A fixed-height window over the single ORIANT image. Collapsed:
+                  narrow to the star and slide the image so the star fills the
+                  window. Expanded: widen to the full logo and slide back. The
+                  image is one piece (never split); only the window width and
+                  its offset animate, via plain CSS transitions. */}
+              <span
+                className={styles.brandMark}
+                style={{
+                  height: MARK_H,
+                  width: wordShown ? LOCKUP_W : STAR_W,
+                  transition: `width 0.5s ${markEase}`,
+                }}
+              >
+                <img
+                  src="/brand/lockup.png"
+                  alt=""
+                  aria-hidden
+                  width={LOCKUP_W}
+                  height={MARK_H}
+                  className={styles.brandLockup}
+                  style={{
+                    width: LOCKUP_W,
+                    height: MARK_H,
+                    transform: `translateX(${wordShown ? 0 : -STAR_SHIFT}px)`,
+                    transition: `transform 0.5s ${markEase}`,
+                  }}
+                />
+              </span>
             </Link>
           </motion.div>
 
