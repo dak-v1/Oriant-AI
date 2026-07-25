@@ -1,0 +1,666 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Company report — Human Approval Gate 1 (spec §10, improvement spec §11).
+   Layout-only module classes; all colour/typography via .oa-* tokens.
+   Split: left column (Contents + Completeness, sticky desktop only) ·
+   editable document (centre, with fact-level review rows) · evidence rail
+   (right, Drawer overlay below 1024px). The approval bar sits in normal
+   flow at the end of the report — nothing overlays content (R-02).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.wrap {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr) 300px;
+  gap: clamp(18px, 2.2vw, 30px);
+  align-items: start;
+}
+.wrap > * { min-width: 0; }
+
+/* ── Left column: Contents + Completeness ────────────────────────────── */
+
+.outline {
+  position: sticky;
+  top: 76px;
+  display: grid;
+  min-width: 0; /* let the inner list scroll instead of expanding the grid track */
+  gap: 12px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  padding-bottom: 4px;
+}
+
+.outlineTitle { padding: 6px 10px 2px; }
+
+.outlineList {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+}
+
+.outlineItem {
+  position: relative; /* contain the absolute sr-only span so it can't widen the page */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--oa-muted-strong);
+  transition: background 0.18s var(--oa-ease), color 0.18s var(--oa-ease);
+}
+.outlineItem:hover { background: var(--oa-bg-alt); color: var(--oa-ink); }
+.outlineItemActive { background: var(--oa-soft-blue); color: var(--oa-blue-dark); }
+.outlineItemActive:hover { background: var(--oa-soft-blue); color: var(--oa-blue-dark); }
+.outlineItemRejected { text-decoration: line-through; color: var(--oa-muted); }
+
+.outlineGlyph {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.glyphDraft {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--oa-border-strong);
+  background: transparent;
+}
+.glyphConfirmed { background: var(--oa-soft-teal); color: var(--oa-teal-deep); }
+.glyphRejected { background: var(--oa-soft-red); color: var(--oa-red-ink); }
+
+/* Completeness card — directly below Contents (improvement spec §11.3) */
+.completeness {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  justify-items: start;
+}
+.completeness > * { min-width: 0; }
+.completeness :global(.oa-progress) { width: 100%; }
+.completenessLead {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 750;
+  color: var(--oa-ink);
+}
+
+/* ── Centre document ─────────────────────────────────────────────────── */
+
+.centre { display: grid; gap: 14px; min-width: 0; }
+
+.paper {
+  padding: clamp(28px, 4vw, 48px);
+  display: grid;
+  gap: 0;
+}
+
+.docHead {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 26px;
+  border-bottom: 1px solid var(--oa-border);
+  margin-bottom: 6px;
+}
+.docHeadTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.docTitle {
+  font-size: clamp(22px, 2.6vw, 30px);
+  font-weight: 750;
+  line-height: 1.12;
+  letter-spacing: -0.022em;
+  margin: 0;
+  text-wrap: balance;
+}
+.docDateLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--oa-muted);
+}
+.versionChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--oa-border-strong);
+  border-radius: var(--oa-r-chip);
+  padding: 5px 13px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+
+/* ── One report section ──────────────────────────────────────────────── */
+
+.section {
+  position: relative;
+  padding: 26px 0 24px;
+  scroll-margin-top: 128px;
+  border-bottom: 1px solid var(--oa-border);
+}
+.section:last-of-type { border-bottom: none; padding-bottom: 6px; }
+
+.sectionRail {
+  position: absolute;
+  left: -18px;
+  top: 30px;
+  bottom: 26px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--oa-teal);
+  transform-origin: top center;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.secNum {
+  font-family: var(--oa-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--oa-muted);
+}
+.confirmChip {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+  flex: none;
+}
+
+.sectionBody { display: grid; gap: 10px; }
+.sectionBody p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--oa-ink);
+  max-width: 72ch;
+}
+.bullets {
+  margin: 2px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 7px;
+}
+.bullets li {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--oa-ink);
+  max-width: 68ch;
+}
+.bullets li::marker { color: var(--oa-blue); }
+
+.rejectedBody p, .rejectedBody li {
+  color: var(--oa-muted);
+  text-decoration: line-through;
+  text-decoration-color: rgba(102, 112, 133, 0.6);
+}
+.rejectedNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--oa-amber-ink);
+}
+
+/* ── Fact-level review rows (improvement spec §11.2) ─────────────────── */
+
+.factsBlock {
+  margin-top: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.factList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.factRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 16px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg);
+  padding: 12px 14px;
+  scroll-margin-top: 120px;
+  transition: background 0.2s var(--oa-ease), border-color 0.2s var(--oa-ease);
+}
+.factRow:focus-visible {
+  outline: 2px solid var(--oa-blue);
+  outline-offset: 2px;
+}
+.factRowConfirmed {
+  background: color-mix(in srgb, var(--oa-soft-teal) 42%, var(--oa-surface));
+  border-color: rgba(15, 118, 110, 0.28);
+}
+.factRowEdited {
+  background: color-mix(in srgb, var(--oa-soft-blue) 34%, var(--oa-surface));
+  border-color: rgba(49, 87, 213, 0.32);
+}
+.factRowRejected {
+  background: color-mix(in srgb, var(--oa-soft-red) 46%, var(--oa-surface));
+  border-color: rgba(217, 45, 32, 0.3);
+}
+
+.factMain {
+  flex: 1 1 280px;
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  justify-items: start;
+}
+
+.factTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.factLabel {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--oa-muted-strong);
+}
+
+.factValue {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--oa-ink);
+  overflow-wrap: anywhere;
+}
+.factValueRejected {
+  color: var(--oa-muted);
+  text-decoration: line-through;
+  text-decoration-color: rgba(102, 112, 133, 0.6);
+}
+
+/* Fact source chips (owner / document / interview / inference) */
+.srcChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: var(--oa-r-chip);
+  border: 1px dashed transparent;
+  padding: 2px 9px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+.srcOwner { background: var(--oa-soft-teal); color: var(--oa-teal-deep); }
+.srcDocument { background: var(--oa-bg-alt); color: var(--oa-muted-strong); }
+.srcInterview { background: var(--oa-soft-blue); color: var(--oa-blue-dark); }
+.srcInference {
+  background: transparent;
+  border-color: var(--oa-amber-border);
+  color: var(--oa-amber-ink);
+}
+
+.factConf {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+}
+
+.factExtra {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.factPrev {
+  margin: 0;
+  border-radius: 10px;
+  background: var(--oa-bg-alt);
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+  overflow-wrap: anywhere;
+}
+.factPrevLabel {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+}
+
+.factReason {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--oa-red-ink);
+  overflow-wrap: anywhere;
+}
+
+.factWhen {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--oa-muted);
+}
+
+.factForm {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: 520px;
+}
+.factFormRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.factActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-left: auto;
+}
+
+/* Owner-note callout */
+.noteCallout {
+  margin-top: 14px;
+  display: grid;
+  gap: 6px;
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-soft-blue);
+  padding: 12px 16px;
+  max-width: 62ch;
+}
+.noteCalloutHead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--oa-blue-dark);
+}
+.noteCallout p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--oa-ink);
+}
+
+/* Assigned process-owner chip */
+.ownerChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-bg);
+  padding: 5px 14px 5px 6px;
+}
+.ownerAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--oa-dark);
+  color: #eef1f6;
+  font-size: 9.5px;
+  font-weight: 800;
+  flex: none;
+}
+.ownerChipName { font-size: 12.5px; font-weight: 750; }
+.ownerChipRole { font-size: 10.5px; font-weight: 700; color: var(--oa-muted); }
+
+/* Section tools — always-visible labeled buttons on a stable row (§11.1).
+   Below 768px the row collapses behind the "Section actions" disclosure. */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.moreToggle { display: none; margin-top: 16px; }
+
+/* Inline editors (edit body / add context / assign owner) */
+.editorBlock { display: grid; gap: 10px; }
+.editorRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.inlineForm {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  max-width: 560px;
+}
+.inlineForm > input, .inlineForm > select { flex: 1; min-width: 200px; }
+
+/* Evidence trigger shown only when the rail is hidden */
+.evidenceTrigger { display: none; }
+@media (max-width: 1024px) {
+  .evidenceTrigger { display: inline-flex; }
+}
+
+/* ── Right evidence rail ─────────────────────────────────────────────── */
+
+.rail {
+  position: sticky;
+  top: 76px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+}
+.railCard { padding: 18px; display: grid; gap: 16px; }
+
+.railCounts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.railCount {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg);
+  padding: 10px 12px;
+}
+.railCountNum { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+
+.evidenceList { display: grid; gap: 12px; }
+.evidenceItem {
+  display: grid;
+  gap: 7px;
+  border-left: 2px solid var(--oa-border);
+  padding-left: 12px;
+}
+.evidenceQuote {
+  margin: 0;
+  font-family: var(--oa-serif);
+  font-style: italic;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--oa-ink);
+}
+.evidenceSource {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.thread { display: grid; gap: 8px; }
+.threadBubble {
+  display: grid;
+  gap: 3px;
+  border-radius: 12px;
+  background: var(--oa-bg-alt);
+  padding: 9px 12px;
+}
+.threadBubble p { margin: 0; font-size: 13px; line-height: 1.55; }
+.threadForm { display: flex; gap: 6px; align-items: center; }
+.threadForm > input { flex: 1; min-width: 0; }
+
+/* ── Approval bar — normal flow at the end of the report (R-02) ──────── */
+
+.footer {
+  margin-top: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(14px, 2vw, 26px);
+  flex-wrap: wrap;
+  padding: 14px clamp(16px, 2vw, 24px);
+}
+.footerSummary {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.footerStat {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--oa-ink);
+}
+.footerActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Banners (stale / approved) ──────────────────────────────────────── */
+
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border-radius: var(--oa-r-inner);
+  padding: 13px 16px;
+  border: 1px solid var(--oa-border);
+}
+.bannerStale {
+  background: var(--oa-soft-amber);
+  border-color: rgba(217, 119, 6, 0.4);
+  color: var(--oa-amber-ink);
+}
+.bannerApproved {
+  background: var(--oa-soft-teal);
+  border-color: rgba(15, 118, 110, 0.28);
+  color: var(--oa-teal-deep);
+}
+.bannerIcon { flex: none; margin-top: 1px; }
+.bannerText { margin: 0; font-size: 13px; line-height: 1.55; font-weight: 650; }
+.bannerText strong { font-weight: 800; }
+
+/* Visually hidden (screen-reader text for status glyphs) */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Responsive (spec §21: 1440 / 1024 / 768 / 390) ──────────────────── */
+
+@media (max-width: 1240px) {
+  .wrap { grid-template-columns: 210px minmax(0, 1fr) 276px; }
+}
+
+@media (max-width: 1024px) {
+  .wrap { grid-template-columns: 1fr; }
+
+  /* Contents + Completeness sit ABOVE the document in normal flow —
+     never sticky, never an overlay (improvement spec §11.3, R-02). */
+  .outline {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    gap: 10px;
+  }
+  .outlineList {
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    gap: 4px;
+    padding: 6px;
+    scrollbar-width: thin;
+  }
+  .outlineTitle { flex: none; padding: 0 6px 0 10px; }
+  .outlineItem { flex: none; width: auto; padding: 6px 12px; }
+
+  .rail { display: none; }
+  .sectionRail { left: -14px; }
+}
+
+@media (max-width: 768px) {
+  /* Section tools collapse behind the "Section actions" disclosure. */
+  .moreToggle { display: inline-flex; }
+  .actions { display: none; }
+  .actions.actionsOpen { display: flex; margin-top: 10px; }
+
+  .footer { align-items: stretch; }
+  .footerSummary { width: 100%; }
+  .footerActions { margin-left: 0; width: 100%; }
+  .footerActions > * { flex: 1; }
+
+  .factActions { margin-left: 0; width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .paper { padding: 22px 18px; }
+  .sectionRail { left: -10px; }
+  .factRow { padding: 10px 12px; }
+  .factActions > * { flex: 1 1 auto; }
+}

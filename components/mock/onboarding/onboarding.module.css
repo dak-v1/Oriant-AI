@@ -1,0 +1,1085 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Onboarding + Lean Canvas layout (spec §7, §8, §21).
+   Layout-only rules — visual primitives come from .oa-* (app/app/app.css).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Shared two-column layout: flow + live capture rail ── */
+
+.layout {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 336px;
+  gap: clamp(24px, 3vw, 40px);
+  align-items: start;
+}
+
+.flowCol {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.rail {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.railCard {
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+
+/* Intentional info panel (improvement spec §8): 1.5px border + subtle tint.
+   Scoped under .rail so it wins over the .oa-card border. */
+.rail .railCard {
+  border: 1.5px solid var(--oa-border-strong);
+  background: color-mix(in srgb, var(--oa-soft-blue) 16%, var(--oa-surface));
+}
+
+.railHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.railHeadRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.railCount {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-surface);
+  border: 1px solid var(--oa-border);
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+
+@keyframes railPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.updatedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.updatedDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--oa-teal-deep);
+  flex: none;
+  animation: railPulse 1.3s ease-in-out infinite;
+}
+
+.railFacts {
+  display: grid;
+}
+
+.railFact {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 0;
+  border-top: 1px solid var(--oa-border);
+}
+
+.railFactIcon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--oa-surface);
+  border: 1px solid var(--oa-border);
+  color: var(--oa-blue-dark);
+  display: grid;
+  place-items: center;
+  flex: none;
+  margin-top: 1px;
+}
+
+.railFactBody {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+}
+
+.railNext {
+  margin: 0;
+  border-top: 1px dashed var(--oa-border-strong);
+  padding-top: 12px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted);
+}
+
+.railChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.railChip {
+  font-size: 11.5px;
+  padding: 3px 10px;
+}
+
+/* ── Stepper ── */
+
+.stepper {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.stepBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-surface);
+  min-height: 44px; /* §19.1: 44px minimum button target */
+  padding: 5px 16px 5px 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+  cursor: pointer;
+  transition: border-color 0.2s var(--oa-ease), color 0.2s var(--oa-ease),
+    background 0.2s var(--oa-ease);
+}
+
+.stepBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.stepBtn[aria-current="step"] {
+  border-color: var(--oa-blue);
+  color: var(--oa-blue-dark);
+  background: var(--oa-soft-blue);
+}
+
+.stepBtnDone {
+  color: var(--oa-teal-deep);
+}
+
+.stepNum {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--oa-bg-alt);
+  font-size: 11px;
+  font-weight: 800;
+  flex: none;
+}
+
+.stepBtn[aria-current="step"] .stepNum {
+  background: var(--oa-blue);
+  color: var(--oa-on-blue);
+}
+
+.stepBtnDone .stepNum {
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+}
+
+/* ── Step viewport (horizontal transitions stay inside) ── */
+
+.viewport {
+  overflow-x: clip;
+  padding: 12px;
+  margin: -12px;
+}
+
+.stepCard {
+  padding: clamp(22px, 3.4vw, 36px);
+  display: grid;
+  gap: 22px;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Welcome step ── */
+
+/* Mode cards (improvement spec §6): built on .oa-selectable + .oa-radio.
+   Equal heights via grid stretch; selection changes indicator + tint only,
+   never height. */
+.modeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.modeCard {
+  height: 100%;
+  align-items: stretch;
+}
+
+.modeCard :global(.oa-radio) {
+  align-self: flex-start;
+}
+
+.modeBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.modeIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+  flex: none;
+}
+
+.modeTitle {
+  font-weight: 750;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.modeRec {
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 11.5px;
+  font-weight: 750;
+  color: var(--oa-teal-deep);
+}
+
+.demoPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: var(--oa-r-inner);
+  border: 1px dashed var(--oa-border-strong);
+  background: var(--oa-bg-alt);
+  flex-wrap: wrap;
+}
+
+.demoPanel > div {
+  display: grid;
+  gap: 4px;
+  min-width: 220px;
+  flex: 1;
+}
+
+.demoList {
+  list-style: none;
+  margin: 0;
+  padding: 16px 18px;
+  display: grid;
+  gap: 9px;
+  background: var(--oa-soft-teal);
+  border-radius: var(--oa-r-inner);
+  font-size: 13.5px;
+}
+
+.demoList li {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+
+.demoList svg {
+  color: var(--oa-teal-deep);
+  margin-top: 3px;
+  flex: none;
+}
+
+/* ── Intro step ── */
+
+.promptQuote {
+  font-size: clamp(19px, 2.4vw, 24px);
+  font-weight: 720;
+  letter-spacing: -0.018em;
+  line-height: 1.32;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.capturedCard {
+  padding: 18px 20px;
+  display: grid;
+  gap: 12px;
+  background: var(--oa-bg-alt);
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+}
+
+.capturedCard p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.62;
+}
+
+/* ── Tools step (improvement spec §7) ── */
+
+.toolsHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* "Your tools" area — selected + custom tools, always first. */
+.yourTools {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-bg-alt);
+}
+
+.yourToolList {
+  display: grid;
+  gap: 8px;
+}
+
+.yourToolRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--oa-border);
+  border-radius: 12px;
+  background: var(--oa-surface);
+}
+
+.yourToolMeta {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.yourToolName {
+  font-size: 13.5px;
+  font-weight: 720;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.yourToolSub {
+  font-size: 12px;
+  color: var(--oa-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yourToolSubWrap {
+  font-size: 12.5px;
+  color: var(--oa-muted);
+  line-height: 1.5;
+}
+
+/* Deterministic monogram tool mark (no external logos). */
+.toolMark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid var(--oa-border);
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  flex: none;
+}
+
+.searchWrap {
+  position: relative;
+}
+
+.searchWrap svg {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--oa-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  padding-left: 38px;
+}
+
+.filterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.catList {
+  display: grid;
+  gap: 18px;
+}
+
+.catGroup {
+  display: grid;
+  gap: 10px;
+}
+
+/* Catalog tool cards: .oa-selectable base, compact padding, check badge.
+   Selection never changes card height. */
+.toolGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
+  gap: 10px;
+}
+
+.toolCard {
+  padding: 12px 42px 12px 12px;
+  border-radius: var(--oa-r-inner);
+  gap: 10px;
+}
+
+.toolCardMeta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.toolCardName {
+  font-size: 13.5px;
+  font-weight: 720;
+}
+
+.toolCardPurpose {
+  font-size: 12px;
+  color: var(--oa-muted);
+  line-height: 1.45;
+}
+
+.toolCardCat {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+}
+
+.addRowEnd {
+  display: flex;
+  justify-content: center;
+}
+
+/* ── Add app drawer (improvement spec §7.2) ── */
+
+.drawerTabsWrap {
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.drawerStack {
+  display: grid;
+  gap: 14px;
+}
+
+.drawerList {
+  display: grid;
+  gap: 8px;
+}
+
+.drawerRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--oa-border);
+  border-radius: 12px;
+  background: var(--oa-surface);
+  flex-wrap: wrap;
+}
+
+.drawerRow .yourToolMeta {
+  flex: 1 1 180px;
+}
+
+.customForm {
+  display: grid;
+  gap: 14px;
+}
+
+/* ── Summary step ── */
+
+.checkList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.checkRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 13px 16px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+}
+
+.checkRow > div {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.checkTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.checkIconDone,
+.checkIconTodo {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  margin-top: 1px;
+}
+
+.checkIconDone {
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+}
+
+.checkIconTodo {
+  border: 1px dashed var(--oa-border-strong);
+  color: var(--oa-muted);
+  background: transparent;
+}
+
+.consentCard {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-surface);
+}
+
+.consentLines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+  font-size: 13.5px;
+  color: var(--oa-muted-strong);
+  line-height: 1.55;
+}
+
+.consentLines li {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+
+.consentLines svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--oa-teal-deep);
+}
+
+.consentCheck {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: var(--oa-soft-blue);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.consentCheck input {
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  accent-color: var(--oa-blue);
+  flex: none;
+  cursor: pointer;
+}
+
+/* ══════════════════ Lean Canvas ══════════════════ */
+
+.narrowCol {
+  max-width: 880px;
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+/* Entry: three equal selectable option cards (improvement spec §9.1).
+   Base affordance comes from .oa-selectable; this only lays out the grid.
+   Selection never changes card height (indicator + tint only). */
+
+.entryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.entryBody {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+}
+
+.entryIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+}
+
+.entryIconTeal {
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+}
+
+.entryTitle {
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+}
+
+.pathIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+}
+
+/* Upload */
+
+.dropZone {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: clamp(30px, 5vw, 54px) 24px;
+  border: 1.5px dashed var(--oa-border-strong);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-surface);
+  text-align: center;
+  transition: border-color 0.2s var(--oa-ease), background 0.2s var(--oa-ease);
+}
+
+.dropZoneActive {
+  border-color: var(--oa-blue);
+  background: var(--oa-soft-blue);
+}
+
+.fileChips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.readingCard {
+  padding: clamp(22px, 3vw, 32px);
+  display: grid;
+  gap: 16px;
+}
+
+.readingLines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.readingLines li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--oa-muted);
+}
+
+.readingLines li[data-state="done"] {
+  color: var(--oa-ink);
+}
+
+.readingLines li[data-state="current"] {
+  color: var(--oa-blue-dark);
+  font-weight: 650;
+}
+
+.lineDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--oa-border-strong);
+  margin: 0 4px;
+  flex: none;
+}
+
+/* Guided */
+
+.guidedTop {
+  display: grid;
+  gap: 10px;
+}
+
+/* Guided question card: content-driven height (no fixed heights anywhere),
+   20-24px desktop padding, 16px on mobile (improvement spec §9.2). */
+.guidedCard {
+  padding: clamp(20px, 2.4vw, 24px);
+  gap: 18px;
+}
+
+/* Collapsed-by-default "Examples and guidance" expander (spec §9.2). */
+.guideToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 14px;
+  margin-left: -14px;
+  border-radius: var(--oa-r-chip);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+  transition: color 0.2s var(--oa-ease), background 0.2s var(--oa-ease);
+}
+
+.guideToggle:hover {
+  color: var(--oa-ink);
+  background: var(--oa-bg-alt);
+}
+
+.guidePanel {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 14px 16px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-bg-alt);
+}
+
+.exampleChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.exampleChip {
+  cursor: default;
+  background: var(--oa-bg-alt);
+  font-weight: 550;
+  white-space: normal;
+  text-align: left;
+}
+
+.improveHead {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.improveIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.improveGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.improvePanel {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 16px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-bg-alt);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.improvePanel p {
+  margin: 0;
+}
+
+.improvePanelSuggested {
+  background: var(--oa-surface);
+  border-color: var(--oa-blue);
+  box-shadow: 0 0 0 3px rgba(49, 87, 213, 0.1);
+}
+
+/* Canvas board — a real Lean Canvas (improvement spec §9.3, LC-01/LC-02).
+   One outer 1.5px-bordered container; the 1px grid gap over a border-colour
+   background draws SHARED internal cell borders (no doubles). Desktop uses
+   the classic multi-column arrangement; ≤1024px two columns; ≤768px stacked
+   in the fixture's logical reading order. Cells grow with content. */
+
+.canvasTopBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.canvasBoard {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-auto-rows: minmax(150px, auto);
+  gap: 1px;
+  background: var(--oa-border);
+  border: 1.5px solid var(--oa-border-strong);
+  border-radius: var(--oa-r-card);
+  overflow: hidden;
+  grid-template-areas:
+    "problem problem solution solution uvp uvp unfair unfair segments segments"
+    "problem problem metrics metrics uvp uvp channels channels segments segments"
+    "cost cost cost cost cost revenue revenue revenue revenue revenue";
+}
+
+.areaProblem  { grid-area: problem; }
+.areaSegments { grid-area: segments; }
+.areaUvp      { grid-area: uvp; }
+.areaSolution { grid-area: solution; }
+.areaChannels { grid-area: channels; }
+.areaRevenue  { grid-area: revenue; }
+.areaCost     { grid-area: cost; }
+.areaMetrics  { grid-area: metrics; }
+.areaUnfair   { grid-area: unfair; }
+
+.canvasBlock {
+  background: var(--oa-surface);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.blockHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.blockNum {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  font-size: 10.5px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.blockTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+  margin: 0;
+}
+
+.blockIconBtn {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--oa-muted);
+  border: 1px solid transparent;
+  flex: none;
+  transition: color 0.2s var(--oa-ease), border-color 0.2s var(--oa-ease),
+    background 0.2s var(--oa-ease);
+}
+
+/* §19.1: extend the tap target to 44px without growing the visual button. */
+.blockIconBtn::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+
+.blockIconBtn:hover {
+  color: var(--oa-ink);
+  border-color: var(--oa-border);
+  background: var(--oa-bg-alt);
+}
+
+.blockTextBtn {
+  text-align: left;
+  font-size: 13.5px;
+  line-height: 1.58;
+  color: var(--oa-ink);
+  border-radius: 10px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
+  cursor: text;
+  transition: background 0.2s var(--oa-ease);
+}
+
+.blockTextBtn:hover {
+  background: var(--oa-bg-alt);
+}
+
+.blockEdit {
+  display: grid;
+  gap: 8px;
+}
+
+.canvasFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+/* ── Responsive (spec §21: 1440 / 1024 / 768 / 390) ── */
+
+@media (max-width: 1023px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .rail {
+    position: static;
+  }
+  /* Two columns keep the shared-border board; DOM order = logical reading
+     order (Problem → Segments → UVP → Solution → Channels → Revenue → Cost
+     → Metrics → Unfair advantage). */
+  .canvasBoard {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: none;
+    grid-auto-rows: minmax(120px, auto);
+  }
+  .areaProblem, .areaSegments, .areaUvp, .areaSolution, .areaChannels,
+  .areaRevenue, .areaCost, .areaMetrics, .areaUnfair {
+    grid-area: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .modeGrid {
+    grid-template-columns: 1fr;
+  }
+  .entryGrid {
+    grid-template-columns: 1fr;
+  }
+  .improveGrid {
+    grid-template-columns: 1fr;
+  }
+  .canvasBoard {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+  }
+  .stepCard {
+    padding: 18px;
+  }
+  .guidedCard {
+    padding: 16px;
+  }
+  .checkRow {
+    flex-wrap: wrap;
+  }
+  .demoPanel {
+    align-items: stretch;
+  }
+}

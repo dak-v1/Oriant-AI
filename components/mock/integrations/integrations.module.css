@@ -1,0 +1,598 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Integrations experience (spec §12) — layout-only module classes.
+   Everything generic (buttons, cards, badges, panels) comes from `.oa-*`.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Controls: tabs + search ─────────────────────────────────────────────── */
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.tabsWrap {
+  overflow-x: auto;
+  max-width: 100%;
+  scrollbar-width: none;
+  /* keep focus rings visible inside the scroll container */
+  padding: 3px;
+  margin: -3px;
+}
+.tabsWrap::-webkit-scrollbar { display: none; }
+
+.tabCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  margin-left: 8px;
+  border-radius: 999px;
+  background: rgba(16, 24, 40, 0.08);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+:global(.oa-tab--active) .tabCount {
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+}
+
+.search {
+  position: relative;
+  flex: 0 1 300px;
+  min-width: 220px;
+}
+.search > svg {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--oa-muted);
+  pointer-events: none;
+}
+.search .searchInput { padding-left: 38px; }
+
+/* ── Recommended: progress line ──────────────────────────────────────────── */
+
+.progressPanel {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 15px 20px;
+  margin-bottom: 18px;
+}
+.progressText {
+  display: grid;
+  gap: 2px;
+  min-width: 230px;
+}
+.progressLine {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 780;
+  letter-spacing: -0.01em;
+}
+.progressBar { flex: 1 1 220px; }
+
+/* ── Grids ───────────────────────────────────────────────────────────────── */
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.availGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.mcpGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+  height: 100%;
+}
+.availCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  height: 100%;
+}
+
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.cardHeadText {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.cardStatus { flex: none; }
+
+.purpose {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+}
+.clamp2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.needBy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.agentChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-bg-alt);
+  padding: 3px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+.agentChip::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--oa-blue);
+  opacity: 0.55;
+  flex: none;
+}
+
+.permCols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  border-top: 1px dashed var(--oa-border);
+  padding-top: 14px;
+}
+.permCol {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+}
+.permList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.permItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12.8px;
+  line-height: 1.45;
+  color: var(--oa-muted-strong);
+}
+.permItem svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--oa-muted);
+}
+
+.cardFoot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 2px;
+}
+.category {
+  font-size: 10.8px;
+  font-weight: 780;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+}
+
+/* ── Advanced accordion (MCP cards) ──────────────────────────────────────── */
+
+.advBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px; /* §19.1: 44px minimum button target */
+  padding: 0 10px;
+  margin-left: -10px; /* keep the label aligned with surrounding content */
+  border-radius: var(--oa-r-chip);
+  font-size: 12.5px;
+  font-weight: 750;
+  color: var(--oa-muted-strong);
+  transition: color 0.2s var(--oa-ease), background 0.2s var(--oa-ease);
+}
+.advBtn:hover { color: var(--oa-ink); background: var(--oa-bg-alt); }
+.advChevron { transition: transform 0.25s var(--oa-ease); }
+.advChevronOpen { transform: rotate(180deg); }
+
+.advPanel { overflow: hidden; }
+.advInner {
+  margin-top: 10px;
+  background: var(--oa-bg-alt);
+  border: 1px solid var(--oa-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+.advRow {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: 10px;
+  min-width: 0;
+}
+.advKey {
+  font-size: 10.3px;
+  font-weight: 780;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+  padding-top: 2px;
+}
+.advVal {
+  margin: 0;
+  font-family: var(--oa-mono);
+  font-size: 11.8px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+  word-break: break-all;
+}
+
+/* ── Connected rows ──────────────────────────────────────────────────────── */
+
+.rowList {
+  display: grid;
+  gap: 10px;
+}
+.rowText {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.rowTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 750;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.rowSub {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--oa-muted);
+  overflow-wrap: anywhere;
+}
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+/* ── MCP explainer callout ───────────────────────────────────────────────── */
+
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+.calloutIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--oa-dark);
+  color: #dbe3ef;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.calloutText {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* ── Empty states ────────────────────────────────────────────────────────── */
+
+.empty {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
+  padding: 40px 24px;
+}
+.emptyTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 780;
+}
+.emptyIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: var(--oa-surface);
+  border: 1px solid var(--oa-border);
+  color: var(--oa-muted-strong);
+  display: grid;
+  place-items: center;
+}
+
+/* ── Connect wizard steps ────────────────────────────────────────────────── */
+
+.wizSteps { display: grid; }
+
+.wizStep {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 14px;
+  position: relative;
+  padding-bottom: 26px;
+}
+.wizStep:last-child { padding-bottom: 8px; }
+.wizStep:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 15px;
+  top: 38px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--oa-border);
+  transition: background 0.3s var(--oa-ease);
+}
+.wizStep[data-state="done"]:not(:last-child)::before {
+  background: var(--oa-teal);
+  opacity: 0.55;
+}
+
+.wizBullet {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12.5px;
+  font-weight: 800;
+  border: 1.5px solid var(--oa-border);
+  color: var(--oa-muted);
+  background: var(--oa-surface);
+  transition: background 0.3s var(--oa-ease), border-color 0.3s var(--oa-ease),
+    color 0.3s var(--oa-ease), box-shadow 0.3s var(--oa-ease);
+}
+.wizStep[data-state="active"] .wizBullet {
+  border-color: var(--oa-blue);
+  color: var(--oa-blue-dark);
+  box-shadow: 0 0 0 4px rgba(49, 87, 213, 0.12);
+}
+.wizStep[data-state="done"] .wizBullet {
+  background: var(--oa-teal-deep);
+  border-color: var(--oa-teal-deep);
+  color: var(--oa-on-teal);
+}
+
+.wizBody {
+  display: grid;
+  gap: 10px;
+  padding-top: 5px;
+  min-width: 0;
+}
+.wizTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 780;
+  letter-spacing: -0.01em;
+}
+.wizStep[data-state="upcoming"] .wizTitle { color: var(--oa-muted); }
+
+.radioGroup { display: grid; gap: 8px; }
+.radioRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--oa-blue);
+  background: var(--oa-soft-blue);
+  border-radius: 12px;
+  padding: 11px 14px;
+}
+.radioRowAlt {
+  border-color: var(--oa-border);
+  background: transparent;
+  color: var(--oa-muted);
+}
+.radioDot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--oa-blue);
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--oa-surface);
+}
+.radioDot::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--oa-blue);
+}
+.radioDotOff { border-color: var(--oa-border-strong); }
+.radioDotOff::after { display: none; }
+.radioLabel {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+.radioSub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--oa-muted);
+}
+
+.wizPermList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.wizPermItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--oa-muted-strong);
+}
+.wizPermItem svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--oa-teal-deep);
+}
+
+.ownerLine {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border-radius: 10px;
+  background: var(--oa-bg-alt);
+  padding: 10px 12px;
+  font-size: 12.8px;
+  line-height: 1.5;
+  color: var(--oa-muted-strong);
+}
+.ownerLine svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--oa-blue-dark);
+}
+
+.testing {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--oa-muted-strong);
+}
+.testingOk { color: var(--oa-teal-deep); }
+
+.connectedBox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--oa-soft-teal);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.connectedIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--oa-teal-deep);
+  color: var(--oa-on-teal);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.connectedText { display: grid; gap: 1px; min-width: 0; }
+.connectedTitle { margin: 0; font-size: 14px; font-weight: 780; }
+
+.wizTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* ── Manage drawer ───────────────────────────────────────────────────────── */
+
+.manageHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+  padding: 14px 16px;
+}
+.manageSection {
+  display: grid;
+  gap: 10px;
+  padding-top: 18px;
+}
+.manageStack { display: grid; gap: 8px; }
+
+/* ── Responsive (spec §21: 1440 / 1024 / 768 / 390) ─────────────────────── */
+
+@media (max-width: 1180px) {
+  .availGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1024px) {
+  .cardGrid { gap: 14px; }
+  .card { padding: 20px; }
+}
+
+@media (max-width: 960px) {
+  .cardGrid { grid-template-columns: 1fr; }
+  .mcpGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .controls { flex-direction: column; align-items: stretch; }
+  .search { flex: 1 1 auto; min-width: 0; }
+  .availGrid { grid-template-columns: 1fr; }
+  .progressPanel { padding: 14px 16px; }
+}
+
+@media (max-width: 480px) {
+  .permCols { grid-template-columns: 1fr; }
+  .cardFoot { flex-wrap: wrap; }
+  .connRow { flex-wrap: wrap; }
+  .rowText { flex-basis: calc(100% - 50px); }
+  .rowActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

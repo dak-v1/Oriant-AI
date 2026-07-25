@@ -1,0 +1,294 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   ProblemSolutionEditorial — problems → solution as editorial storytelling
+   (brief §17).
+
+   Primary motion: COMPOUND scroll emphasis. The TSX toggles data attributes
+   (data-engaged + data-index on .problemsWrap once the IntersectionObserver
+   is live, data-center per line while it crosses the viewport centre band);
+   this module transitions colour, opacity and transform only — no per-frame
+   JS. Static-first: without JS none of the emphasis rules apply and every
+   line renders at full ink with outline chips and a hidden spine cursor.
+
+   Active line = ink + translateX(14px) + accent-filled chip (white number).
+   Non-centre lines = --lp-muted at 0.55 opacity (transient reading state;
+   the large size keeps the resting muted colour AA, and the static/no-JS/
+   reduced-motion frame never dims at all).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.section {
+  background: var(--lp-bg);
+}
+
+/* ── Part 1 · heading — clip-mask reveal (the manifesto's language) ── */
+
+/* Overflow-hidden shell; the inner span slides 112% → 0. The tiny
+   padding/negative-margin pair keeps descenders from being shaved by the
+   clip at tight display line-heights. */
+.headMask {
+  display: block;
+  overflow: hidden;
+  padding-block: 0.09em;
+  margin-block: -0.09em;
+}
+
+.headMaskInner {
+  display: inline-block;
+}
+
+.headLineMuted {
+  color: var(--lp-muted-strong);
+}
+
+/* ── Part 1 · oversized problem lines + progress spine ── */
+
+.problemsWrap {
+  position: relative;
+  margin-top: clamp(56px, 8vw, 120px);
+}
+
+/* Editorial offset on wide viewports so the list sits in from the heading */
+@media (min-width: 1024px) {
+  .problemsWrap {
+    margin-left: clamp(40px, 9vw, 150px);
+  }
+}
+
+/* Reading-cursor spine: static 2px track spanning the list… */
+.spine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--lp-border);
+}
+
+/* …with an accent cursor segment (one fifth = one line stop) that slides to
+   the active line. transform + opacity only; the data-index attribute is the
+   whole API. Hidden until the observer reports a centred line, so the no-JS
+   and reduced-motion frames read as a plain editorial rule. */
+.spineFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 20%;
+  border-radius: inherit;
+  background: var(--lp-accent);
+  opacity: 0;
+  transform: translateY(0%);
+  transition:
+    transform 0.6s var(--lp-ease),
+    opacity 0.3s var(--lp-ease);
+}
+
+.problemsWrap[data-index] .spineFill {
+  opacity: 1;
+}
+.problemsWrap[data-index="0"] .spineFill {
+  transform: translateY(0%);
+}
+.problemsWrap[data-index="1"] .spineFill {
+  transform: translateY(100%);
+}
+.problemsWrap[data-index="2"] .spineFill {
+  transform: translateY(200%);
+}
+.problemsWrap[data-index="3"] .spineFill {
+  transform: translateY(300%);
+}
+.problemsWrap[data-index="4"] .spineFill {
+  transform: translateY(400%);
+}
+
+.problems {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 clamp(24px, 3vw, 44px); /* clears the spine */
+  display: grid;
+  row-gap: 28px;
+}
+
+/* The li is framer's entrance element (opacity + alternating x). All
+   observer-driven state styling lives on .lineInner below so framer's
+   lingering inline transform never fights the CSS (contract §CSS-pitfalls). */
+.problemLine {
+  display: block;
+}
+
+.lineInner {
+  display: grid;
+  grid-template-columns: clamp(3.2rem, 4.6vw, 4rem) minmax(0, 1fr);
+  align-items: baseline;
+  font-size: clamp(1.5rem, 2.6vw, 2.4rem);
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.016em;
+  color: var(--lp-ink);
+  transition:
+    color 0.45s var(--lp-ease),
+    opacity 0.45s var(--lp-ease),
+    transform 0.55s var(--lp-ease);
+}
+
+/* Index chip: muted outline at rest. As an inline-flex, its baseline is the
+   number's baseline, so the grid's baseline alignment seats it against the
+   first text line. One-shot state transition (not a loop), matching the
+   line-colour treatment. */
+.lineInner .problemIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--lp-border-strong);
+  border-radius: var(--lp-radius-chip);
+  background: transparent;
+  color: var(--lp-muted-strong);
+  font-variant-numeric: tabular-nums;
+  transition:
+    color 0.35s var(--lp-ease),
+    background-color 0.35s var(--lp-ease),
+    border-color 0.35s var(--lp-ease);
+}
+
+.problemText {
+  display: block;
+  max-width: 30ch;
+}
+
+/* JS-engaged scroll emphasis — the compound treatment.
+   Non-centre lines: muted colour + 0.55 opacity (transient reading state). */
+.problemsWrap[data-engaged="true"] .lineInner {
+  color: var(--lp-muted);
+  opacity: 0.55;
+}
+
+/* Centre-band line: full ink, slides 14px right (page root clips overflow-x,
+   so the shift can never cause a horizontal scrollbar). */
+.problemsWrap[data-engaged="true"] .problemLine[data-center="true"] .lineInner {
+  color: var(--lp-ink);
+  opacity: 1;
+  transform: translateX(14px);
+}
+
+/* …and its chip flips to an accent fill with the number in white. */
+.problemsWrap[data-engaged="true"]
+  .problemLine[data-center="true"]
+  .problemIndex {
+  background: var(--lp-accent);
+  border-color: var(--lp-accent);
+  color: #fff;
+}
+
+/* ── Part 2 · the turn ── */
+
+.turn {
+  margin-top: clamp(72px, 10vw, 160px);
+}
+
+/* Enters via a framer clip-path wipe: inset(0 100% 0 0 round 32px) →
+   inset(0 0% 0 0 round 32px). The round 32px keeps the wipe's edge matched
+   to the resting radius the whole way. */
+.panel {
+  background: var(--lp-soft-teal);
+  border-radius: 32px;
+  padding: clamp(40px, 5vw, 72px);
+}
+
+.solutionHeading {
+  max-width: 22ch;
+  margin: 0 0 clamp(36px, 4.5vw, 60px);
+  color: var(--lp-ink);
+}
+
+.solutionAccent {
+  color: var(--lp-teal-deep);
+}
+
+/* Flowing capability index: two columns filled top-to-bottom
+   (01–05 left, 06–10 right), collapsing to one column on mobile. */
+.solutionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(5, auto);
+  grid-auto-flow: column;
+  gap: 16px clamp(32px, 4vw, 64px);
+}
+
+.solutionItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 16.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--lp-ink);
+}
+
+.solutionCheck {
+  flex: none;
+  margin-top: 4px; /* optical centre against the first text line */
+  color: var(--lp-teal-deep);
+}
+
+/* ── Mobile recomposition (zero horizontal overflow at 390px) ── */
+
+@media (max-width: 767px) {
+  .solutionList {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-auto-flow: row;
+  }
+}
+
+/* ── Reduced motion: every line at full ink, no dimming, chips in their
+   outline state, spine cursor hidden, and all framer entrances parked at
+   their finished frame (the !important rules beat inline styles even if the
+   observer engaged before the preference was read). Source order lets the
+   equal-specificity selectors here win over the engaged rules above. ── */
+@media (prefers-reduced-motion: reduce) {
+  .problemsWrap[data-engaged="true"] .lineInner,
+  .problemsWrap[data-engaged="true"]
+    .problemLine[data-center="true"]
+    .lineInner {
+    color: var(--lp-ink);
+    opacity: 1;
+    transform: none;
+  }
+
+  .problemsWrap[data-engaged="true"]
+    .problemLine[data-center="true"]
+    .problemIndex {
+    background: transparent;
+    border-color: var(--lp-border-strong);
+    color: var(--lp-muted-strong);
+  }
+
+  .spineFill {
+    opacity: 0 !important;
+  }
+
+  .headMaskInner {
+    transform: none !important;
+  }
+
+  .problemLine {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+
+  .panel {
+    clip-path: none !important;
+  }
+
+  .solutionItem {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}

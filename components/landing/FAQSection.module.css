@@ -1,0 +1,179 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   FAQSection.module.css — calm light FAQ accordion (redesign brief §18).
+   Primary motion: the grid-template-rows 0fr→1fr open/close technique,
+   plus per-item entrance (framer, in the TSX: alternating ±16px x offsets,
+   0.05s stagger). The open item gets an accent bar sliding down its left
+   edge (scaleY 0→1, transform-origin top, 0.3s), the answer fades up 8px
+   as the panel opens, and the Plus icon rotates with a slight overshoot
+   ease. No loops live in this module; every transition here is a one-shot
+   state change, and the global reduced-motion kill in landing.css collapses
+   each one to 0.01ms, so open/close becomes instant with no extra rules.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.section {
+  background: var(--lp-bg);
+}
+
+/* ── Head: centred, max 640px ── */
+.head {
+  max-width: 640px;
+  margin: 0 auto clamp(40px, 5vw, 72px);
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+  text-align: center;
+}
+
+/* ── Accordion ── */
+.accordion {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* position: relative anchors the accent bar; the item is framer-animated
+   (entrance only), so no CSS transform ever lives on it. */
+.item {
+  position: relative;
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  border-radius: var(--lp-radius-card);
+  margin-bottom: 12px;
+  transition:
+    border-color 0.35s var(--lp-ease),
+    box-shadow 0.35s var(--lp-ease);
+}
+.item:last-child {
+  margin-bottom: 0;
+}
+.item:hover {
+  border-color: var(--lp-border-strong);
+}
+
+.itemOpen {
+  border-color: var(--lp-border-strong);
+  box-shadow: var(--lp-shadow-card);
+}
+
+/* Accent bar: slides down the open item's left edge (scaleY from the top,
+   0.3s). Inset from the card's rounded corners; decorative — open state is
+   already conveyed by aria-expanded and the icon/colour change. */
+.accentBar {
+  position: absolute;
+  left: 0;
+  top: 16px;
+  bottom: 16px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--lp-accent);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.3s var(--lp-ease);
+  pointer-events: none;
+}
+.itemOpen .accentBar {
+  transform: scaleY(1);
+}
+
+.question {
+  margin: 0;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  min-height: 44px;
+  padding: 22px 28px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--lp-radius-card);
+  text-align: left;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  line-height: 1.35;
+  color: var(--lp-ink);
+  cursor: pointer;
+  transition: color 0.22s var(--lp-ease);
+}
+.itemOpen .trigger {
+  color: var(--lp-accent);
+}
+
+.questionText {
+  min-width: 0;
+}
+
+/* Plus → close rotation with a slight overshoot (back-ease swings a few
+   degrees past 45° and settles). One-shot transition, never looped. */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: var(--lp-muted-strong);
+  transition:
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    color 0.22s var(--lp-ease);
+}
+.itemOpen .icon {
+  transform: rotate(45deg);
+  color: var(--lp-accent);
+}
+
+/* ── Open/close: grid-template-rows 0fr→1fr height technique ──
+   visibility rides the same transition — it holds "visible" for the whole
+   collapse, then flips at the end, so closed answers leave the a11y tree
+   without cutting the animation short. */
+.panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 0.35s var(--lp-ease),
+    visibility 0.35s var(--lp-ease);
+}
+.panelOpen {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+
+.panelClip {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Answer fades up 8px as the panel opens (opacity + transform only).
+   Base = hidden/8px down; the default-open first item renders with
+   .panelOpen, so the server HTML reads complete. */
+.answer {
+  margin: 0;
+  padding: 0 28px 24px;
+  max-width: 720px;
+  font-size: 15.5px;
+  line-height: 1.62;
+  color: var(--lp-muted-strong);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.3s var(--lp-ease) 0.05s,
+    transform 0.3s var(--lp-ease) 0.05s;
+}
+.panelOpen .answer {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Mobile recomposition: tighter paddings, same content, no overflow ── */
+@media (max-width: 767px) {
+  .trigger {
+    padding: 18px 20px;
+    gap: 14px;
+    font-size: 16px;
+  }
+  .answer {
+    padding: 0 20px 20px;
+  }
+}

@@ -14,7 +14,7 @@ export async function POST() {
     if (planned.length === 0) throw new GateError("No agents in the plan.");
     const missing = planned.filter((a) => !db.artifacts[a.id]);
     if (missing.length > 0) {
-      throw new GateError(`Build first — no package yet for: ${missing.map((a) => a.name).join(", ")}`);
+      throw new GateError(`Build first: no package yet for ${missing.map((a) => a.name).join(", ")}`);
     }
     db.phase = "validating";
     for (const agent of planned) {

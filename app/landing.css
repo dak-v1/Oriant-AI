@@ -1,0 +1,436 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Oriant.ai landing page design system — v2 (editorial redesign).
+   Scoped under `.lp` so the Margo demo app (/demo) is untouched.
+   Central tokens + shared utilities only — section-specific styles live in
+   colocated CSS Modules under components/landing/.
+
+   Palette (redesign brief §3): warm off-whites, ink navy, primary blue,
+   secondary teal. No pure-white section backgrounds. No red-pink.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.lp {
+  /* ── Surfaces ── */
+  --lp-bg: #f3f4f0;            /* main page background            */
+  --lp-bg-alt: #e9ede8;        /* alternate section background    */
+  --lp-surface: #fafaf7;       /* raised card surface             */
+
+  /* ── Text ── */
+  --lp-ink: #101828;
+  --lp-muted: #667085;        /* large text (≥24px, or ≥18.67px bold) only    */
+  --lp-muted-strong: #4e596b; /* small secondary text — AA on both off-whites */
+
+  /* On-fill text colours (single source for every teal/ink/accent fill) */
+  --lp-on-teal-deep: #f4fbf9; /* text on --lp-teal-deep / --lp-approved-fill  */
+  --lp-on-accent: #fdfdfb;    /* text on --lp-accent and --lp-ink fills       */
+  --lp-teal-bright: #0f766e;  /* on-surface teal text; brightened on dark     */
+
+  /* ── Brand ── */
+  --lp-accent: #3157d5;        /* primary blue: actions, active agents, orchestration */
+  --lp-accent-dark: #2647b8;   /* blue hover/pressed             */
+  --lp-teal: #20a392;          /* completed states, connected systems, positive outcomes */
+  --lp-teal-deep: #0f766e;     /* teal fill with white text (accessible) */
+  --lp-soft-blue: #e8edfc;
+  --lp-soft-teal: #dff3ef;
+
+  /* ── Chrome ── */
+  --lp-border: #d8ddd6;
+  --lp-border-strong: rgba(16, 24, 40, 0.26);
+
+  /* ── Status (never colour-alone; always paired with a text label) ── */
+  --lp-pending: #92400e;       /* amber ink for "Pending" outline badges  */
+  --lp-pending-border: #d97706;
+  --lp-approved-fill: #0f766e; /* teal fill for "Approved"                */
+  --lp-review: #2647b8;        /* blue outline "Review requested"         */
+
+  /* ── Dark narrative sections ── */
+  --lp-dark-bg: #111827;
+  --lp-dark-muted: #b8c0cc;
+
+  /* On-dark link/accent variants (legible on #111827) */
+  --lp-accent-bright: var(--lp-accent);
+  --lp-accent-bright-hover: var(--lp-accent-dark);
+
+  --lp-font-sans: var(--font-manrope, "Manrope"), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --lp-font-serif: var(--font-instrument-serif, "Instrument Serif"), Georgia, "Times New Roman", serif;
+
+  --lp-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --lp-container: 1280px;
+  --lp-radius-card: 28px;
+  --lp-radius-chip: 999px;
+  --lp-shadow-card: 0 28px 56px -36px rgba(16, 24, 40, 0.24);
+  --lp-shadow-card-hover: 0 36px 64px -34px rgba(16, 24, 40, 0.3);
+  --lp-shadow-nav: 0 20px 44px -26px rgba(16, 24, 40, 0.35);
+
+  background: var(--lp-bg);
+  color: var(--lp-ink);
+  font-family: var(--lp-font-sans);
+  font-size: 16.5px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
+/* Neutralise the Margo globals inside the landing scope */
+.lp a { color: inherit; text-decoration: none; }
+.lp a:hover { color: inherit; }
+.lp button { font-family: inherit; color: inherit; }
+.lp ::selection { background: var(--lp-accent); color: #f3f4f0; }
+
+.lp :focus-visible {
+  outline: 2px solid var(--lp-accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.lp-dark :focus-visible { outline-color: #9db4f8; }
+
+.lp section[id],
+.lp footer[id] {
+  scroll-margin-top: 96px;
+}
+
+/* ── Layout ── */
+.lp-container {
+  max-width: var(--lp-container);
+  margin: 0 auto;
+  padding-inline: clamp(20px, 4.4vw, 48px);
+}
+
+/* Editorial vertical rhythm: 120–220px desktop, 72–112px mobile (brief §4) */
+.lp-section { padding-block: clamp(76px, 11vw, 200px); }
+.lp-section--tight { padding-block: clamp(56px, 7vw, 120px); }
+.lp-section--alt { background: var(--lp-bg-alt); }
+
+/* ── Dark contrast sections ── */
+.lp-dark {
+  --lp-bg: #111827;
+  --lp-bg-alt: #1b2436;
+  --lp-surface: #1a2334;
+  --lp-ink: #f4f6f9;
+  --lp-muted: var(--lp-dark-muted);
+  --lp-muted-strong: var(--lp-dark-muted);
+  --lp-border: rgba(244, 246, 249, 0.15);
+  --lp-border-strong: rgba(244, 246, 249, 0.32);
+  --lp-soft-blue: rgba(49, 87, 213, 0.2);
+  --lp-soft-teal: rgba(32, 163, 146, 0.18);
+  --lp-pending: #fbbf24;
+  --lp-pending-border: #d97706;
+  --lp-review: #9db4f8;
+  --lp-accent-bright: #9db4f8;
+  --lp-accent-bright-hover: #bccbfa;
+  --lp-teal-bright: #6fd9c9;
+  --lp-shadow-card: 0 28px 56px -36px rgba(0, 0, 0, 0.75);
+  background: #111827;
+  color: #f4f6f9;
+}
+
+/* ── Typography ── */
+.lp-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin: 0;
+  color: var(--lp-muted-strong); /* small text — AA on both off-whites */
+}
+.lp-eyebrow::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lp-accent);
+  flex: none;
+}
+.lp-dark .lp-eyebrow::before { background: var(--lp-accent-bright); }
+
+/* Hero display type (brief §4) */
+.lp-display {
+  font-size: clamp(4.5rem, 8vw, 9rem);
+  font-weight: 750;
+  line-height: 0.98;
+  letter-spacing: -0.032em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+/* Section display headings — capped below the hero h1 at every viewport
+   so the editorial hierarchy never inverts on wide screens */
+.lp-h2 {
+  font-size: clamp(2.8rem, 4.6vw, 4.5rem);
+  font-weight: 720;
+  line-height: 1.02;
+  letter-spacing: -0.026em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+/* Quieter section heading for supporting sections (FAQ, tech, footer blocks) */
+.lp-h2-sm {
+  font-size: clamp(2.1rem, 3.4vw, 3.6rem);
+  font-weight: 720;
+  line-height: 1.05;
+  letter-spacing: -0.024em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.lp-h3 {
+  font-size: clamp(1.25rem, 1.7vw, 1.65rem);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.018em;
+  margin: 0;
+}
+
+.lp-serif {
+  font-family: var(--lp-font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.lp-accent-text { color: var(--lp-accent); }
+.lp-teal-text { color: var(--lp-teal); }
+
+.lp-lead {
+  font-size: clamp(17px, 1.6vw, 20px);
+  line-height: 1.6;
+  color: var(--lp-muted-strong);
+  margin: 0;
+}
+.lp-dark .lp-lead { color: var(--lp-dark-muted); }
+
+.lp-section-head {
+  max-width: 860px;
+  display: grid;
+  gap: 20px;
+  margin-bottom: clamp(48px, 6vw, 88px);
+}
+
+/* ── Buttons ── */
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-radius: var(--lp-radius-chip);
+  border: 1px solid transparent;
+  padding: 0 27px;
+  min-height: 54px;
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.24s var(--lp-ease),
+    border-color 0.24s var(--lp-ease),
+    color 0.24s var(--lp-ease),
+    transform 0.24s var(--lp-ease),
+    box-shadow 0.24s var(--lp-ease);
+}
+.lp-btn:active { transform: translateY(1px) scale(0.99); }
+.lp-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.lp-btn--primary {
+  background: var(--lp-accent);
+  color: var(--lp-on-accent);
+  box-shadow: 0 16px 30px -18px rgba(49, 87, 213, 0.65);
+}
+.lp-btn--primary:hover {
+  background: var(--lp-accent-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 22px 36px -18px rgba(49, 87, 213, 0.7);
+}
+
+.lp-btn--dark {
+  background: var(--lp-ink);
+  color: var(--lp-bg);
+}
+.lp-btn--dark:hover { background: #060a12; transform: translateY(-2px); }
+
+.lp-btn--ghost {
+  background: transparent;
+  color: var(--lp-ink);
+  border-color: var(--lp-border-strong);
+}
+.lp-btn--ghost:hover { border-color: var(--lp-ink); transform: translateY(-2px); }
+.lp-dark .lp-btn--ghost { color: #f4f6f9; border-color: rgba(244, 246, 249, 0.32); }
+.lp-dark .lp-btn--ghost:hover { border-color: #f4f6f9; }
+
+.lp-btn--sm { min-height: 44px; padding: 0 20px; font-size: 14px; }
+
+/* Anchors styled as buttons/links must beat the `.lp a { color: inherit }` reset */
+.lp a.lp-btn--primary,
+.lp a.lp-btn--primary:hover { color: var(--lp-on-accent); }
+.lp a.lp-btn--dark,
+.lp a.lp-btn--dark:hover { color: var(--lp-bg); }
+.lp a.lp-btn--ghost,
+.lp a.lp-btn--ghost:hover { color: var(--lp-ink); }
+.lp-dark a.lp-btn--ghost,
+.lp-dark a.lp-btn--ghost:hover { color: #f4f6f9; }
+.lp a.lp-link-arrow { color: var(--lp-accent); }
+.lp a.lp-link-arrow:hover { color: var(--lp-accent-dark); }
+.lp-dark a.lp-link-arrow { color: var(--lp-accent-bright); }
+.lp-dark a.lp-link-arrow:hover { color: var(--lp-accent-bright-hover); }
+
+.lp-link-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 700;
+  font-size: 15.5px;
+  color: var(--lp-accent);
+  transition: gap 0.2s var(--lp-ease), color 0.2s var(--lp-ease);
+}
+.lp-link-arrow:hover { gap: 11px; }
+
+/* ── Cards & chips ── */
+.lp-card {
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-border);
+  border-radius: var(--lp-radius-card);
+  box-shadow: var(--lp-shadow-card);
+}
+
+.lp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--lp-border);
+  border-radius: var(--lp-radius-chip);
+  background: var(--lp-surface);
+  padding: 10px 18px;
+  font-size: 14.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--lp-radius-chip);
+  background: var(--lp-soft-blue);
+  color: var(--lp-accent-dark);
+  padding: 4px 12px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lp-tag--teal { background: var(--lp-soft-teal); color: var(--lp-teal-bright); }
+.lp-dark .lp-tag { color: #bccbfa; }
+
+/* ── Mock-UI status badges (presentation only) ──
+   Brief §14: never colour-alone. Pending = amber OUTLINE + label;
+   Approved = deep-teal FILL + label; Review requested = blue OUTLINE + label. */
+.lp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--lp-radius-chip);
+  border: 1px solid transparent;
+  padding: 3px 11px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.lp-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.lp-status--pending {
+  background: transparent;
+  border-color: var(--lp-pending-border);
+  color: var(--lp-pending);
+}
+.lp-status--approved {
+  background: var(--lp-approved-fill);
+  border-color: var(--lp-approved-fill);
+  color: var(--lp-on-teal-deep);
+}
+.lp-status--approved::before { background: #9ae8db; }
+.lp-status--review {
+  background: transparent;
+  border-color: var(--lp-review);
+  color: var(--lp-review);
+}
+.lp-status--active {
+  background: var(--lp-soft-blue);
+  border-color: transparent;
+  color: var(--lp-accent-dark);
+}
+.lp-dark .lp-status--active { color: #bccbfa; }
+
+/* Tiny uppercase micro-label used inside diagrams / mock UI */
+.lp-micro {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lp-muted-strong); /* small text — AA on all light surfaces */
+}
+
+/* ── Visual-stage helpers ── */
+.lp-stage-grid {
+  background-image:
+    linear-gradient(to right, rgba(16, 24, 40, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(16, 24, 40, 0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+.lp-dark .lp-stage-grid {
+  background-image:
+    linear-gradient(to right, rgba(244, 246, 249, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(244, 246, 249, 0.05) 1px, transparent 1px);
+}
+
+/* Soft brand glows: subtle lighting only (brief §3 gradient rule) */
+.lp-glow-blue {
+  background: radial-gradient(
+    closest-side,
+    rgba(49, 87, 213, 0.16),
+    rgba(49, 87, 213, 0.06) 55%,
+    transparent 78%
+  );
+}
+.lp-glow-teal {
+  background: radial-gradient(
+    closest-side,
+    rgba(32, 163, 146, 0.15),
+    rgba(32, 163, 146, 0.05) 55%,
+    transparent 78%
+  );
+}
+
+/* ── Shared keyframes (reference only — CSS Modules must declare local copies;
+      animation names do not resolve across the module boundary) ── */
+@keyframes lp-marquee { to { transform: translateX(-50%); } }
+@keyframes lp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes lp-pulse-soft {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .lp *,
+  .lp *::before,
+  .lp *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

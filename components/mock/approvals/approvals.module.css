@@ -1,0 +1,651 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Approval Inbox + compact Automation Calendar — layout module (spec §18,
+   §18.1). Colours come exclusively from --oa-* tokens; generic elements use
+   .oa-* primitives inside the components. This file owns the split geometry,
+   inbox card internals, the selected-day strip and the review-drawer layout.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Split layout: 40% inbox / 60% calendar (spec §18) ─────────────────── */
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.inboxPane {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  align-content: start;
+}
+
+.calPane {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .calPane {
+    position: sticky;
+    top: calc(var(--oa-topbar-h) + 20px);
+  }
+  .inboxScroll {
+    max-height: max(440px, calc(100vh - 344px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 2px 8px 18px 2px;
+  }
+}
+
+/* ── Header side ───────────────────────────────────────────────────────── */
+
+.headSide {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Mobile pane tabs (≤768, spec §21) ─────────────────────────────────── */
+
+.mobileTabs {
+  display: flex;
+  justify-content: center;
+  margin: 2px 0 16px;
+}
+
+/* ── Filter chips ──────────────────────────────────────────────────────── */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.chipCount {
+  font-size: 11px;
+  font-weight: 800;
+  opacity: 0.6;
+}
+.dateChip {
+  gap: 8px;
+  padding-right: 7px;
+}
+.dateChipX {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: inherit;
+  cursor: pointer;
+  flex: none;
+  transition: background 0.18s var(--oa-ease);
+}
+/* §19.1: extend the tap target toward 44px without growing the chip. */
+.dateChipX::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+.dateChipX:hover {
+  background: color-mix(in srgb, var(--oa-blue) 16%, transparent);
+}
+
+/* ── Inbox list + cards (spec §18.1) ───────────────────────────────────── */
+
+.list {
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  padding: 16px 18px;
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+.cardDecided {
+  background: var(--oa-bg);
+}
+
+/* Brief focus ring after a ?focus=<approvalId> deep link (C-02). Outline
+   keeps the card's box untouched: no height change, no reflow. */
+.cardFocus {
+  border-color: var(--oa-blue);
+  outline: 3px solid color-mix(in srgb, var(--oa-blue) 40%, transparent);
+  outline-offset: 2px;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.cardTopLead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+/* Status icon chip — same fill as the calendar legend (stateMeta, C-01). */
+.statusIconChip {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.wfLine {
+  font-size: 11.5px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  color: var(--oa-muted-strong);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cardTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.012em;
+  line-height: 1.35;
+}
+.reason {
+  margin: 0;
+  font-size: 13px;
+  color: var(--oa-muted-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.due {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+.dueToday {
+  color: var(--oa-amber-ink);
+}
+.customer {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--oa-muted);
+  min-width: 0;
+}
+.customer svg {
+  flex: none;
+}
+.customerText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+.decidedNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--oa-teal-deep);
+}
+
+/* Empty state */
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 38px 18px;
+  text-align: center;
+  border: 1px dashed var(--oa-border);
+  border-radius: var(--oa-r-card);
+  color: var(--oa-muted-strong);
+  font-size: 13.5px;
+}
+.emptyTitle {
+  margin: 0;
+  font-weight: 750;
+  color: var(--oa-ink);
+}
+
+/* ── Calendar pane ─────────────────────────────────────────────────────── */
+
+.calCard {
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+.calHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.calMonth {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.012em;
+  font-variant-numeric: tabular-nums;
+}
+.legendMini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+.legendSwatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+/* Selected-day strip */
+.dayStrip {
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+}
+.dayStripHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.dayStripTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.dayStripTitle svg {
+  color: var(--oa-blue);
+  flex: none;
+}
+.dayList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.dayEvent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  min-height: 44px; /* §19.1: clickable rows meet the 44px target */
+  padding: 9px 12px;
+  border: 1px solid var(--oa-border);
+  border-radius: 12px;
+  background: var(--oa-surface);
+  font-size: 12.5px;
+}
+button.dayEvent {
+  cursor: pointer;
+  transition: border-color 0.18s var(--oa-ease), transform 0.18s var(--oa-ease),
+    box-shadow 0.18s var(--oa-ease);
+}
+button.dayEvent:hover {
+  border-color: var(--oa-border-strong);
+  box-shadow: var(--oa-shadow-card);
+  transform: translateY(-1px);
+}
+/* Day-strip state icon — same fill as the calendar legend (stateMeta, C-01). */
+.dayIcon {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.dayTime {
+  flex: none;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.dayTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.dayNote {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--oa-muted);
+}
+
+/* ── Review drawer (spec §18.1) ────────────────────────────────────────── */
+
+.section {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.decision {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.srcRows {
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  overflow: hidden;
+}
+.srcRow {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--oa-surface);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.srcRow + .srcRow {
+  border-top: 1px solid var(--oa-border);
+}
+.srcLabel {
+  font-weight: 750;
+  color: var(--oa-muted-strong);
+}
+.srcValue {
+  min-width: 0;
+}
+
+.proposedHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.proposedMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--oa-muted);
+  font-variant-numeric: tabular-nums;
+}
+.saveRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.confRule {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.confBox {
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.confHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.confVal {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.ruleBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+}
+.ruleBox svg {
+  flex: none;
+  margin-top: 2px;
+}
+.ruleText {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+/* Owner-edited local draft (layered above version history) */
+.draftPanel {
+  border: 1px dashed var(--oa-blue);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-soft-blue);
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+/* Version history */
+.versions {
+  display: grid;
+  gap: 8px;
+}
+.versionPending {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--oa-border-strong);
+  border-radius: var(--oa-r-inner);
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--oa-muted-strong);
+}
+.versionPending svg {
+  flex: none;
+}
+.version {
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+  overflow: hidden;
+}
+.versionLatest {
+  border-color: var(--oa-border-strong);
+}
+.versionHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  min-height: 44px; /* §19.1: 44px minimum button target */
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.versionHead:hover {
+  background: var(--oa-bg);
+}
+.versionTag {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+}
+.versionLatest .versionTag {
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+}
+.versionNote {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--oa-muted-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.versionAt {
+  flex: none;
+  font-size: 11px;
+  color: var(--oa-muted);
+  font-variant-numeric: tabular-nums;
+}
+.versionChevron {
+  flex: none;
+  color: var(--oa-muted);
+  transition: transform 0.2s var(--oa-ease);
+}
+.versionChevronOpen {
+  transform: rotate(180deg);
+}
+.versionBodyWrap {
+  overflow: hidden;
+}
+.versionBody {
+  margin: 0 12px;
+  padding: 10px 0 12px;
+  border-top: 1px dashed var(--oa-border);
+}
+.versionText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* Comments */
+.comments {
+  display: grid;
+  gap: 10px;
+}
+.comment {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+}
+.commentHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.commentAuthor {
+  font-size: 12px;
+  font-weight: 800;
+}
+.commentAt {
+  font-size: 11px;
+  color: var(--oa-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.commentText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.commentForm {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.footNote {
+  margin-right: auto;
+}
+
+/* ── Responsive (spec §21: 1440 / 1024 / 768 / 390) ────────────────────── */
+
+@media (max-width: 1023px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 430px) {
+  .card {
+    padding: 14px;
+  }
+  .srcRow {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .confRule {
+    grid-template-columns: 1fr;
+  }
+  .commentForm {
+    flex-wrap: wrap;
+  }
+}

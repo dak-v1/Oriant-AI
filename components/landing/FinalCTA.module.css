@@ -1,0 +1,233 @@
+/*
+  FinalCTA.module.css — dark closing statement (redesign brief §19).
+  Ambient loops (drift + offset-path packets) are paused by default and
+  resumed only while the component sets `.running` on the section
+  (near-view via useInView AND document visible), so nothing animates
+  offscreen or on a hidden tab. Everything moving is neutralised in the
+  reduced-motion block at the bottom: drift parks at its complete base
+  frame, packets are hidden.
+*/
+
+.section {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  align-items: center;
+  min-height: 80vh;
+}
+
+/* ── Ambient workflow layer (decorative, aria-hidden) ── */
+
+.bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.path {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1.5;
+}
+
+.node {
+  fill: rgba(255, 255, 255, 0.16);
+}
+
+.nodeHalo {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 1;
+}
+
+.packet {
+  /* base frame: hidden — the circles carry no cx/cy, so without
+     offset-path support they would otherwise sit visible at the SVG
+     origin. Opacity is ramped by the travel keyframes below. */
+  opacity: 0;
+  fill: rgba(255, 255, 255, 0.38);
+}
+
+@keyframes fctaPacket {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  86% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+/* Guarded so unsupported browsers keep packets at opacity 0 instead of
+   blinking in place. Both paths duplicate EXACTLY the inline `d`
+   strings in FinalCTA.tsx — keep them in sync. */
+@supports (offset-path: path("M0 0 L1 1")) {
+  .packetA {
+    offset-path: path(
+      "M -60 180 C 260 90 520 250 780 190 C 1040 130 1240 240 1500 160"
+    );
+    animation: fctaPacket 16s linear infinite;
+  }
+  .packetB {
+    offset-path: path(
+      "M -60 706 C 300 640 560 786 860 712 C 1140 648 1320 764 1500 692"
+    );
+    animation: fctaPacket 22s linear infinite;
+  }
+}
+
+/* Packet loops pause offscreen / on hidden tab (`.running` set from JS).
+   Higher specificity than the @supports rules, so the pause wins. */
+.section:not(.running) .packet {
+  animation-play-state: paused;
+}
+
+/* Very slow ambient drift — transform-only, ±14px max, desynced starts.
+   Keyframes are local to this module (names do not cross the boundary).
+   Paused by default; `.running` (set from JS) resumes them. */
+.driftA {
+  animation: fctaDrift 36s ease-in-out infinite;
+  animation-play-state: paused;
+}
+.driftB {
+  animation: fctaDriftAlt 40s ease-in-out infinite;
+  animation-delay: -14s;
+  animation-play-state: paused;
+}
+.driftC {
+  animation: fctaDrift 31s ease-in-out infinite;
+  animation-delay: -7s;
+  animation-play-state: paused;
+}
+.running .driftA,
+.running .driftB,
+.running .driftC {
+  animation-play-state: running;
+}
+
+@keyframes fctaDrift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(10px, -14px);
+  }
+}
+
+@keyframes fctaDriftAlt {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-12px, 12px);
+  }
+}
+
+/* Faint brand glow behind the heading */
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 9%;
+  width: min(780px, 92vw);
+  height: min(520px, 58vh);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* ── Content ── */
+
+.container {
+  position: relative;
+  width: 100%;
+}
+
+.inner {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: clamp(26px, 4vw, 40px);
+}
+
+/* Display heading, scaled down from the hero (brief §19) */
+.section .heading {
+  font-size: clamp(3rem, 6vw, 6.5rem);
+}
+
+/* Overflow clip mask per heading line (hero-style reveal).
+   Padding widens the clip window for serif descenders and italic
+   overhang; the negative margins cancel it so leading stays tight.
+   Masks are transparent, so the slight overlap is invisible. */
+.lineMask {
+  display: block;
+  overflow: hidden;
+  padding: 0.1em 0.14em 0.14em;
+  margin: -0.1em -0.14em -0.14em;
+}
+
+.line {
+  display: block;
+  will-change: transform;
+}
+
+.section .body {
+  max-width: 58ch;
+  color: var(--lp-dark-muted);
+}
+
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.section .btn {
+  min-height: 58px;
+  padding-inline: 30px;
+  font-size: 16px;
+}
+
+/* ── Mobile recomposition: heading clamps down further, buttons stack
+      full-width, zero horizontal overflow at 390/375 ── */
+@media (max-width: 560px) {
+  .section .heading {
+    font-size: clamp(2.1rem, 9vw, 3rem);
+  }
+  .ctaRow {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 340px;
+  }
+}
+
+/* ── Reduced motion: park ambience at a complete static frame ──
+   The global landing.css kill-switch freezes CSS animations at their
+   base frame (which reads as finished here: translate(0,0)); this rule
+   makes that explicit and removes the packets entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .driftA,
+  .driftB,
+  .driftC {
+    animation: none;
+  }
+  .packet {
+    display: none;
+  }
+  .line {
+    will-change: auto;
+  }
+}

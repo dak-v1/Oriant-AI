@@ -1,0 +1,913 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   CapabilityComposition.module.css — dense varied capability grid (brief §11).
+
+   Motion rules honoured here:
+   · Every @keyframes is LOCAL to this module (names never cross the module
+     boundary).
+   · Keyframes animate ONLY transform / opacity / clip-path /
+     stroke-dashoffset. Hover changes border-color + box-shadow via a
+     transition (not a loop); text never moves on hover.
+   · Loops run ONLY under `.playing` (one shared useInView gate on the
+     section root). Without `.playing` — offscreen, pre-JS, or under
+     reduced motion — the BASE styles below read as a finished tableau:
+     chips landed, scan bar full, report assembled, ticks on, badge at
+     "Approved", counter at 1, ring drawn, dots parked.
+   · CSS :hover transform never sits on a framer-animated element; the
+     pointer-follow spring lives on the inner card, hover only re-chromes.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.section {
+  position: relative;
+}
+
+/* ── Grid: 1 col mobile → 2 cols tablet → 4 cols ≥1280 (20px gap, dense) ── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  grid-auto-flow: dense;
+}
+
+/* Tablet 2-col: discovery / dashboard / improve run full width; the four
+   remaining cards pair up via dense flow (planning+approvals, then
+   deployment+channels) — no holes, no lonely half-row. */
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cellDiscovery {
+    grid-column: span 2;
+  }
+  .cellDashboard {
+    grid-column: span 2;
+  }
+  .cellImprove {
+    grid-column: span 2;
+  }
+}
+
+/* Desktop 4-col: discovery large (2×2) | col 3 stacks planning + approvals
+   | col 4 stacks deployment + channels | row 3: dashboard wide (cols 1–3)
+   + improve compact (col 4). Every cell is explicitly placed, so rows
+   compose with zero gaps; row heights come from the stacked columns and
+   the large discovery stage (flex: 1) absorbs any remainder — no card is
+   left with a dead zone. */
+@media (min-width: 1280px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .cellDiscovery {
+    grid-column: 1 / 3;
+    grid-row: 1 / 3;
+  }
+  .cellPlanning {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .cellApprovals {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  .cellDeployment {
+    grid-column: 4;
+    grid-row: 1;
+  }
+  .cellChannels {
+    grid-column: 4;
+    grid-row: 2;
+  }
+  .cellDashboard {
+    grid-column: 1 / 4;
+    grid-row: 3;
+  }
+  .cellImprove {
+    grid-column: 4;
+    grid-row: 3;
+  }
+}
+
+/* ── Card shell ── */
+.cell {
+  min-width: 0;
+  display: flex;
+}
+
+.card {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 26px;
+  overflow: hidden; /* internal chip travel can never leak / cause overflow */
+  transition:
+    border-color 0.24s var(--lp-ease),
+    box-shadow 0.24s var(--lp-ease);
+}
+.card:hover {
+  border-color: var(--lp-border-strong);
+  box-shadow: var(--lp-shadow-card-hover);
+}
+
+.body {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--lp-muted-strong);
+}
+
+/* Visual stages sit at the card foot; text stays put above them. */
+.stage {
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+.stageLabel {
+  display: block;
+  margin-bottom: 12px;
+}
+
+/* Inset mini panel used inside stages */
+.miniCard {
+  background: var(--lp-bg);
+  border: 1px solid var(--lp-border);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   DISCOVERY (large) — question chips → analysing bar → assembling report.
+   One gentle 8s cycle. Base frame: everything landed and complete.
+   ════════════════════════════════════════════════════════════════════════ */
+.stageDiscovery {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-content: center;
+  /* background-color (not the shorthand) so the .lp-stage-grid
+     background-image survives regardless of stylesheet order */
+  background-color: var(--lp-bg);
+  border: 1px solid var(--lp-border);
+  border-radius: 18px;
+  padding: 16px;
+  min-height: 220px;
+}
+
+@media (min-width: 768px) {
+  .stageDiscovery {
+    grid-template-columns: 1.05fr 1fr;
+    align-items: center;
+    padding: 20px;
+    min-height: 250px;
+  }
+}
+
+.discLeft {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.qchip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  border: 1px solid var(--lp-border);
+  border-radius: var(--lp-radius-chip);
+  background: var(--lp-surface);
+  padding: 7px 13px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--lp-ink);
+  white-space: nowrap;
+  box-shadow: 0 10px 18px -14px rgba(16, 24, 40, 0.3);
+}
+
+.scanBar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-top: 6px;
+}
+.scanTrack {
+  display: block;
+  width: min(210px, 100%);
+  height: 6px;
+  border-radius: var(--lp-radius-chip);
+  background: var(--lp-soft-blue);
+  overflow: hidden;
+}
+.scanFill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--lp-accent);
+  transform-origin: left center;
+  transform: scaleX(1); /* base: analysis complete */
+}
+
+.reportCard {
+  background: var(--lp-surface);
+  box-shadow: 0 18px 30px -24px rgba(16, 24, 40, 0.35);
+}
+
+.reportRows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.reportRow {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lp-muted-strong);
+  background: var(--lp-bg);
+  border: 1px solid var(--lp-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  clip-path: inset(0 0 0 0); /* base: fully revealed */
+}
+
+.playing .qchip1 {
+  animation: capChipOne 8s var(--lp-ease) infinite;
+}
+@keyframes capChipOne {
+  0%, 2% { opacity: 0; transform: translateX(-16px); }
+  8%, 93% { opacity: 1; transform: translateX(0); }
+  98%, 100% { opacity: 0; transform: translateX(0); }
+}
+
+.playing .qchip2 {
+  animation: capChipTwo 8s var(--lp-ease) infinite;
+}
+@keyframes capChipTwo {
+  0%, 9% { opacity: 0; transform: translateX(-16px); }
+  15%, 93% { opacity: 1; transform: translateX(0); }
+  98%, 100% { opacity: 0; transform: translateX(0); }
+}
+
+.playing .scanFill {
+  animation: capScan 8s var(--lp-ease) infinite;
+}
+@keyframes capScan {
+  0%, 15% { transform: scaleX(0); opacity: 1; }
+  36%, 93% { transform: scaleX(1); opacity: 1; }
+  98%, 100% { transform: scaleX(1); opacity: 0; }
+}
+
+.playing .reportCard {
+  animation: capReport 8s var(--lp-ease) infinite;
+}
+@keyframes capReport {
+  0%, 30% { opacity: 0; transform: translateY(10px); }
+  38%, 93% { opacity: 1; transform: translateY(0); }
+  98%, 100% { opacity: 0; transform: translateY(0); }
+}
+
+/* Typed lines assemble as masked rows (clip-path only; the parent card's
+   end-of-cycle fade hides their reset). */
+.playing .rr1 { animation: capRowOne 8s var(--lp-ease) infinite; }
+.playing .rr2 { animation: capRowTwo 8s var(--lp-ease) infinite; }
+.playing .rr3 { animation: capRowThree 8s var(--lp-ease) infinite; }
+.playing .rr4 { animation: capRowFour 8s var(--lp-ease) infinite; }
+@keyframes capRowOne {
+  0%, 38% { clip-path: inset(0 100% 0 0); }
+  46%, 100% { clip-path: inset(0 0 0 0); }
+}
+@keyframes capRowTwo {
+  0%, 44% { clip-path: inset(0 100% 0 0); }
+  52%, 100% { clip-path: inset(0 0 0 0); }
+}
+@keyframes capRowThree {
+  0%, 50% { clip-path: inset(0 100% 0 0); }
+  58%, 100% { clip-path: inset(0 0 0 0); }
+}
+@keyframes capRowFour {
+  0%, 56% { clip-path: inset(0 100% 0 0); }
+  64%, 100% { clip-path: inset(0 0 0 0); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   PLANNING (medium) — chips snap vertically onto a workflow spine; connector
+   ticks pop as each lands. 7s cycle. Base: full plan, spine drawn.
+   The visual sits directly under the text at natural height (no flex fill —
+   that was the old tall card's dead zone). ─────────────────────────────── */
+.stagePlanning {
+  display: flex;
+  flex-direction: column;
+}
+
+.planRows {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.spine {
+  position: absolute;
+  left: 9px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--lp-border-strong);
+  transform-origin: center top;
+  transform: scaleY(1); /* base: spine complete */
+}
+
+.planRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.planTick {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--lp-soft-teal);
+  color: var(--lp-teal-deep);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(1); /* base: connected */
+}
+
+.planChip {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid var(--lp-border);
+  border-radius: 10px;
+  background: var(--lp-bg);
+  padding: 6px 11px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--lp-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.planChipCustom {
+  background: var(--lp-soft-blue);
+  border-color: transparent;
+  color: var(--lp-accent-dark);
+}
+
+.playing .spine {
+  animation: capSpine 7s var(--lp-ease) infinite;
+}
+@keyframes capSpine {
+  0%, 3% { transform: scaleY(0); opacity: 1; }
+  26%, 93% { transform: scaleY(1); opacity: 1; }
+  98%, 100% { transform: scaleY(1); opacity: 0; }
+}
+
+.playing .planChip1 { animation: capPlanChipOne 7s var(--lp-ease) infinite; }
+.playing .planChip2 { animation: capPlanChipTwo 7s var(--lp-ease) infinite; }
+.playing .planChip3 { animation: capPlanChipThree 7s var(--lp-ease) infinite; }
+.playing .planChip4 { animation: capPlanChipFour 7s var(--lp-ease) infinite; }
+@keyframes capPlanChipOne {
+  0%, 6% { opacity: 0; transform: translateY(-9px); }
+  12%, 93% { opacity: 1; transform: translateY(0); }
+  98%, 100% { opacity: 0; transform: translateY(0); }
+}
+@keyframes capPlanChipTwo {
+  0%, 16% { opacity: 0; transform: translateY(-9px); }
+  22%, 93% { opacity: 1; transform: translateY(0); }
+  98%, 100% { opacity: 0; transform: translateY(0); }
+}
+@keyframes capPlanChipThree {
+  0%, 26% { opacity: 0; transform: translateY(-9px); }
+  32%, 93% { opacity: 1; transform: translateY(0); }
+  98%, 100% { opacity: 0; transform: translateY(0); }
+}
+@keyframes capPlanChipFour {
+  0%, 36% { opacity: 0; transform: translateY(-9px); }
+  42%, 93% { opacity: 1; transform: translateY(0); }
+  98%, 100% { opacity: 0; transform: translateY(0); }
+}
+
+.playing .planTick1 { animation: capPlanTickOne 7s var(--lp-ease) infinite; }
+.playing .planTick2 { animation: capPlanTickTwo 7s var(--lp-ease) infinite; }
+.playing .planTick3 { animation: capPlanTickThree 7s var(--lp-ease) infinite; }
+.playing .planTick4 { animation: capPlanTickFour 7s var(--lp-ease) infinite; }
+@keyframes capPlanTickOne {
+  0%, 12% { transform: scale(0); opacity: 1; }
+  16% { transform: scale(1.15); }
+  19%, 93% { transform: scale(1); opacity: 1; }
+  98%, 100% { transform: scale(1); opacity: 0; }
+}
+@keyframes capPlanTickTwo {
+  0%, 22% { transform: scale(0); opacity: 1; }
+  26% { transform: scale(1.15); }
+  29%, 93% { transform: scale(1); opacity: 1; }
+  98%, 100% { transform: scale(1); opacity: 0; }
+}
+@keyframes capPlanTickThree {
+  0%, 32% { transform: scale(0); opacity: 1; }
+  36% { transform: scale(1.15); }
+  39%, 93% { transform: scale(1); opacity: 1; }
+  98%, 100% { transform: scale(1); opacity: 0; }
+}
+@keyframes capPlanTickFour {
+  0%, 42% { transform: scale(0); opacity: 1; }
+  46% { transform: scale(1.15); }
+  49%, 93% { transform: scale(1); opacity: 1; }
+  98%, 100% { transform: scale(1); opacity: 0; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   APPROVALS (medium) — Pending → Edited → Approved crossfade, always
+   labelled. 6s cycle. Base: Approved shown (the finished state).
+   ════════════════════════════════════════════════════════════════════════ */
+.stageApprovals .miniCard {
+  gap: 12px;
+}
+
+.decisionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 26px;
+  min-width: 0;
+}
+
+.decisionLabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--lp-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badgeStack {
+  display: grid;
+  justify-items: end;
+  align-items: center;
+  flex: none;
+}
+.badgeStack > * {
+  grid-area: 1 / 1;
+}
+
+.editNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: var(--lp-radius-chip);
+  background: var(--lp-soft-blue);
+  color: var(--lp-accent-dark);
+  padding: 3px 11px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stPend { opacity: 0; }
+.stEdit { opacity: 0; }
+.stDone { opacity: 1; } /* base frame: Approved */
+
+.playing .stPend { animation: capStPend 6s var(--lp-ease) infinite; }
+.playing .stEdit { animation: capStEdit 6s var(--lp-ease) infinite; }
+.playing .stDone { animation: capStDone 6s var(--lp-ease) infinite; }
+@keyframes capStPend {
+  0%, 6% { opacity: 0; }
+  10%, 30% { opacity: 1; }
+  36%, 100% { opacity: 0; }
+}
+@keyframes capStEdit {
+  0%, 34% { opacity: 0; }
+  40%, 58% { opacity: 1; }
+  64%, 100% { opacity: 0; }
+}
+@keyframes capStDone {
+  0% { opacity: 1; }
+  8%, 62% { opacity: 0; }
+  68%, 100% { opacity: 1; } /* seamless loop back into the base frame */
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   DEPLOYMENT (medium) — file chips slide through a Validate gate, gaining
+   teal ticks, into an Active pill. 6.5s cycle. Base: shipped + Active.
+   ════════════════════════════════════════════════════════════════════════ */
+.stageDeployment {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.deployTrack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 20px;
+}
+
+.gate {
+  position: absolute;
+  left: 34%;
+  top: 18px;
+  bottom: 46px;
+  width: 0;
+  border-left: 2px dashed var(--lp-border-strong);
+}
+.gateLabel {
+  position: absolute;
+  top: 0;
+  left: 34%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.deployLane {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  min-width: 0;
+}
+
+.fileChip {
+  margin-left: 42%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--lp-border);
+  border-radius: 9px;
+  background: var(--lp-bg);
+  padding: 4px 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--lp-ink);
+  white-space: nowrap;
+}
+
+.fileTick {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--lp-soft-teal);
+  color: var(--lp-teal-deep);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(1); /* base: validated */
+}
+
+.deployFoot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.playing .fileChip1 { animation: capFileOne 6.5s var(--lp-ease) infinite; }
+.playing .fileChip2 { animation: capFileTwo 6.5s var(--lp-ease) infinite; }
+.playing .fileChip3 { animation: capFileThree 6.5s var(--lp-ease) infinite; }
+@keyframes capFileOne {
+  0%, 4% { opacity: 0; transform: translateX(-72px); }
+  12% { opacity: 1; }
+  30%, 93% { opacity: 1; transform: translateX(0); }
+  98%, 100% { opacity: 0; transform: translateX(0); }
+}
+@keyframes capFileTwo {
+  0%, 18% { opacity: 0; transform: translateX(-72px); }
+  26% { opacity: 1; }
+  44%, 93% { opacity: 1; transform: translateX(0); }
+  98%, 100% { opacity: 0; transform: translateX(0); }
+}
+@keyframes capFileThree {
+  0%, 32% { opacity: 0; transform: translateX(-72px); }
+  40% { opacity: 1; }
+  58%, 93% { opacity: 1; transform: translateX(0); }
+  98%, 100% { opacity: 0; transform: translateX(0); }
+}
+
+/* Ticks pop as each chip crosses the gate (mid-travel). */
+.playing .fileChip1 .fileTick { animation: capTickOne 6.5s var(--lp-ease) infinite; }
+.playing .fileChip2 .fileTick { animation: capTickTwo 6.5s var(--lp-ease) infinite; }
+.playing .fileChip3 .fileTick { animation: capTickThree 6.5s var(--lp-ease) infinite; }
+@keyframes capTickOne {
+  0%, 16% { transform: scale(0); }
+  20% { transform: scale(1.2); }
+  24%, 100% { transform: scale(1); }
+}
+@keyframes capTickTwo {
+  0%, 30% { transform: scale(0); }
+  34% { transform: scale(1.2); }
+  38%, 100% { transform: scale(1); }
+}
+@keyframes capTickThree {
+  0%, 44% { transform: scale(0); }
+  48% { transform: scale(1.2); }
+  52%, 100% { transform: scale(1); }
+}
+
+.playing .activePill {
+  animation: capActive 6.5s var(--lp-ease) infinite;
+}
+@keyframes capActive {
+  0%, 58% { opacity: 0; transform: translateY(6px); }
+  66%, 93% { opacity: 1; transform: translateY(0); }
+  98%, 100% { opacity: 0; transform: translateY(0); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   DASHBOARD (wide) — calendar dots, CSS-only 3→2→1 counter crossfade,
+   two activity rows sliding in. 7s cycle. Base: counter at 1, rows shown.
+   ════════════════════════════════════════════════════════════════════════ */
+.stageDashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.dashPanel {
+  justify-content: space-between;
+}
+
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 10px);
+  gap: 6px;
+}
+.calDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--lp-border);
+  opacity: 0.7;
+}
+.calDotBlue,
+.calDotBlue2 {
+  background: var(--lp-accent);
+  opacity: 1;
+}
+.calDotTeal {
+  background: var(--lp-teal);
+  opacity: 1;
+}
+
+.playing .calDotBlue {
+  animation: capPulse 7s var(--lp-ease) infinite;
+}
+.playing .calDotTeal {
+  animation: capPulse 7s var(--lp-ease) infinite;
+  animation-delay: -2.3s;
+}
+.playing .calDotBlue2 {
+  animation: capPulse 7s var(--lp-ease) infinite;
+  animation-delay: -4.6s;
+}
+@keyframes capPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.numStack {
+  display: grid;
+  width: max-content;
+}
+.num {
+  grid-area: 1 / 1;
+  font-size: 40px;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--lp-ink);
+}
+.num3 { opacity: 0; }
+.num2 { opacity: 0; }
+.num1 { opacity: 1; } /* base frame: queue worked down to 1 */
+
+.playing .num3 { animation: capNumThree 7s var(--lp-ease) infinite; }
+.playing .num2 { animation: capNumTwo 7s var(--lp-ease) infinite; }
+.playing .num1 { animation: capNumOne 7s var(--lp-ease) infinite; }
+@keyframes capNumThree {
+  0%, 4% { opacity: 0; }
+  10%, 28% { opacity: 1; }
+  34%, 100% { opacity: 0; }
+}
+@keyframes capNumTwo {
+  0%, 34% { opacity: 0; }
+  40%, 58% { opacity: 1; }
+  64%, 100% { opacity: 0; }
+}
+@keyframes capNumOne {
+  0% { opacity: 1; }
+  10%, 64% { opacity: 0; }
+  70%, 100% { opacity: 1; } /* seamless loop back into the base frame */
+}
+
+.actRows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.actRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lp-muted-strong);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.actDotBlue,
+.actDotTeal {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lp-accent);
+}
+.actDotTeal {
+  background: var(--lp-teal);
+}
+
+.playing .actRow1 { animation: capActOne 7s var(--lp-ease) infinite; }
+.playing .actRow2 { animation: capActTwo 7s var(--lp-ease) infinite; }
+@keyframes capActOne {
+  0%, 10% { opacity: 0; transform: translateX(-12px); }
+  18%, 93% { opacity: 1; transform: translateX(0); }
+  98%, 100% { opacity: 0; transform: translateX(0); }
+}
+@keyframes capActTwo {
+  0%, 20% { opacity: 0; transform: translateX(-12px); }
+  28%, 93% { opacity: 1; transform: translateX(0); }
+  98%, 100% { opacity: 0; transform: translateX(0); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   CHANNELS (compact) — an approval chip fans out along three dotted lines
+   (marching dots via stroke-dashoffset) to WhatsApp / Telegram / Email
+   chips, which lift gently in sequence. Base: static dotted fan, all shown.
+   ════════════════════════════════════════════════════════════════════════ */
+.stageChannels {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 100px;
+}
+
+.chanLeft {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+}
+
+.fanSvg {
+  flex: 1 1 auto;
+  min-width: 18px;
+  height: 100px;
+  overflow: visible;
+}
+.fanPath {
+  fill: none;
+  stroke: var(--lp-border-strong);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 0.1 6.9; /* pathLength=100 → evenly spaced dots */
+  stroke-dashoffset: 0; /* base: fan fully present */
+  vector-effect: non-scaling-stroke;
+}
+
+.chanChips {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chanChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--lp-border);
+  border-radius: var(--lp-radius-chip);
+  background: var(--lp-bg);
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--lp-ink);
+  white-space: nowrap;
+  transform: translateY(0);
+}
+
+.playing .fanPath {
+  animation: capDash 1.4s linear infinite; /* continuous, slow march */
+}
+@keyframes capDash {
+  to { stroke-dashoffset: -7; }
+}
+
+.playing .chanChip1 { animation: capLift 5.4s var(--lp-ease) infinite; }
+.playing .chanChip2 {
+  animation: capLift 5.4s var(--lp-ease) infinite;
+  animation-delay: -1.8s;
+}
+.playing .chanChip3 {
+  animation: capLift 5.4s var(--lp-ease) infinite;
+  animation-delay: -3.6s;
+}
+@keyframes capLift {
+  0%, 24%, 100% { transform: translateY(0); }
+  12% { transform: translateY(-3px); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   IMPROVE (compact) — a circular arrow draws itself around a teal
+   Reviewed tag. 5.5s cycle. Base: ring fully drawn, arrowhead on.
+   ════════════════════════════════════════════════════════════════════════ */
+.stageImprove {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+
+.ringWrap {
+  position: relative;
+  width: 118px;
+  height: 118px;
+}
+
+.ringSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.ringPath {
+  fill: none;
+  stroke: var(--lp-teal);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0; /* base: drawn */
+}
+.ringArrow {
+  fill: var(--lp-teal);
+  opacity: 1; /* base: arrowhead on */
+}
+
+.reviewTag {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: max-content;
+  height: max-content;
+}
+
+.playing .ringPath {
+  animation: capRing 5.5s var(--lp-ease) infinite;
+}
+@keyframes capRing {
+  0%, 6% { stroke-dashoffset: 1; opacity: 1; }
+  56%, 93% { stroke-dashoffset: 0; opacity: 1; }
+  98%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+.playing .ringArrow {
+  animation: capRingArrow 5.5s var(--lp-ease) infinite;
+}
+@keyframes capRingArrow {
+  0%, 52% { opacity: 0; }
+  60%, 93% { opacity: 1; }
+  98%, 100% { opacity: 0; }
+}
+
+/* ── Reduced motion: park every loop at its complete base frame.
+      (The global landing.css kill-switch also freezes at base; this
+      module rule makes the intent explicit and removes the loops.) ── */
+@media (prefers-reduced-motion: reduce) {
+  .grid *,
+  .grid *::before,
+  .grid *::after {
+    animation: none !important;
+  }
+}

@@ -1,3 +1,16 @@
+# Oriant.ai — landing page + Margo demo app
+
+**`/` is the Oriant.ai marketing landing page** — white/black/deep-rose design
+system, animated agent-workflow hero, scroll journey, feature bento, dark
+approvals section, integrations, FAQ, and a product-video slot with a designed
+fallback (drop the file at `public/videos/oriant-product-demo.mp4` and it
+appears automatically; optional poster at `public/images/oriant-demo-poster.webp`).
+Landing code lives in `components/landing/` with all copy in
+`lib/landing-content.ts` and the design tokens in `app/landing.css`.
+`/onboarding`, `/privacy`, and `/terms` are presentation-layer holding pages.
+
+**`/demo` is the original Margo product demo**, unchanged, described below.
+
 # Margo — your AI operations manager
 
 > She learns the shop, hires the team, and runs it past you first.

@@ -1,0 +1,534 @@
+/* deploy.module.css — layout for the Deployment & Activation experience
+   (spec §16, §20 "Deployment", §22 activation timing). Generic styling comes
+   from .oa-* primitives; this module owns geometry only. */
+
+/* ── Checklist ─────────────────────────────────────────────────────────── */
+
+.list {
+  display: grid;
+  gap: 14px;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 20px;
+  scroll-margin-top: 90px;
+}
+
+.lead {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  margin-top: 1px;
+}
+.leadOk { background: var(--oa-soft-teal); color: var(--oa-teal-deep); }
+.leadWait { background: var(--oa-soft-amber); color: var(--oa-amber-ink); }
+.leadNeutral { background: var(--oa-soft-blue); color: var(--oa-blue-dark); }
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.titleWrap {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.stepNo {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+}
+
+.title {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 750;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+}
+
+label.title { cursor: pointer; }
+
+/* Ack checkboxes — real inputs, custom face, 44px hit target via the
+   wrapping label (improvement spec §19.1). */
+.check {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border-radius: 8px;
+  border: 1.5px solid var(--oa-border-strong);
+  background: var(--oa-surface);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s var(--oa-ease), border-color 0.2s var(--oa-ease);
+}
+.check:hover { border-color: var(--oa-ink); }
+.check:focus-visible { outline: 2px solid var(--oa-blue); outline-offset: 2px; }
+.check:checked {
+  background: var(--oa-teal-deep);
+  border-color: var(--oa-teal-deep);
+}
+.check:checked::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 7px;
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid var(--oa-on-teal);
+  border-bottom: 2px solid var(--oa-on-teal);
+  transform: rotate(-45deg);
+}
+
+/* Label wrapper = the real 44px checkbox target. Negative margins keep the
+   24px face optically aligned with the 36px icon leads. */
+.checkLead {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin: -4px 0 0 -6px;
+  cursor: pointer;
+}
+
+/* Evidence content */
+.evidence {
+  display: grid;
+  gap: 7px;
+}
+
+.evLine {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--oa-muted-strong);
+  margin: 0;
+}
+.evIcon { flex: none; margin-top: 2px; color: var(--oa-teal-deep); }
+.evIconWarn { flex: none; margin-top: 2px; color: var(--oa-amber-ink); }
+
+.countChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.countChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-bg-alt);
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+.countChip strong { color: var(--oa-ink); font-weight: 750; }
+
+/* Warning panel (item 3) */
+.warnPanel {
+  border: 1px solid var(--oa-amber-border);
+  background: var(--oa-soft-amber);
+  border-radius: var(--oa-r-inner);
+  padding: 13px 15px;
+  display: grid;
+  gap: 6px;
+}
+.warnTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 750;
+  color: var(--oa-amber-ink);
+}
+.warnBody { margin: 0; font-size: 13px; line-height: 1.55; color: var(--oa-ink); }
+.warnWhy { margin: 2px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--oa-muted-strong); }
+
+/* Systems rows (item 4) */
+.sysSummary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.sysRows { display: grid; gap: 8px; }
+.sysRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  border: 1px solid var(--oa-border);
+  border-radius: 12px;
+  background: var(--oa-bg-alt);
+}
+.sysName { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; }
+.sysActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* Inline ack (systems defer) — the whole label is a 44px-tall target */
+.inlineAck {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--oa-ink);
+  cursor: pointer;
+}
+.inlineAck .check { width: 22px; height: 22px; margin: 0 8px 0 0; border-radius: 7px; }
+.inlineAck .check:checked::after { left: 5px; top: 6px; width: 8px; height: 4.5px; }
+
+/* Owners / schedules grids (items 5 & 6) */
+.pairGrid {
+  display: grid;
+  gap: 8px;
+}
+.pairRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) 1fr;
+  gap: 6px 16px;
+  align-items: baseline;
+  padding: 9px 14px;
+  border: 1px solid var(--oa-border);
+  border-radius: 12px;
+  background: var(--oa-bg-alt);
+}
+.pairName { font-size: 13px; font-weight: 750; margin: 0; }
+.pairValue { font-size: 13px; line-height: 1.5; color: var(--oa-muted-strong); margin: 0; }
+.pairValue strong { color: var(--oa-ink); font-weight: 700; }
+
+/* Channel buttons (item 7) — .oa-selectable + .oa-check-badge (spec §15, A-01).
+   Equal heights via grid stretch; selection changes tint/border only. */
+.channelGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+.channelCard {
+  border-radius: var(--oa-r-inner);
+  padding: 14px 42px 14px 14px;
+}
+/* "Always on" channel: locked, but clearly ON — not washed out */
+.channelCard:disabled { opacity: 1; cursor: default; }
+.channelIcon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  transition: background 0.16s var(--oa-ease), color 0.16s var(--oa-ease);
+}
+.channelCard[aria-pressed="true"] .channelIcon {
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+}
+.channelText { display: grid; gap: 3px; min-width: 0; }
+.channelName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+  font-weight: 750;
+  line-height: 1.3;
+}
+.channelDesc { font-size: 12.5px; line-height: 1.45; color: var(--oa-muted-strong); }
+
+/* Mock notification previews revealed under the channel group */
+.previewCard {
+  border: 1px solid var(--oa-border);
+  border-radius: 14px;
+  background: var(--oa-bg-alt);
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+.previewTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.previewIcon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+}
+.previewIconWa { background: var(--oa-teal-deep); color: var(--oa-on-teal); }
+.previewIconMail { background: var(--oa-blue); color: var(--oa-on-blue); }
+.previewHead { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.previewApp {
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+}
+.previewTitle {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.previewTime {
+  margin-left: auto;
+  flex: none;
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--oa-muted);
+}
+.previewBody {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--oa-muted-strong);
+}
+
+/* ── Activate row (item 8) ─────────────────────────────────────────────── */
+
+.activateCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 26px;
+  border: 1.5px solid var(--oa-border-strong);
+  box-shadow: var(--oa-shadow-pop);
+}
+.activateInfo { display: grid; gap: 6px; min-width: 0; }
+.activateTitle { margin: 0; font-size: 19px; font-weight: 780; letter-spacing: -0.015em; }
+.activateMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--oa-muted-strong);
+}
+.activateMeta strong { color: var(--oa-ink); font-weight: 750; }
+.activateSide {
+  flex: none;
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.missing {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 5px;
+}
+.missing li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--oa-muted-strong);
+}
+.missing a {
+  font-weight: 700;
+  color: var(--oa-blue-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.missingDot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--oa-amber);
+}
+
+/* ── Activation panel ──────────────────────────────────────────────────── */
+
+.panel {
+  padding: 24px 26px;
+  display: grid;
+  gap: 18px;
+}
+
+.panelHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.panelHeadRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.agentList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.agentRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+  transition: border-color 0.3s var(--oa-ease), background 0.3s var(--oa-ease);
+}
+.agentIdx {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+.agentInfo { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.agentName { margin: 0; font-size: 14px; font-weight: 750; }
+.agentRole {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--oa-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes deployPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(49, 87, 213, 0.1); }
+  50% { box-shadow: 0 0 0 7px rgba(49, 87, 213, 0.16); }
+}
+.rowActivating { border-color: var(--oa-blue); }
+.rowActivating.rowPulse { animation: deployPulse 1.15s ease-in-out infinite; }
+.rowActive {
+  border-color: rgba(32, 163, 146, 0.45);
+  background: var(--oa-soft-teal);
+}
+.rowActive .agentIdx { background: rgba(255, 255, 255, 0.7); color: var(--oa-teal-deep); }
+
+/* Activity burst + handoff */
+.burst {
+  border-top: 1px solid var(--oa-border);
+  padding-top: 18px;
+  display: grid;
+  gap: 12px;
+}
+.burstRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.burstDot {
+  flex: none;
+  margin-top: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--oa-teal);
+}
+.burstText { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.burstMsg { margin: 0; font-size: 13.5px; line-height: 1.5; }
+.burstMeta { margin: 0; font-size: 11.5px; color: var(--oa-muted); }
+
+.handoff {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--oa-border);
+  padding-top: 16px;
+}
+
+/* ── Live (already activated) state ────────────────────────────────────── */
+
+.live {
+  padding: 44px 28px;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 12px;
+}
+.liveIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+}
+
+/* ── Responsive (spec §21: 1440 / 1024 / 768 / 390) ────────────────────── */
+
+@media (max-width: 768px) {
+  .pairRow { grid-template-columns: 1fr; }
+  .activateCard { flex-direction: column; align-items: stretch; }
+  .activateSide { justify-items: stretch; }
+  .activateSide > :global(.oa-btn) { width: 100%; }
+  .head { flex-direction: column; align-items: flex-start; }
+  .channelGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 390px) {
+  .item { padding: 14px; gap: 12px; }
+  .lead { width: 32px; height: 32px; }
+  .panel { padding: 18px 16px; }
+  .agentRole { white-space: normal; }
+  .sysRow { flex-wrap: wrap; }
+}

@@ -1,0 +1,168 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   LandingFooter.module.css — dark footer + contact anchor (brief §20).
+   Follows the dark FinalCTA: the rgba(244,246,249,.12) top hairline is what
+   separates the two #111827 surfaces. No animation, no loops — the only
+   motion is DUR.micro (0.22s) link hover colour shifts, so no local
+   reduced-motion rules are needed (the global kill-switch covers the
+   transitions). All colours are tokens remapped by the `lp-dark` class on
+   the <footer> (var(--lp-ink) resolves to #f4f6f9 here).
+
+   The three zones are placed with named grid areas so the contact block —
+   the #contact scroll destination — stays inside the footer's first
+   viewport at every breakpoint: top row on desktop, second-row right on
+   tablet, and directly under the brand (above the link columns) on mobile.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.footer {
+  border-top: 1px solid rgba(244, 246, 249, 0.12);
+  padding-top: clamp(64px, 7vw, 96px);
+  padding-bottom: 28px;
+}
+
+/* ── 3-zone desktop grid: brand | link columns | contact ── */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.3fr) minmax(0, 1fr);
+  grid-template-areas: "brand cols contact";
+  gap: clamp(40px, 5vw, 72px);
+  align-items: start;
+}
+
+/* ── Zone 1: brand ── */
+.brand {
+  grid-area: brand;
+  min-width: 0;
+}
+.wordmark {
+  display: inline-flex;
+}
+.descriptor {
+  margin: 14px 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--lp-dark-muted);
+  max-width: 36ch;
+}
+
+/* ── Zone 2: link columns ── */
+.cols {
+  grid-area: cols;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px clamp(24px, 3vw, 48px);
+}
+.col {
+  min-width: 0;
+}
+.colHead {
+  display: block;
+  margin: 0 0 10px;
+}
+.colList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  transition: color 0.22s var(--lp-ease);
+}
+/* Descendant selectors outrank the global `.lp a { color: inherit }` reset */
+.footer .link {
+  color: var(--lp-dark-muted);
+}
+.footer .link:hover {
+  color: var(--lp-ink);
+}
+
+/* ── Zone 3: contact block (the #contact scroll destination) ── */
+.contact {
+  grid-area: contact;
+  min-width: 0;
+}
+.contactNote {
+  margin: 0 0 22px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--lp-dark-muted);
+  max-width: 34ch;
+}
+
+/* ── Bottom row under a hairline ── */
+.bottom {
+  margin-top: clamp(48px, 6vw, 80px);
+  border-top: 1px solid var(--lp-border);
+  padding-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+}
+.copyright {
+  margin: 0;
+  font-size: 13px;
+  color: var(--lp-dark-muted);
+}
+/* Single subtle sponsor note (spec §3.4) — quieter than the © line. */
+.attribution {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--lp-dark-muted);
+  opacity: 0.75;
+}
+.toTop {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  font-size: 13.5px;
+  font-weight: 700;
+  transition: color 0.22s var(--lp-ease);
+}
+.footer .toTop {
+  color: var(--lp-dark-muted);
+}
+.footer .toTop:hover {
+  color: var(--lp-ink);
+}
+
+/* ── Tablet (768–1023): brand spans the top; links + contact share the
+      second row, keeping the contact block inside the footer's first
+      viewport ── */
+@media (max-width: 1023px) {
+  .grid {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    grid-template-areas:
+      "brand brand"
+      "cols contact";
+    gap: clamp(36px, 5vw, 56px);
+  }
+}
+
+/* ── Mobile (<768): single column with the contact block promoted above the
+      link columns (grid areas only — DOM order is unchanged), so the
+      #contact target is fully visible on short viewports (375×667). The two
+      link columns stay side by side; they fit comfortably at 390/375 with
+      zero horizontal overflow. Touch targets grow to 44px. ── */
+@media (max-width: 767px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "brand"
+      "contact"
+      "cols";
+    gap: 40px;
+  }
+  .link {
+    min-height: 44px;
+  }
+  .bottom {
+    margin-top: 48px;
+  }
+}

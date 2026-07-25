@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "margo-dev",
+      "name": "oriant-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "cwd": "C:\\Users\\mango\\Claude\\Korea\\Margo",
