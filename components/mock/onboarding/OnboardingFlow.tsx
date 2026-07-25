@@ -12,6 +12,8 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion, type Variants } from "framer-motion";
 import { ArrowRight, Check, ChevronLeft } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
+import { useApCommand } from "@/lib/mock/autopilot";
+import { AP } from "@/components/mock/autopilot/script";
 import type { AutomationMode } from "@/lib/mock/types";
 import { DUR, EASE } from "@/lib/mock/motion";
 import { toast } from "@/components/mock/ui/Toaster";
@@ -114,6 +116,18 @@ export default function OnboardingFlow() {
       captureSection("consent");
     }
   };
+
+  /* Auto-play: load the demo company, jump to the review, accept consent, then
+     continue to the Lean Canvas. */
+  useApCommand(AP.onboarding, () => {
+    onUseDemo();
+    goTo(3);
+    onConsentChange(true);
+    window.setTimeout(() => {
+      completeOnboarding();
+      router.push("/app/onboarding/lean-canvas");
+    }, 1800);
+  });
 
   const hasIntro = onboarding.intro.trim().length > 0;
   const showContinue = step !== 1 || hasIntro;

@@ -31,10 +31,12 @@
   margin-bottom: clamp(34px, 5vh, 56px);
 }
 
-/* ── Stage: glow + browser frame ── */
+/* ── Stage: glow + browser frame ──
+   A large, viewport-centred player (breaks out of the 1280 text container so
+   the recording reads clearly), no longer pinned or height-capped. */
 .stage {
   position: relative;
-  max-width: 1020px;
+  width: min(1440px, 92vw);
   margin-inline: auto;
 }
 
@@ -111,10 +113,11 @@
   flex: none;
 }
 
-/* ── 16:9 stage ── */
+/* ── Stage: matches the recorded video's aspect ratio (1898×946) so the whole
+      demo shows without cropping ── */
 .screen {
   position: relative;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 1898 / 946;
   background: var(--lp-bg-alt);
 }
 
@@ -244,7 +247,9 @@
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* The frame matches the video's aspect ratio, so contain fills it edge to
+     edge while guaranteeing the whole recording is visible (never cropped). */
+  object-fit: contain;
   /* Transparent until frames paint so a missing poster never shows broken —
      the designed placeholder reads through instead. */
   background: transparent;
@@ -298,56 +303,12 @@
   }
 }
 
-/* ── Sticky scroll sequence (≥768px) ── */
+/* The section scrolls in normal flow now (no 100vh pin), so the video frame is
+   only limited by its own large width — the scroll-driven rise/settle in the
+   TSX still plays as the section enters view, and collapses to the settled
+   state under reduced motion / on mobile. */
 @media (min-width: 768px) {
-  .section {
-    /* Short pin: 100vh approach + ~0.4 viewport pinned — long enough for
-       the settle + drift to read, short enough to never feel like a hang. */
-    height: 140vh;
-  }
-
-  .panel {
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding-block: 0;
-  }
-
   .inner {
     margin-inline: auto;
-  }
-
-  .stage {
-    /* Keep statement + frame fully inside a 100vh panel on short viewports:
-       available frame width = (100vh − statement/chrome budget) × 16⁄9,
-       floored so extreme landscape viewports never collapse the frame, and
-       capped at 880px so the composition clears 1440×900 AND 1280×800 with
-       comfortable breathing room (nothing clips top or bottom while pinned). */
-    max-width: min(880px, max(360px, calc((100vh - 340px) * 16 / 9)));
-  }
-}
-
-/* ── Reduced motion: the pinned sequence returns to plain document flow
-      (the frame is already parked at its settled state by the conditional
-      useTransform ranges in the TSX). Placed last so it wins the cascade
-      over the ≥768px sticky block at equal specificity. ── */
-@media (prefers-reduced-motion: reduce) {
-  .section {
-    height: auto;
-  }
-
-  .panel {
-    position: static;
-    height: auto;
-    display: block;
-    padding-block: clamp(72px, 16vw, 112px);
-  }
-
-  .stage {
-    max-width: 1020px;
   }
 }

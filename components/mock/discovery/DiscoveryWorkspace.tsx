@@ -24,6 +24,8 @@ import {
   Plus,
 } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
+import { useApCommand, useAutopilot } from "@/lib/mock/autopilot";
+import { AP } from "@/components/mock/autopilot/script";
 import { atLeast } from "@/lib/mock/state-machine";
 import type { DiscoveryQuestion } from "@/lib/mock/types";
 import { DISCOVERY_QUESTIONS } from "@/lib/mock/fixtures/discovery-questions";
@@ -218,6 +220,17 @@ export default function DiscoveryWorkspace() {
     completeDiscovery();
     router.push("/app/discovery/report");
   };
+
+  /* Auto-play: play the voice prefill, then compile the report once every
+     question is answered. */
+  const apRunning = useAutopilot((s) => s.running);
+  useApCommand(AP.discovery, () => startPrefill());
+  useEffect(() => {
+    if (apRunning && completed && !compiling && !reportExists) {
+      const t = setTimeout(() => setCompiling(true), 900);
+      return () => clearTimeout(t);
+    }
+  }, [apRunning, completed, compiling, reportExists]);
 
   /* Tabs: two-tab list with arrow-key support. */
   const onTabKey = (e: React.KeyboardEvent) => {

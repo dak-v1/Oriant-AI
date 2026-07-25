@@ -91,6 +91,18 @@ export default function VideoRevealSection() {
   const nearView = useInView(stageRef, { once: true, margin: "600px" });
   const showVideo = nearView && !videoFailed;
 
+  /* Autoplay: the video is lazy-mounted only once the frame is near view
+     (nearView, 600px margin), so mounting + muted autoplay effectively starts
+     it as the user scrolls to the section. The `autoPlay` attribute is the
+     primary trigger; this play() call is a belt-and-braces retry. Muted +
+     playsInline keeps it within browser autoplay policy. */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !showVideo) return;
+    const p = video.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  }, [showVideo]);
+
   /* Source-element error events do not always bubble to the video element —
      belt and braces: also poll networkState after the load attempt. */
   useEffect(() => {
@@ -176,8 +188,9 @@ export default function VideoRevealSection() {
               {DEMO_VIDEO.body}
             </motion.p>
           </div>
+        </div>
 
-          <div ref={stageRef} className={styles.stage}>
+        <div ref={stageRef} className={styles.stage}>
             {/* Ambient light sweeping behind the frame across the sequence */}
             <motion.div
               className={`lp-glow-blue ${styles.glow}`}
@@ -272,17 +285,19 @@ export default function VideoRevealSection() {
                     {DEMO_VIDEO.fallbackNote}
                   </p>
 
-                  {/* Video layer — mounted lazily, never autoplays */}
+                  {/* Video layer — mounted lazily; autoplays muted when the
+                      frame scrolls into view (see the inView effect above) */}
                   {showVideo && (
                     <div className={styles.videoLayer}>
                       <video
                         ref={videoRef}
                         className={styles.video}
+                        autoPlay
                         controls
                         muted
                         loop
                         playsInline
-                        preload="metadata"
+                        preload="auto"
                         poster={DEMO_VIDEO.poster}
                         title={DEMO_VIDEO.title}
                         onError={markVideoFailed}
@@ -303,7 +318,6 @@ export default function VideoRevealSection() {
             </motion.div>
           </div>
         </div>
-      </div>
     </section>
   );
 }

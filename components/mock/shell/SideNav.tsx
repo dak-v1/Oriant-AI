@@ -82,7 +82,7 @@ export default function SideNav({ ready }: { ready: boolean }) {
         );
       })}
 
-      <div className={styles.navFoot}>
+      <div className={styles.navFoot} data-demo-label>
         <span className="oa-demo-badge">Interactive demo</span>
         <p className="oa-sub" style={{ fontSize: 11.5 }}>
           Every screen uses prepared demo data. No live systems are connected.

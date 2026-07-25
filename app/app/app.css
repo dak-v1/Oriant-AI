@@ -171,9 +171,11 @@
   gap: 8px;
   border-radius: var(--oa-r-chip);
   border: 1px solid transparent;
-  padding: 0 20px;
+  /* Generous horizontal breathing room around the label (label sits well
+     inside the pill, never crowding the curved edges). */
+  padding: 0 26px;
   min-height: 44px; /* improvement spec §19.1: 44px minimum for every button */
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
   letter-spacing: -0.008em;
   cursor: pointer;
@@ -210,8 +212,8 @@
 
 /* "Small" buttons stay 44px tall for the touch target; they read lighter via
    tighter padding + type, never via a shrunken hit area (spec §19.1). */
-.oa-btn--sm { min-height: 44px; padding: 0 15px; font-size: 13px; gap: 6px; }
-.oa-btn--lg { min-height: 52px; padding: 0 26px; font-size: 15px; }
+.oa-btn--sm { min-height: 44px; padding: 0 20px; font-size: 13px; gap: 6px; }
+.oa-btn--lg { min-height: 52px; padding: 0 34px; font-size: 15px; }
 .oa-btn--icon { min-height: 44px; min-width: 44px; padding: 0; border-radius: 13px; }
 
 /* ── Cards / panels ─────────────────────────────────────────────────────── */
@@ -319,7 +321,7 @@ button.oa-chip:hover { border-color: var(--oa-border-strong); transform: transla
   background: var(--oa-surface);
   border: 1.5px solid var(--oa-border);
   border-radius: var(--oa-r-card);
-  padding: 18px;
+  padding: 20px 22px;
   cursor: pointer;
   transition: border-color 0.16s var(--oa-ease), background 0.16s var(--oa-ease),
     box-shadow 0.16s var(--oa-ease), transform 0.16s var(--oa-ease);
@@ -611,7 +613,7 @@ button.oa-chip:hover { border-color: var(--oa-border-strong); transform: transla
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border: 1px solid var(--oa-border);
   border-radius: var(--oa-r-inner);
   background: var(--oa-surface);
@@ -621,6 +623,18 @@ button.oa-chip:hover { border-color: var(--oa-border-strong); transform: transla
 .oa-row--click:hover { border-color: var(--oa-border-strong); box-shadow: var(--oa-shadow-card); transform: translateY(-1px); }
 
 .oa-divider { height: 1px; background: var(--oa-border); border: none; margin: 0; }
+
+/* ── Presentation / recording mode ──────────────────────────────────────
+   When the shell root carries .oa-clean (auto-play or manual recording mode),
+   every "this is a demo / fake company" sign is hidden so a screen recording
+   looks like the real product: Interactive Demo badges, simulation notes, and
+   anything tagged data-demo-label (the demo-company shortcut, sidebar note,
+   "Demo agents" badge, etc.). */
+.oa-clean .oa-demo-badge,
+.oa-clean .oa-sim-note,
+.oa-clean [data-demo-label] {
+  display: none !important;
+}
 
 /* ── Demo transparency (spec: IMPORTANT) ────────────────────────────────── */
 

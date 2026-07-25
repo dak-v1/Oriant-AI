@@ -12,6 +12,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
+import { useApCommand } from "@/lib/mock/autopilot";
+import { AP } from "@/components/mock/autopilot/script";
 import DeployChecklist from "@/components/mock/deploy/DeployChecklist";
 import ActivationPanel from "@/components/mock/deploy/ActivationPanel";
 import styles from "@/components/mock/deploy/deploy.module.css";
@@ -28,6 +30,14 @@ export default function DeployPage() {
   useEffect(() => {
     if (useDemoStore.getState().journey === "activating") setFlowActive(true);
   }, []);
+
+  /* Auto-play: begin the activation animation. */
+  useApCommand(AP.activate, () => {
+    if (useDemoStore.getState().journey !== "active_workspace") {
+      setFlowActive(true);
+      beginActivation();
+    }
+  });
 
   const showLive = journey === "active_workspace" && !flowActive;
   const showActivation = flowActive || journey === "activating";

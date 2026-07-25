@@ -13,6 +13,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useDemoStore } from "@/lib/mock/store";
+import { useAutopilot } from "@/lib/mock/autopilot";
 import { guardRoute, atLeast } from "@/lib/mock/state-machine";
 import SideNav from "./SideNav";
 import TopBar from "./TopBar";
@@ -20,6 +21,7 @@ import ProgressTracker from "./ProgressTracker";
 import CommandPalette from "./CommandPalette";
 import MobileNav from "./MobileNav";
 import Toaster from "@/components/mock/ui/Toaster";
+import AutopilotController from "@/components/mock/autopilot/AutopilotController";
 import { MessageSquareText } from "lucide-react";
 import styles from "./shell.module.css";
 
@@ -27,6 +29,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const journey = useDemoStore((s) => s.journey);
+  const presentation = useAutopilot((s) => s.presentation);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -54,7 +57,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const commandsAvailable = mounted && atLeast(journey, "planning");
 
   return (
-    <div className="oa">
+    <div className={`oa${mounted && presentation ? " oa-clean" : ""}`}>
       <div className={styles.shell}>
         <SideNav ready={mounted} />
         <div className={styles.main}>
@@ -82,6 +85,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <Toaster />
+      <AutopilotController />
     </div>
   );
 }

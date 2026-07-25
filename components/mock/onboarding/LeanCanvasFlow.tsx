@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Building2, Mic, RotateCcw, UploadCloud } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
+import { useApCommand } from "@/lib/mock/autopilot";
+import { AP } from "@/components/mock/autopilot/script";
 import { LEAN_CANVAS_BLOCKS } from "@/lib/mock/fixtures/lean-canvas";
 import { DUR, EASE } from "@/lib/mock/motion";
 import { toast } from "@/components/mock/ui/Toaster";
@@ -57,6 +59,17 @@ export default function LeanCanvasFlow() {
     completeCanvas();
     router.push("/app/discovery");
   };
+
+  /* Auto-play: fill from the demo company, reveal the board, then continue. */
+  useApCommand(AP.leancanvas, () => {
+    fillCanvasFromDemo();
+    setCanvasSource("guided");
+    setView("canvas");
+    window.setTimeout(() => {
+      completeCanvas();
+      router.push("/app/discovery");
+    }, 1800);
+  });
 
   const sourceLabel =
     leanCanvas.source === "upload"

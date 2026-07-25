@@ -9,12 +9,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
+  Eye,
+  EyeOff,
   FastForward,
   HelpCircle,
   RotateCcw,
   SlidersHorizontal,
 } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
+import { useAutopilot } from "@/lib/mock/autopilot";
 import {
   PROGRESS_PHASES,
   homeRouteFor,
@@ -22,6 +25,7 @@ import {
 } from "@/lib/mock/state-machine";
 import type { JourneyState } from "@/lib/mock/types";
 import { OWNER } from "@/lib/mock/fixtures/ids";
+import AutopilotButton from "@/components/mock/autopilot/AutopilotButton";
 import styles from "./shell.module.css";
 
 const FAST_FORWARD_TARGETS: { label: string; state: JourneyState }[] = [
@@ -38,6 +42,8 @@ export default function TopBar({ ready }: { ready: boolean }) {
   const journey = useDemoStore((s) => s.journey);
   const resetDemo = useDemoStore((s) => s.resetDemo);
   const fastForwardTo = useDemoStore((s) => s.fastForwardTo);
+  const presentation = useAutopilot((s) => s.presentation);
+  const setPresentation = useAutopilot((s) => s.setPresentation);
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -81,6 +87,7 @@ export default function TopBar({ ready }: { ready: boolean }) {
       </span>
 
       <div className={styles.topActions}>
+        <AutopilotButton variant="chip" />
         <span className="oa-demo-badge">Interactive demo</span>
 
         <Link
@@ -107,6 +114,22 @@ export default function TopBar({ ready }: { ready: boolean }) {
           {menuOpen && (
             <div className={styles.demoMenu} role="menu" aria-label="Demo controls">
               <p className={`oa-micro ${styles.demoMenuLabel}`}>Demo controls</p>
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.demoMenuItem}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setPresentation(!presentation);
+                }}
+              >
+                {presentation ? (
+                  <Eye size={14} aria-hidden style={{ color: "var(--oa-blue)" }} />
+                ) : (
+                  <EyeOff size={14} aria-hidden style={{ color: "var(--oa-blue)" }} />
+                )}
+                {presentation ? "Exit recording mode" : "Recording mode (hide demo labels)"}
+              </button>
               <button
                 type="button"
                 role="menuitem"

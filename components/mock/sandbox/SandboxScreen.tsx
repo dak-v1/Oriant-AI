@@ -21,6 +21,8 @@ import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
+import { useApCommand, useAutopilot } from "@/lib/mock/autopilot";
+import { AP } from "@/components/mock/autopilot/script";
 import { atLeast } from "@/lib/mock/state-machine";
 import { mockSandboxService } from "@/lib/mock/services";
 import { runTimeline, type TimelineHandle } from "@/lib/mock/services/timeline";
@@ -267,6 +269,22 @@ export default function SandboxScreen() {
     finishValidation();
     router.push("/app/deploy");
   };
+
+  /* Auto-play: run the complaint scenario, then approve the human checkpoint
+     when the run pauses so the timeline resumes and completes. */
+  const apRunning = useAutopilot((s) => s.running);
+  const approveSandboxAction = useDemoStore((s) => s.approveSandboxAction);
+  useApCommand(AP.sandbox, () => {
+    setSelectedLocal(SCENARIO.complaint);
+    setStopped(false);
+    startSandboxRun(SCENARIO.complaint);
+  });
+  useEffect(() => {
+    if (apRunning && phase === "paused_for_approval") {
+      const t = setTimeout(() => approveSandboxAction(), 1900);
+      return () => clearTimeout(t);
+    }
+  }, [apRunning, phase, approveSandboxAction]);
 
   const selectedStatus = isStressSelected ? stressStatus : statusOf(selectedId);
   const runLabel =

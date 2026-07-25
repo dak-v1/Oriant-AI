@@ -112,7 +112,7 @@ export default function ModeStep({
         })}
       </div>
 
-      <div className={styles.demoPanel}>
+      <div className={styles.demoPanel} data-demo-label>
         <div>
           <span className="oa-micro">Shortcut</span>
           <h3 className="oa-h3">Try it with a ready-made company</h3>

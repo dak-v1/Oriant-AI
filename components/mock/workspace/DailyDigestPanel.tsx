@@ -57,7 +57,9 @@ export default function DailyDigestPanel({ index }: { index: number }) {
           <span className="oa-sub">
             {dayLabel(digest.date)} · {digest.coverage}
           </span>
-          <span className="oa-tag oa-tag--neutral">Generated from mock activity</span>
+          <span className="oa-tag oa-tag--neutral" data-demo-label>
+            Generated from mock activity
+          </span>
         </div>
       </div>
 
