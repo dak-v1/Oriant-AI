@@ -80,13 +80,50 @@ export interface SandboxDeps {
 
 /* ═══════════════════════ One scenario ═══════════════════════ */
 
+/**
+ * Runs one scenario and judges it.
+ *
+ * TWO PATHS, AND THE RESULT SAYS WHICH ONE IT CAME BACK ON. An isolation that
+ * can genuinely execute a scenario elsewhere offers `runScenarioRemotely`; one
+ * that only wraps local work does not. Preferring the remote method when it
+ * exists is what makes isolation real — see `SandboxIsolation` for why handing a
+ * remote isolation the local closure `run` takes would produce a remote-looking
+ * verdict for work done in this process.
+ *
+ * NOTHING HERE FALLS BACK. A remote isolation that cannot deliver throws, and
+ * that throw is allowed straight through: catching it and running locally would
+ * reproduce exactly the lie the split exists to prevent, and turning it into a
+ * failed `ScenarioResult` would blame the workforce for a broken sandbox. The
+ * only results this function returns are ones that genuinely ran somewhere, and
+ * each says where.
+ *
+ * `isolation: "remote"` is stamped HERE rather than trusted from the payload:
+ * the remote process ran the scenario in ITS process and honestly stamped
+ * "in-process", and this side is the only party that knows the result crossed a
+ * machine boundary. Nothing else about the result is touched — the acceptance
+ * criterion is that a remote result is deep-equal to a local one, and an
+ * adapter, or this line, editing anything else would make that comparison
+ * meaningless.
+ *
+ * `deps.packages` is deliberately NOT forwarded remotely: a sandbox has no
+ * Factory store, so a remote run compiles and says so (`packageSource:
+ * "compiled"`). That is a weaker claim than proving the stored artefact, which
+ * is why the result records it rather than the caller having to remember.
+ */
 export async function runScenario(
   scenario: SandboxScenario,
   plan: ApprovedPlan,
   deps: SandboxDeps = {},
 ): Promise<ScenarioResult> {
-  const isolation = deps.isolation ?? new InProcessIsolation();
-  return isolation.run(scenario.id, () => execute(scenario, plan, deps));
+  const isolation = deps.isolation;
+
+  if (isolation?.runScenarioRemotely) {
+    const result = await isolation.runScenarioRemotely(scenario);
+    return { ...result, isolation: "remote" };
+  }
+
+  const local = isolation ?? new InProcessIsolation();
+  return local.run(scenario.id, () => execute(scenario, plan, deps));
 }
 
 async function execute(
@@ -308,6 +345,10 @@ async function execute(
     operationsCalled: called,
     failureReason: outcome.run.failure ?? null,
     packageSource,
+    // Stated by the process that did the work. `execute` only ever runs here,
+    // so this is the one place the value can be asserted rather than inferred;
+    // `runScenario` overwrites it exactly when a result arrives from elsewhere.
+    isolation: "in-process",
     events: outcome.run.events,
     runId: outcome.run.runId,
   };
@@ -327,6 +368,10 @@ function failure(scenario: SandboxScenario, message: string): ScenarioResult {
     failureReason: message,
     // The run never reached a package, so it proved nothing about either one.
     packageSource: "none",
+    // This helper is only ever reached from `execute`, which is only ever
+    // reached locally. A remote isolation that could not run the scenario
+    // throws instead of arriving here.
+    isolation: "in-process",
     events: [],
     runId: "",
   };
@@ -497,8 +542,10 @@ export function verdictFingerprint(verdict: SandboxVerdict): string {
       called: r.operationsCalled,
       failures: r.failures,
       // Which artefact was proved is part of what the verdict attests to: the
-      // same green result earned on a fresh compile is weaker evidence.
+      // same green result earned on a fresh compile is weaker evidence. Where
+      // it was proved is part of it for the same reason.
       packageSource: r.packageSource,
+      isolation: r.isolation,
       events: r.events,
     })),
     stress: verdict.stress?.cases.map((c) => [c.caseId, c.passed]),

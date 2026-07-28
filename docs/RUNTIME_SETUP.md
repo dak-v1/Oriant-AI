@@ -93,7 +93,7 @@ never as `live`.
 | **M0** Foundations | none | nothing. Fixture plan, validator, schema — all local |
 | **M1** Runtime core | none for fixture. `AIAND_*` **only** for `live` | in `live`, wiring throws `ReasonerConfigError` before any run starts. Fixture mode unaffected: the full M1 exit (send at \$95, pause at \$1,200, resume on approve, always-approve write-off, refused refund) passes with no keys |
 | **M2** Agent Factory | none. `DOUBLEWORD_*` optional | model-driven package generation unavailable. The deterministic local compiler still emits packages, and it is what the M2 equivalence test compares against |
-| **M3** Sandbox | none. `DAYTONA_*` is **not read by the runtime** | nothing — there is no isolation to lose, because sandbox isolation is not implemented. The `SandboxIsolation` seam exists in `lib/runtime/sandbox/types.ts`, but `InProcessIsolation` is its only implementation, so every scenario runs in this process against stubbed tools. That is sufficient today: no scenario can reach an external system. Determinism comes from the injected `Clock`, seeded `newId()` and stubbed tools — never from Daytona. Setting `DAYTONA_*` affects only the legacy `/demo` lane |
+| **M3** Sandbox | none. `DAYTONA_*` buys **isolation only**, and only when a caller asks for it | you lose isolation, nothing else. Without it every scenario runs in this process against stubbed tools, which is sufficient for the verdict: no scenario can reach an external system. Determinism comes from the injected `Clock`, seeded `newId()` and stubbed tools — never from Daytona. See §3a: isolation is opt-in and the verify suite deliberately stays in process |
 | **M4** Scheduler + Activation | `DATABASE_URL` **required**. Tool credentials required *only* for live runs against real systems | without a database, a paused run and its pending approval vanish on restart, which defeats the approval interrupt. Without tool credentials, live `act` steps fail and the Activation checklist reports the integration as not connected; fixture activation still works end to end |
 | **M5** Workspace + Approvals | same set as M4 | with the stub client the whole loop still runs: run fires → pauses → approval appears → owner edits and approves → run resumes |
 | **M6** Calendar, Agents, Integrations | tool credentials, for real connection and expiry state | the Integrations screen shows stub connection states rather than real ones |
@@ -103,13 +103,114 @@ Read that table as: **nothing before M4 is blocked by a missing key.**
 
 ---
 
+## 3a. Sandbox isolation (M3, opt-in)
+
+Isolation means the scenario is executed **inside a Daytona sandbox**, not that a
+local call is wrapped in a remote handle. The runner is bundled, uploaded, and
+run there; the `ScenarioResult` comes back over stdout. Nothing about the
+scenario runs on your machine.
+
+```bash
+npm run sandbox:bundle   # build the runner that gets uploaded (esbuild, ~140 kB)
+npm run daytona:check    # prove isolation is actually available, then use it
+```
+
+`daytona:check` runs the real preflight in
+[`lib/runtime/sandbox/remote/preflight.ts`](../lib/runtime/sandbox/remote/preflight.ts):
+key present → SDK loads → bundle built → key authenticates → an active snapshot
+exists → a sandbox can actually be created and deleted. It prints the key's
+presence and length and never the key, and exits non-zero with one sentence you
+can act on. Two of those sentences exist because a fresh organisation hits them:
+
+| What Daytona says | What it means |
+| --- | --- |
+| 400 `This organization does not have a default region` | there is nowhere to put a sandbox. Set a default region in the Daytona Dashboard — creating one sandbox by hand there also sets it — or set `DAYTONA_TARGET=us` |
+| 403 `Access denied` on create | the key authenticates but lacks sandbox-create permission. Grant it, or issue a new key with the create and delete scopes |
+
+### How a caller opts in
+
+`SandboxIsolation` carries an optional `runScenarioRemotely(scenario)`.
+`runScenario` prefers it whenever an isolation offers one and runs in process
+otherwise, so opting in is one dependency:
+
+```ts
+await withDaytonaIsolation({}, async (isolation) =>
+  runScenario(scenario, plan, { isolation }),
+);
+```
+
+Every result records which mode earned it — `isolation: "remote"` is stamped only
+on a `ScenarioResult` that came back over the wire, next to `packageSource`,
+which records which artefact it was earned on. Only a scenario **id** can cross a
+machine boundary (a scenario carries closures), so the sandbox resolves that id
+in its own bundled copy of the library and the adapter refuses any scenario that
+is not that library's own object — otherwise a modified copy would come back as a
+well-formed verdict about the unmodified one.
+
+### It is opt-in, and `npm run verify` never touches the network
+
+`verify:m3` runs `InProcessIsolation`, deliberately. The M3 exit criterion is a
+verdict that is **byte-identical across five consecutive runs**, and the suite is
+24 scenarios plus a 20-case stress sweep — 44 executions, five times over. Paying
+a network round trip for each would make the criterion slow and would let a DNS
+hiccup turn a correct workforce red. Isolation is not what makes the verdict
+trustworthy; the injected clock, the seeded ids and the stubbed tools are.
+
+### What it costs, measured
+
+Against the live account on 2026-07-28, region `us`:
+
+| | |
+| --- | --- |
+| `npm run daytona:check` | ~4.6s, creates and deletes one sandbox |
+| first scenario | ~5.6s — create (1.4s) + upload (1.0s) + run |
+| each scenario after it | ~0.3s, on the same reused sandbox |
+| all 24 scenarios | **~12s** |
+| the same 24 in process | part of `verify:m3`, well under a second |
+
+One sandbox is reused across scenarios and deleted in a `finally`. A fresh
+sandbox per scenario would cost about 3s each — roughly 75s for the suite — and
+buys nothing: every execution is already a fresh `node` process, and the runner
+writes nothing to disk.
+
+### The acceptance criterion
+
+**A scenario executed remotely must produce a result identical to the same
+scenario executed locally** — deep-equal, including every event timestamp and id.
+Measured: 24 of 24 byte-identical. That is falsifiable rather than decorative; if
+a remote run ever differs, isolation changed behaviour and that is the bug.
+
+Both sides compile the package from the spec (`packageSource: "compiled"`): a
+sandbox has no Factory store, and building one in there to earn the word
+`"stored"` would be a fresh compile wearing the provenance of the artefact
+Activation deploys. So the local side of the comparison runs `runScenario`
+without a package store too — like against like.
+
+### When to reach for it
+
+When something other than the fixture suite is being proved: a generator that
+emits executable code, an untrusted plan, or a reviewer who needs the run to have
+happened somewhere other than a developer's laptop. For the BrightPath fixtures
+it adds cost and no safety, because every tool is already stubbed.
+
+### It fails closed, loudly
+
+There is no fallback to a local run. A misconfigured or unreachable Daytona
+throws; it never returns a locally computed result wearing a `"daytona"` label,
+because the verdict is what Activation gates on and a verdict that can lie about
+where it was earned is worse than no isolation at all. For the same reason
+`DaytonaIsolation.run(label, fn)` — the closure-taking half of `SandboxIsolation`
+— refuses rather than running the closure here.
+
+---
+
 ## 4. Where each credential comes from
 
 | Provider | Variables | What it powers | Obtain from |
 | --- | --- | --- | --- |
 | **AI&** | `AIAND_API_KEY`, `AIAND_BASE_URL`, `AIAND_MODEL` | every `reason` step: choosing which invoices to chase, drafting the reminder, judging a thread | AI& console. Base URL and model id are org-specific — copy both, do not guess |
 | **Doubleword** | `DOUBLEWORD_API_KEY`, `DOUBLEWORD_BASE_URL`, `DOUBLEWORD_MODEL` | optional model-driven agent-package generation | Doubleword console |
-| **Daytona** | `DAYTONA_API_KEY`, `DAYTONA_API_URL` | legacy `/demo` lane validation only (`lib/server/providers/daytona.ts` → `ValidateScreen`). The Role C runtime sandbox does not read these | app.daytona.io. URL defaults to `https://app.daytona.io/api` |
+| **Daytona** | `DAYTONA_API_KEY`, `DAYTONA_API_URL`, `DAYTONA_TARGET` | opt-in sandbox isolation for M3 (§3a), plus the legacy `/demo` lane's own validation (`lib/server/providers/daytona.ts` → `ValidateScreen`) | app.daytona.io → Keys; the key needs sandbox **create and delete** permission. URL defaults to `https://app.daytona.io/api`. `DAYTONA_TARGET` overrides the organisation's default region |
 | **Google** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` | Gmail (read threads, create drafts, send), Calendar (list events, create/update bookings), Drive (read files) | Google Cloud console → Credentials → OAuth 2.0 client (Web application), with the Gmail/Calendar/Drive APIs enabled |
 | **HubSpot** | `HUBSPOT_ACCESS_TOKEN` | contacts, deals, invoices, notes, write-offs, and the refund operation the Finance agent forbids | HubSpot → Settings → Integrations → Private Apps |
 | **WhatsApp Business** | `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN` | read and send customer messages | Meta for Developers → WhatsApp → API Setup; use a system-user token, not a temporary one |
@@ -120,6 +221,13 @@ Read that table as: **nothing before M4 is blocked by a missing key.**
 
 `NOSANA_*` belongs to YJ's discovery/voice lane and is not read by the runtime.
 Setting it changes no runtime behaviour.
+
+> **Daytona has two adapters, and only one of them works.** The runtime's
+> (`lib/runtime/sandbox/remote/daytona.ts`) goes through `@daytonaio/sdk`. The
+> legacy `/demo` one hand-rolls `POST /api/toolbox/{id}/process/execute`, which
+> now **404s**: the toolbox moved behind `https://proxy.app.daytona.io/toolbox`,
+> and that proxy rejects an organisation API key with 401. Do not copy the legacy
+> adapter's transport — it will authenticate and then fail at the first command.
 
 ### The tool credentials are Role D's, not ours
 
@@ -190,6 +298,18 @@ not configured.
 That is not a missing key. Determinism comes from the injected `Clock`, seeded
 `newId()` and stubbed tools. A `Date.now()`, `new Date()` or `Math.random()`
 call that crept into library code is the usual cause.
+
+**"Do I need Daytona for the sandbox verdict?"**
+No. Isolation is opt-in and `verify:m3` never touches the network — see §3a.
+Turn it on when you need the run to have happened somewhere other than this
+laptop, and check it with `npm run daytona:check` before you rely on it.
+
+**"A remote scenario gave a different result from the local one."**
+That is a bug, not a tolerance. Both sides pin the same clock, ids, stubs and
+reasoner, so they have no licence to differ; 24 of 24 are byte-identical today.
+Check first that the two sides are configured alike — the remote runner has no
+Factory package store, so the local comparison must also run `runScenario`
+without one, or the results will disagree on `packageSource` alone.
 
 **"My approvals disappeared after a restart."**
 Expected without `DATABASE_URL` — the in-memory store is the default. Fine

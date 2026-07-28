@@ -15,9 +15,12 @@
     "verify:m2": "node scripts/verify.mjs m2",
     "verify:m3": "node scripts/verify.mjs m3",
     "verify:m4": "node scripts/verify.mjs m4",
-    "verify:int": "node scripts/verify.mjs integration"
+    "verify:int": "node scripts/verify.mjs integration",
+    "sandbox:bundle": "node scripts/bundle-sandbox-runner.mjs",
+    "daytona:check": "node scripts/daytona-check.mjs"
   },
   "dependencies": {
+    "@daytonaio/sdk": "^0.201.0",
     "framer-motion": "^12.42.2",
     "lenis": "^1.3.25",
     "lucide-react": "^1.25.0",
@@ -30,6 +33,7 @@
     "@types/node": "^22.15.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "esbuild": "0.28.1",
     "eslint": "^9.39.5",
     "eslint-config-next": "^15.4.0",
     "typescript": "^5.8.0"

@@ -151,6 +151,25 @@ export interface SandboxScenario {
  */
 export type PackageSource = "stored" | "compiled" | "none";
 
+/**
+ * WHERE the verdict was earned, on exactly the same footing as `PackageSource`
+ * says WHAT it was earned on. Both answer a question a reader would otherwise
+ * have to infer from how the caller was configured, and inference is precisely
+ * what an activation gate cannot afford.
+ *
+ * `in-process` is the default and covers every scenario that executed in this
+ * Node process — including one wrapped by a local `SandboxIsolation`, because a
+ * wrapper around a local call is still a local call.
+ *
+ * `remote` is stamped by `runScenario` ONLY on a `ScenarioResult` that came back
+ * from another machine through `SandboxIsolation.runScenarioRemotely`. There is
+ * deliberately no third value for "tried and failed": a remote isolation that
+ * cannot deliver a genuinely remote result throws, so no result exists to label.
+ * A value like `"remote-failed"` would be a `ScenarioResult` claiming a verdict
+ * about a workforce that was never asked to do anything.
+ */
+export type IsolationMode = "in-process" | "remote";
+
 export interface ScenarioResult {
   scenarioId: string;
   name: string;
@@ -170,6 +189,13 @@ export interface ScenarioResult {
    */
   failureReason: string | null;
   packageSource: PackageSource;
+  /**
+   * Which isolation actually ran this scenario. Recorded for the same reason
+   * `packageSource` is: the caller configures the sandbox, but only the result
+   * can say what that configuration turned out to mean, and "it ran off this
+   * machine" is a claim nobody should have to take on trust.
+   */
+  isolation: IsolationMode;
   /** The full event stream, for the timeline UI. */
   events: unknown[];
   runId: string;
@@ -234,10 +260,46 @@ export interface StressResult {
  * sufficient because every tool is already stubbed and no scenario can reach
  * an external system. A remote isolate buys defence against a future generator
  * that emits executable code, and costs a network round trip per scenario.
+ *
+ * THE SEAM HAS TWO SHAPES BECAUSE ISOLATION HAS TWO MEANINGS. `run(label, fn)`
+ * wraps LOCAL work — a timer, a span, a resource limit — and is the wrong shape
+ * for moving work to another machine: `fn` is a closure over this process's stub
+ * tool client, its FixedClock and its module graph, so an implementation that
+ * accepted it, created a remote sandbox and then called `fn()` here would
+ * satisfy the interface while the scenario ran on this laptop. That is worse
+ * than no isolation, because Activation gates on the verdict.
  */
 export interface SandboxIsolation {
   readonly name: string;
   run<T>(label: string, fn: () => Promise<T>): Promise<T>;
+  /**
+   * Genuine isolation, and OPTIONAL because `InProcessIsolation` has no honest
+   * implementation of it. Present, `runScenario` prefers it and stamps the
+   * result `isolation: "remote"`; absent, the scenario runs through `run` in
+   * this process. Making it required would force the default to implement it by
+   * running locally, and the distinction the flag records would be gone.
+   *
+   * Three obligations, all of which exist so a returned result is evidence:
+   *
+   *   IT THROWS RATHER THAN DEGRADES. There is no fallback to a local run and
+   *   no manufactured red verdict: an infrastructure failure is not a failing
+   *   workforce, and a result stamped `remote` must have crossed a wire.
+   *
+   *   IT REFUSES A SCENARIO IT CANNOT RECOGNISE. Only a scenario ID can cross a
+   *   machine boundary — a scenario carries closures (`toolResponses`,
+   *   `specPatch`, `reasonScript`) that cannot be serialised — so the far side
+   *   resolves the id against ITS OWN copy of the library. An implementation
+   *   handed an ad-hoc or modified scenario whose id happens to match a library
+   *   one must therefore refuse it, or it would answer honestly about a
+   *   scenario nobody asked about. The whole scenario is passed rather than its
+   *   id precisely so that check is possible.
+   *
+   *   IT RETURNS WHAT THE REMOTE PROCESS PRODUCED, unedited. The acceptance
+   *   criterion for isolation is that a remote result is deep-equal to a local
+   *   one, down to every event timestamp and id; an adapter that patched fields
+   *   on the way back would make that comparison a test of the patching.
+   */
+  runScenarioRemotely?(scenario: SandboxScenario): Promise<ScenarioResult>;
 }
 
 export class InProcessIsolation implements SandboxIsolation {

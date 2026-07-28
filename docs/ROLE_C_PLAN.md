@@ -144,10 +144,18 @@ test is the real acceptance criterion, not "the job turned green".
 - [ ] 20-case stress test + pass rate
 - [ ] **Determinism** — fixed seed, fixed clock, stubbed tools, pinned model params
 - [ ] Verdict per scenario → overall "ready for activation"
-- [ ] Daytona isolation — **outstanding, not started.** The `SandboxIsolation`
-      seam exists in `lib/runtime/sandbox/types.ts`, but `InProcessIsolation` is
-      its only implementation and nothing under `lib/runtime` reads `DAYTONA_*`.
-      Scenarios run in this process against stubbed tools
+- [x] Daytona isolation — **scenarios genuinely execute inside a remote
+      sandbox.** The runner is bundled (`npm run sandbox:bundle`), uploaded, and
+      run there; the `ScenarioResult` comes back over stdout and is deep-equal to
+      the same scenario run locally — event timestamps and ids included. The seam
+      is wired: `SandboxIsolation` carries an optional
+      `runScenarioRemotely(scenario)`, `runScenario` prefers it whenever an
+      isolation offers one, and every result records which mode earned it
+      (`isolation: "in-process" | "remote"`, alongside `packageSource`). Opt-in,
+      and off in `npm run verify`. What is NOT done: the 20 stress cases are
+      generated rather than named, so the bundle has no definition to resolve —
+      they are refused by name rather than silently resolved to something else,
+      and only the 24 library scenarios can run remotely
 
 **Exit:** all 4 agents pass, **and** the same scenario yields an identical
 verdict across 5 consecutive runs.
@@ -155,11 +163,31 @@ verdict across 5 consecutive runs.
 > If the verdict is flaky, stop and fix it before moving on. Activation gates
 > on this verdict — a flaky gate is no gate.
 
-> Isolation is deliberately *not* part of that exit. Every tool is stubbed, so
-> no scenario can reach an external system, and determinism comes from the
-> injected clock, seeded ids and stubs rather than from a remote isolate. A
-> Daytona implementation of the seam buys defence against a future generator
-> that emits executable code — worth having, not load-bearing yet.
+> Isolation is deliberately *not* part of that exit, and now that it exists that
+> stays true. Every tool is stubbed, so no scenario can reach an external system,
+> and determinism comes from the injected clock, seeded ids and stubs rather than
+> from a remote isolate. What isolation buys is defence against a future
+> generator that emits executable code, and evidence that a run happened
+> somewhere other than a developer's laptop.
+
+> **What it costs, and when to use it.** Measured on 2026-07-28, region `us`:
+> ~5.6s for the first scenario (create 1.4s, upload 1.0s, run), ~0.3s for each
+> one after it on the same reused sandbox, **~12s for all 24**. In process the
+> same suite is well under a second. `npm run verify:m3` therefore stays local on
+> purpose: the exit criterion is five consecutive byte-identical verdicts over 44
+> executions each, and paying a round trip per execution would make the criterion
+> slow and let a DNS hiccup turn a correct workforce red.
+>
+> Reach for it when something other than the fixture suite is being proved — an
+> untrusted plan, a generator that emits code, or a reviewer who needs the run
+> off this machine. For BrightPath it adds cost and no safety.
+>
+> It fails closed: a misconfigured or unreachable Daytona throws rather than
+> quietly returning a local result labelled remote. `npm run daytona:check`
+> answers "is isolation actually available" by creating and deleting a real
+> sandbox, and names the two failures a fresh organisation hits — a 400 for a
+> missing default region and a 403 for a key without create permission. Setup:
+> `docs/RUNTIME_SETUP.md` §3a.
 
 ---
 
