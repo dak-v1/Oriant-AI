@@ -15,6 +15,7 @@
 
 import type { ApprovedPlan } from "../../plan/types";
 import { runScenario } from "./runner";
+import type { SandboxDeps } from "./runner";
 import type {
   SandboxScenario,
   StressCaseResult,
@@ -91,11 +92,21 @@ function scenarioFor(testCase: StressCase): SandboxScenario {
   };
 }
 
-export async function runStressSweep(plan: ApprovedPlan): Promise<StressResult> {
+/**
+ * `deps` is forwarded to every case for one reason: the sweep and the scenario
+ * suite feed the same verdict, so if only one of them were handed the Factory's
+ * package store the verdict would be half-earned on the stored artefact and
+ * half on a recompilation of it — a worse state than either alone, because
+ * nothing in the result would say so.
+ */
+export async function runStressSweep(
+  plan: ApprovedPlan,
+  deps: SandboxDeps = {},
+): Promise<StressResult> {
   const cases: StressCaseResult[] = [];
 
   for (const testCase of CASES) {
-    const result = await runScenario(scenarioFor(testCase), plan);
+    const result = await runScenario(scenarioFor(testCase), plan, deps);
     cases.push({
       caseId: testCase.id,
       label: testCase.label,

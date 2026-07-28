@@ -10,8 +10,10 @@
  *   a refund is refused outright (forbidden).
  *
  * This file proves exactly that, plus the properties the rest of the project
- * leans on: fail-closed limits, determinism, idempotency, and that a paused
- * run cannot be resumed into something the plan no longer permits.
+ * leans on: fail-closed limits, determinism, idempotency, that a paused run
+ * cannot be resumed into something the plan no longer permits, and the error
+ * handling the M1 checklist names — retry, backoff, per-attempt timeouts and
+ * the three distinct failure policies.
  *
  * Deliberately self-contained. The doubles below are a few dozen lines each so
  * this verification tests the SPINE — policy.ts, executor.ts, factory.ts — and
@@ -20,9 +22,10 @@
  * Run it with: npm run verify:m1
  */
 
-import type { AgentSpec } from "../../plan/types";
+import type { AgentSpec, OperatingMode } from "../../plan/types";
 import { bundleAgent } from "../factory";
-import { decideAndResume, startRun } from "../executor";
+import { FAILURE_NOTICE_KEY, decideAndResume, startRun } from "../executor";
+import { resolveAct } from "../policy";
 import type {
   ApprovalDecision,
   ApprovalRequest,
@@ -109,15 +112,61 @@ function seededIds(): (prefix: string) => string {
   return (prefix) => `${prefix}_${++n}`;
 }
 
+/**
+ * How long a "hanging" call stays unanswered before it gives up and succeeds,
+ * and the per-attempt budget the timeout checks run under.
+ *
+ * A call that never settles would be the truer double, but it would make those
+ * checks unfalsifiable: delete `withTimeout` and the check does not go red, it
+ * hangs, and CI reports a stalled job instead of a failure. Answering long
+ * after the deadline keeps them bounded in both directions — with the race in
+ * place the run fails in about 25ms and this promise is abandoned; with the
+ * race removed the call eventually succeeds and the assertions fail out loud.
+ */
+const HANG_MS = 400;
+const STEP_TIMEOUT_MS = 25;
+
+function answersTooLate<T>(value: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    setTimeout(() => resolve(value), HANG_MS);
+  });
+}
+
+/**
+ * Records every invocation, and can be told to fail an operation a fixed number
+ * of times or to leave the call unanswered.
+ *
+ * The failure BUDGET is what makes retry testable at all. An operation that
+ * fails forever only ever proves the run gives up; "fails once, then succeeds"
+ * is the case retry exists for, and it is the one no check reached before.
+ * Hanging is a separate knob because a returned `{ ok: false }` and a call that
+ * does not answer take different paths through the executor — the first is the
+ * retry loop's own branch, the second is `withTimeout`'s race.
+ */
 class RecordingTools implements ToolClient {
   readonly calls: ToolInvocation[] = [];
-  constructor(private failOn: Set<string> = new Set()) {}
+  private readonly failures: Map<string, number>;
+
+  constructor(
+    failTimes: Record<string, number> = {},
+    private hangOn: Set<string> = new Set(),
+  ) {
+    this.failures = new Map(Object.entries(failTimes));
+  }
+
   async call(invocation: ToolInvocation): Promise<ToolResult> {
     this.calls.push(structuredClone(invocation));
-    if (this.failOn.has(invocation.operation)) {
+    const success: ToolResult = {
+      ok: true,
+      data: { simulated: true, operation: invocation.operation },
+    };
+    if (this.hangOn.has(invocation.operation)) return answersTooLate(success);
+    const left = this.failures.get(invocation.operation) ?? 0;
+    if (left > 0) {
+      this.failures.set(invocation.operation, left - 1);
       return { ok: false, error: `simulated failure: ${invocation.operation}` };
     }
-    return { ok: true, data: { simulated: true, operation: invocation.operation } };
+    return success;
   }
 }
 
@@ -136,11 +185,21 @@ class Provider implements IntegrationProvider {
   }
 }
 
-/** Emits whatever metrics the scenario needs, with no model involved. */
+/**
+ * Emits whatever metrics the scenario needs, with no model involved.
+ *
+ * `hangs` covers the other timeout path: a reason step is not a tool call, so
+ * its deadline is raced in `runReason` and the failure propagates through
+ * `drive`'s catch rather than through the retry loop.
+ */
 class ScriptedReasoner implements Reasoner {
-  constructor(private result: ReasonResult) {}
+  constructor(
+    private result: ReasonResult,
+    private hangs = false,
+  ) {}
   async reason(): Promise<ReasonResult> {
-    return structuredClone(this.result);
+    const result = structuredClone(this.result);
+    return this.hangs ? answersTooLate(result) : result;
   }
 }
 
@@ -255,29 +314,49 @@ interface Harness {
   deps: ExecutorOptions;
   tools: RecordingTools;
   store: MemoryStore;
+  /** Every backoff the executor asked for, in the order it asked. */
+  sleeps: number[];
 }
 
 function harness(opts: {
   metrics?: Record<string, number>;
   disconnected?: string[];
-  failOn?: string[];
+  /** Operation → how many attempts fail before it starts succeeding. */
+  failTimes?: Record<string, number>;
+  /** Operations whose call does not answer until long after the deadline. */
+  hangOn?: string[];
+  /** Makes the reason step hang the same way. */
+  hangReason?: boolean;
+  /** Per-attempt deadline. Unset means the executor's own 60s default. */
+  stepTimeoutMs?: number;
 } = {}): Harness {
   const store = new MemoryStore();
-  const tools = new RecordingTools(new Set(opts.failOn ?? []));
+  const tools = new RecordingTools(opts.failTimes ?? {}, new Set(opts.hangOn ?? []));
+  const sleeps: number[] = [];
   const deps: ExecutorOptions = {
     store,
     tools: new Provider(tools, new Set(opts.disconnected ?? [])),
-    reasoner: new ScriptedReasoner({
-      summary: "Chase the overdue invoice.",
-      data: { to: "customer@example.com", subject: "Payment reminder" },
-      metrics: opts.metrics ?? {},
-    }),
+    reasoner: new ScriptedReasoner(
+      {
+        summary: "Chase the overdue invoice.",
+        data: { to: "customer@example.com", subject: "Payment reminder" },
+        metrics: opts.metrics ?? {},
+      },
+      opts.hangReason ?? false,
+    ),
     clock: new FixedClock("2026-07-24T09:00:00.000Z"),
     newId: seededIds(),
-    sleep: async () => {},
+    // Recorded rather than discarded. Backoff that is never applied and backoff
+    // that is applied instantly look identical unless the durations are kept,
+    // so a check for the retry schedule had nothing to read. Injecting it is
+    // also what keeps those checks instant instead of ninety real seconds.
+    sleep: async (ms: number) => {
+      sleeps.push(ms);
+    },
+    stepTimeoutMs: opts.stepTimeoutMs,
     globalPolicy: { quietHours: null, forbidden: [] },
   };
-  return { deps, tools, store };
+  return { deps, tools, store, sleeps };
 }
 
 const BUILT_AT = "2026-07-24T08:00:00.000Z";
@@ -550,6 +629,197 @@ export async function runM1Verification(): Promise<Check[]> {
     );
   }
 
+  /* ── Errors: retry, backoff, timeout ──
+     ROLE_C_PLAN lists these as M1 deliverables and the executor implements all
+     three, but until now nothing drove them: the fixture pinned onFailure to
+     `retries: 0`, no check set a step deadline, and the harness discarded the
+     backoff durations it was handed. Each of the four below fails if the
+     mechanism it names is removed. */
+
+  /* 14. A transient failure is retried, and the retry is what saves the run. */
+  {
+    const h = harness({
+      metrics: { "invoice.amount": 95 },
+      failTimes: { "gmail.messages.send": 1 },
+    });
+    const spec = financeAgent();
+    spec.workflows[0]!.onFailure = { retries: 1, backoffSeconds: 0, onExhausted: "notify_owner" };
+    const out = await startRun(bundleAgent(spec, { builtAt: BUILT_AT }), trigger("k14"), h.deps);
+    const attempts = h.tools.calls.filter((c) => c.operation === "gmail.messages.send").length;
+    check(
+      "M1-14 a transient tool failure is retried and the run still completes",
+      out.status === "completed" && attempts === 2,
+      `status=${out.status} attempts=${attempts} (expected 2: one failure, one success)`,
+    );
+  }
+
+  /* 15. Backoff escalates linearly and is taken through the injected sleep.
+         Asserting the schedule, not merely that the run survived: the executor
+         waits `backoffSeconds * 1000 * attempt`, so retries=2 at 30s must
+         record exactly [30000, 60000]. An empty list means either that backoff
+         was skipped or that the executor reached for a real timer instead of
+         the injected one — the second of which would also make this check take
+         a minute and a half. */
+  {
+    const h = harness({
+      metrics: { "invoice.amount": 95 },
+      failTimes: { "gmail.messages.send": 99 }, // never recovers
+    });
+    const spec = financeAgent();
+    spec.workflows[0]!.onFailure = { retries: 2, backoffSeconds: 30, onExhausted: "notify_owner" };
+    const out = await startRun(bundleAgent(spec, { builtAt: BUILT_AT }), trigger("k15"), h.deps);
+    const attempts = h.tools.calls.filter((c) => c.operation === "gmail.messages.send").length;
+    check(
+      "M1-15 backoff escalates linearly and is taken through the injected sleep",
+      out.status === "failed" &&
+        attempts === 3 &&
+        JSON.stringify(h.sleeps) === JSON.stringify([30_000, 60_000]),
+      `status=${out.status} attempts=${attempts} sleeps=${JSON.stringify(h.sleeps)} (expected [30000,60000])`,
+    );
+  }
+
+  /* 16. A tool call that does not answer trips the per-attempt deadline.
+         `retries: 0` deliberately: the deadline applies per attempt, so a
+         retrying hang would multiply the wall-clock cost of this check. */
+  {
+    const h = harness({
+      metrics: { "invoice.amount": 95 },
+      hangOn: ["gmail.messages.send"],
+      stepTimeoutMs: STEP_TIMEOUT_MS,
+    });
+    const spec = financeAgent();
+    spec.workflows[0]!.onFailure = { retries: 0, backoffSeconds: 0, onExhausted: "notify_owner" };
+    const out = await startRun(bundleAgent(spec, { builtAt: BUILT_AT }), trigger("k16"), h.deps);
+    const failure = out.run.failure ?? "";
+    check(
+      "M1-16 a tool call that never answers trips stepTimeoutMs",
+      out.status === "failed" && failure.includes(`Timed out after ${STEP_TIMEOUT_MS}ms`),
+      `status=${out.status} failure=${JSON.stringify(out.run.failure)}`,
+    );
+  }
+
+  /* 17. The same deadline on a reason step, which takes a different route out:
+         no retry loop, no tool client — the rejection propagates from runReason
+         into the step loop's catch. Asserting the send never happened as well,
+         because a timed-out reason step leaves no proposed action behind and
+         the run must not continue past it. */
+  {
+    const h = harness({
+      metrics: { "invoice.amount": 95 },
+      hangReason: true,
+      stepTimeoutMs: STEP_TIMEOUT_MS,
+    });
+    const out = await startRun(
+      bundleAgent(financeAgent(), { builtAt: BUILT_AT }),
+      trigger("k17"),
+      h.deps,
+    );
+    const failure = out.run.failure ?? "";
+    const sent = h.tools.calls.some((c) => c.operation === "gmail.messages.send");
+    check(
+      "M1-17 a reason step that never answers trips stepTimeoutMs",
+      out.status === "failed" && failure.includes("reason step s2") && !sent,
+      `status=${out.status} sent=${sent} failure=${JSON.stringify(out.run.failure)}`,
+    );
+  }
+
+  /* 18. The three FailurePolicy.onExhausted values must be three behaviours.
+         They used to be one: the enum was concatenated into the error string
+         and nothing read it, so `fail_silent` was neither silent nor different
+         from `escalate`. The observable split is the recorded notice — who is
+         told and how urgently — and the enum staying OUT of the owner-facing
+         `failure` text, which the sandbox substring-matches. */
+  {
+    interface Recorded {
+      policy: unknown;
+      notify: unknown;
+      urgency: unknown;
+    }
+    const recorded: Record<string, Recorded> = {};
+    let leakedInto = "";
+
+    for (const mode of ["escalate", "notify_owner", "fail_silent"] as const) {
+      const h = harness({
+        metrics: { "invoice.amount": 95 },
+        failTimes: { "gmail.messages.send": 99 },
+      });
+      const spec = financeAgent();
+      spec.workflows[0]!.onFailure = { retries: 0, backoffSeconds: 0, onExhausted: mode };
+      const out = await startRun(
+        bundleAgent(spec, { builtAt: BUILT_AT }),
+        trigger(`k18-${mode}`),
+        h.deps,
+      );
+      const notice = out.run.context[FAILURE_NOTICE_KEY] as Partial<Recorded> | undefined;
+      recorded[mode] = {
+        policy: notice?.policy ?? null,
+        notify: notice?.notify ?? null,
+        urgency: notice?.urgency ?? null,
+      };
+      if ((out.run.failure ?? "").includes(mode)) leakedInto = mode;
+    }
+
+    // `policy === mode` is what stops fail_silent passing vacuously: without it
+    // a missing notice would read as null/null and look like silence working.
+    const escalate = recorded["escalate"];
+    const notifyOwner = recorded["notify_owner"];
+    const failSilent = recorded["fail_silent"];
+    check(
+      "M1-18 the three onExhausted policies are three distinct outcomes",
+      escalate?.policy === "escalate" &&
+        escalate.notify === OWNER &&
+        escalate.urgency === "now" &&
+        notifyOwner?.policy === "notify_owner" &&
+        notifyOwner.notify === OWNER &&
+        notifyOwner.urgency === "queued" &&
+        failSilent?.policy === "fail_silent" &&
+        failSilent.notify === null &&
+        failSilent.urgency === null &&
+        leakedInto === "",
+      `${JSON.stringify(recorded)} enumLeakedIntoFailureText=${leakedInto || "no"}`,
+    );
+  }
+
+  /* 19. An operating mode this build does not implement refuses.
+         Step 6 of the resolution order used to be the fall-through the other
+         five dropped into, so "anything I do not recognise" landed in the one
+         path that can act on a customer unattended — and with `limits: []` it
+         resolved to allow. The cast models the seam: a plan arrives as JSON,
+         where a misspelled mode is just a string. */
+  {
+    const h = harness({ metrics: { "invoice.amount": 95 } });
+    const spec = financeAgent();
+    spec.policy.operatingMode = "supervised" as OperatingMode;
+    const bundle = bundleAgent(spec, { builtAt: BUILT_AT });
+
+    // The resolver directly, so the check names the function that must refuse
+    // rather than inferring it from a run that could have stopped elsewhere.
+    const decision = resolveAct({
+      invocation: {
+        integrationId: "gmail",
+        operation: "gmail.messages.send",
+        args: {},
+        metrics: { "invoice.amount": 95 },
+      },
+      policy: spec.policy,
+      globalForbidden: [],
+      allowedOperations: bundle.pkg.allowedOperations,
+      stepRisk: "medium",
+    });
+
+    const out = await startRun(bundle, trigger("k19"), h.deps);
+    const sent = h.tools.calls.some((c) => c.operation === "gmail.messages.send");
+    const pending = await h.store.listPendingApprovals();
+    check(
+      "M1-19 an unrecognised operating mode refuses instead of acting unattended",
+      decision.action === "refuse" &&
+        out.status === "refused" &&
+        !sent &&
+        pending.length === 0,
+      `resolveAct=${decision.action} status=${out.status} sent=${sent} pending=${pending.length}`,
+    );
+  }
+
   return checks;
 }
 
@@ -562,9 +832,13 @@ export function formatResults(results: Check[]): string {
   const failed = results.filter((r) => !r.pass).length;
   lines.push("");
   lines.push(
-    failed === 0
-      ? `M1 EXIT CRITERIA MET — ${results.length}/${results.length} checks passed.`
-      : `M1 NOT MET — ${failed} of ${results.length} checks failed.`,
+    // An empty result set is not a pass: `[].filter(...).length === 0` is true,
+    // so the two-branch version congratulates a runner that asserted nothing.
+    results.length === 0
+      ? "M1 NOT MET — the runner produced no checks."
+      : failed === 0
+        ? `M1 EXIT CRITERIA MET — ${results.length}/${results.length} checks passed.`
+        : `M1 NOT MET — ${failed} of ${results.length} checks failed.`,
   );
   return lines.join("\n");
 }

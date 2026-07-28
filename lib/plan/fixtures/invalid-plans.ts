@@ -1,6 +1,6 @@
 /**
  * lib/plan/fixtures/invalid-plans.ts — one deliberately broken plan per
- * validator rule (docs/PLAN_CONTRACT.md §6).
+ * validator rule (docs/PLAN_CONTRACT.md §6, plus the structural rule 0).
  *
  * The validator is the entire integration risk between the two lanes reduced
  * to one green/red check, so it needs negative tests as much as it needs
@@ -15,6 +15,11 @@
  * missing-agent outcome still lists the real agent, and the unbacked
  * capability points at an operation nothing forbids.
  *
+ * A few cases below need a cast or a `delete`, and that is the point rather
+ * than a shortcut: they model a plan arriving as JSON, where a field can be
+ * misspelled or simply absent. Typed source cannot express those states, which
+ * is exactly why they went unnoticed until they reached the runtime.
+ *
  * The base is built by factories rather than cloned, so no case can leak a
  * mutation into another. All operation strings come from lib/plan/operations.ts.
  */
@@ -25,6 +30,7 @@ import type {
   ApprovedPlan,
   BusinessOutcome,
   Capability,
+  OperatingMode,
   StepSpec,
   ToolGrant,
   WorkflowSpec,
@@ -192,6 +198,24 @@ export const VALID_BASE_PLAN: ApprovedPlan = basePlan();
 
 /* ═══════════════════════════ The broken cases ═══════════════════════════ */
 
+/**
+ * Rule 0 — a plan with nothing in it.
+ *
+ * Every rule in the validator is a loop over a collection, so an empty plan
+ * satisfies all sixteen vacuously and used to return `[]`. Worse than merely
+ * useless: the build gate derives readiness from packages-per-agent, so a plan
+ * with no agents has no missing packages and would reach Activation reporting
+ * ready — a fully activated workforce with nobody in it.
+ *
+ * Both collections are emptied together on purpose. Clearing only `agents`
+ * would leave the outcome pointing at an agent that is no longer there and trip
+ * rule 13 as well, which is the sort of double-fault this file avoids.
+ */
+export const EMPTY_PLAN: ApprovedPlan = basePlan({
+  agents: [],
+  businessOutcomes: [],
+});
+
 /** Rule 1 — the act step calls an operation the agent was never granted. */
 export const STEP_OPERATION_NOT_GRANTED: ApprovedPlan = basePlan({
   agents: [
@@ -219,6 +243,47 @@ export const STEP_OPERATION_NOT_GRANTED: ApprovedPlan = basePlan({
 /** Rule 2 — `auto_within_limits` with nothing to bound it. */
 export const AUTO_MODE_WITHOUT_LIMITS: ApprovedPlan = basePlan({
   agents: [baseAgent({ policy: basePolicy({ limits: [] }) })],
+});
+
+/**
+ * Rule 2 — one character wrong in the operating mode.
+ *
+ * The sharpest case in this file. The cast is deliberate: TypeScript will not
+ * let a typo through inside the repo, but a plan crosses the seam as JSON, and
+ * on the other side of that seam "draft_onlyy" is just a string. It used to
+ * pass the gate completely clean — the mode is not `auto_within_limits`, so the
+ * empty-limits test below skipped it too — and then the runtime read step 6 as
+ * a fall-through and let a draft-only agent send email unattended.
+ */
+export const MISSPELLED_OPERATING_MODE: ApprovedPlan = basePlan({
+  agents: [
+    baseAgent({
+      policy: basePolicy({
+        operatingMode: "draft_onlyy" as OperatingMode,
+        // Empty, as a draft-only agent's limits legitimately are. Nothing but
+        // the membership check stands between this plan and an unattended send.
+        limits: [],
+      }),
+    }),
+  ],
+});
+
+/**
+ * Rule 2 — the field is not misspelled, it is absent.
+ *
+ * The likelier of the two failures: a truncated hand-off or a renamed field
+ * drops the key entirely. Deleted rather than set to `undefined`, because that
+ * is the shape `JSON.parse` produces and the shape a membership test has to
+ * catch.
+ */
+function policyWithoutOperatingMode(): AgentPolicy {
+  const policy = basePolicy();
+  delete (policy as Partial<AgentPolicy>).operatingMode;
+  return policy;
+}
+
+export const MISSING_OPERATING_MODE: ApprovedPlan = basePlan({
+  agents: [baseAgent({ policy: policyWithoutOperatingMode() })],
 });
 
 /** Rule 3 — the same operation is both granted and denied. */
@@ -337,6 +402,20 @@ export const MISSING_APPROVAL_OWNER: ApprovedPlan = basePlan({
   agents: [baseAgent({ policy: basePolicy({ approvalOwner: "" }) })],
 });
 
+/**
+ * Rule 8, the other half — a well-formed owner id that resolves to nobody.
+ *
+ * This is the failure the presence check could never see, and the more
+ * dangerous of the two because nothing downstream looks wrong: the agent pauses
+ * as designed, the approval is created as designed, and it sits in an inbox
+ * that belongs to no one. Catching it needs the user directory
+ * (lib/plan/users.ts), which is why the fixture and the registry landed
+ * together — before it existed there was no way to express "unknown user".
+ */
+export const UNKNOWN_APPROVAL_OWNER: ApprovedPlan = basePlan({
+  agents: [baseAgent({ policy: basePolicy({ approvalOwner: "user_not_in_directory" }) })],
+});
+
 /** Rule 9 — two workflows sharing an id inside one agent. */
 export const DUPLICATE_WORKFLOW_ID: ApprovedPlan = basePlan({
   agents: [baseAgent({ workflows: [baseWorkflow(), baseWorkflow()] })],
@@ -417,6 +496,11 @@ export const INVALID_PLANS: {
   plan: ApprovedPlan;
 }[] = [
   {
+    name: "plan contains no agents",
+    expectedRule: 0,
+    plan: EMPTY_PLAN,
+  },
+  {
     name: "step calls an operation the agent was not granted",
     expectedRule: 1,
     plan: STEP_OPERATION_NOT_GRANTED,
@@ -425,6 +509,16 @@ export const INVALID_PLANS: {
     name: "auto_within_limits agent has no limits",
     expectedRule: 2,
     plan: AUTO_MODE_WITHOUT_LIMITS,
+  },
+  {
+    name: "operatingMode is misspelled",
+    expectedRule: 2,
+    plan: MISSPELLED_OPERATING_MODE,
+  },
+  {
+    name: "operatingMode is absent",
+    expectedRule: 2,
+    plan: MISSING_OPERATING_MODE,
   },
   {
     name: "operation is both granted and forbidden",
@@ -452,9 +546,14 @@ export const INVALID_PLANS: {
     plan: FETCH_STEP_WRITES,
   },
   {
-    name: "agent declares no approvalOwner",
+    name: "agent declares an empty approvalOwner",
     expectedRule: 8,
     plan: MISSING_APPROVAL_OWNER,
+  },
+  {
+    name: "approvalOwner is well-formed but resolves to nobody",
+    expectedRule: 8,
+    plan: UNKNOWN_APPROVAL_OWNER,
   },
   {
     name: "two workflows share an id",

@@ -579,16 +579,36 @@ This is **additive** — no existing planner field is removed except
 `coveredOutcomes`, which is superseded by `BusinessOutcome.agentIds`. D is not
 blocked rewriting screens.
 
-1. Add the structured types alongside the existing prose ones in
-   `lib/mock/types.ts`.
-2. D's planner writes both: prose for its canvas, structure for the handoff.
+1. The structured types live in **`lib/plan/types.ts`**, and both lanes import
+   them from there. `lib/plan` may not import from `lib/mock` or `lib/runtime`:
+   the contract is the boundary, so each side depends on it rather than on the
+   other. **Depends on D** — the planner side of that import does not exist
+   yet, and adding it is D's step, not Role C's.
+2. D's planner keeps its prose shapes in `lib/mock/types.ts` for the canvas and
+   **additionally** emits an `ApprovedPlan` imported from `lib/plan/types`. It
+   is a new root object handed across the seam, not a field bolted onto an
+   existing planner type. **Depends on D.**
 3. Role C's Agent Factory reads only the structured fields.
 4. Once Role C consumes the real plan, retire any prose field that no longer
    appears in a rendered screen.
 
-Fixture to update first: `lib/mock/fixtures/workflow-plan.ts` — make it a
-valid `ApprovedPlan` covering the four BrightPath agents and the outcomes they
-serve. That fixture is Role C's entire input until D's real planner lands.
+The canonical `ApprovedPlan` is **`lib/plan/fixtures/brightpath.ts`** — the four
+BrightPath agents and the outcomes they serve, chosen for runtime path coverage
+rather than looks. That fixture is Role C's entire input until D's real planner
+lands.
+
+> **Do not rewrite `lib/mock/fixtures/workflow-plan.ts`.** An earlier draft of
+> this section named it as the fixture to convert; that instruction is
+> superseded. Its `INITIAL_PLAN_AGENTS`, `PLANNER_STAGES`, `DISCOVERY_STAGES`
+> and `NL_COMMANDS` exports are consumed by `lib/mock/store.ts`,
+> `components/mock/planner/{PlannerExperience,CommandBar,planner-utils}` and
+> `components/mock/discovery/CompileOverlay.tsx`. `lib/mock/*` is the separate
+> scripted demo lane and stays that way — the two lanes share the contract
+> types, not fixtures.
+
+The operation vocabulary lives in **`lib/plan/operations.ts`**, Role C-maintained
+until §8 Q2 is answered. Every operation string in a plan must come from that
+registry, and rule 7's read-only check is evaluated against it.
 
 ---
 
@@ -601,6 +621,8 @@ serve. That fixture is Role C's entire input until D's real planner lands.
 2. **Where does the operation vocabulary live?** `"gmail.drafts.create"` must
    come from a shared registry both lanes import, not free-typed strings.
    Proposal: D owns it next to the integration registry; Role C imports it.
+   *Interim answer in code:* `lib/plan/operations.ts`, Role C-maintained, ready
+   for D to import today and to take over whenever the registry moves.
 3. **`getToolClient(integrationId)` / `getIntegrationStatus(integrationId)`** —
    the two functions Role C calls into D's integration layer. Signatures needed
    before Role C's tool-mediation layer is built.

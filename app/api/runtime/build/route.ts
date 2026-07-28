@@ -5,9 +5,9 @@
  *   POST  build the plan; { force: true } rebuilds even unchanged agents
  *
  * Unauthenticated on purpose for now: this branch is Role C's development
- * surface and the runtime is fixture-backed. It must be gated before any
- * deployment, exactly as docs/PRODUCTION_ROUTE_AUDIT.md requires of every
- * /api route.
+ * surface and the runtime is fixture-backed. Every /api/runtime route must be
+ * gated before any deployment — this one mutates state, so an open POST here
+ * lets anyone rebuild the workforce.
  */
 import { NextResponse } from "next/server";
 import { buildPlan, planBuildStatus } from "@/lib/runtime/build/runner";

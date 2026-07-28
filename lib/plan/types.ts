@@ -19,13 +19,36 @@
 export type Op = "<" | "<=" | ">" | ">=" | "==";
 export type RiskLevel = "low" | "medium" | "high";
 
-export type OperatingMode =
+/**
+ * The operating modes, as a VALUE as well as a type.
+ *
+ * A plan crosses the seam as JSON, so at run time `operatingMode` is whatever
+ * string the sender put there — the union is a promise, not a guarantee. Both
+ * the handoff gate and the policy engine therefore have to test membership at
+ * run time, and a hand-maintained second copy of this list would drift from the
+ * type the moment a mode is added. Deriving the type from the array makes that
+ * drift impossible: adding a mode here forces every membership check and every
+ * exhaustive switch to be revisited in the same edit.
+ */
+export const OPERATING_MODES = [
   /** Prepares work, never acts. Always creates an approval. */
-  | "draft_only"
+  "draft_only",
   /** Creates an approval; acts once approved. */
-  | "act_after_approval"
+  "act_after_approval",
   /** Acts directly; escalates only when a limit is breached. */
-  | "auto_within_limits";
+  "auto_within_limits",
+] as const;
+
+export type OperatingMode = (typeof OPERATING_MODES)[number];
+
+/**
+ * Membership test for a value the type system has not proven. Fails closed:
+ * `undefined`, a typo, or a mode a future contract adds before this build
+ * implements it are all "not an operating mode".
+ */
+export function isOperatingMode(value: unknown): value is OperatingMode {
+  return (OPERATING_MODES as readonly unknown[]).includes(value);
+}
 
 /* ═══════════════════════════ Root ═══════════════════════════ */
 

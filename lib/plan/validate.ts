@@ -14,9 +14,16 @@
  *      failure: D wants the whole list, not a game of whack-a-mole. Errors
  *      block the handoff, warnings are advisory and do not.
  *
+ * The sixteen contract rules are all SEMANTIC — they ask whether a well-formed
+ * plan makes sense — so they run behind a structural pass (rule 0) that first
+ * establishes the plan is well-formed at all. Without it every rule passes
+ * vacuously on a truncated hand-off, because every rule is a loop over a
+ * collection and a missing collection reads as empty.
+ *
  * Determinism matters as much here as in the runtime (M3): no clock, no
  * randomness, no I/O. The same plan always yields the same list, in the same
- * order (plan order: outcomes, then agents, then workflows, then steps).
+ * order (structural findings first, then plan order: outcomes, then agents,
+ * then workflows, then steps).
  */
 
 import {
@@ -25,11 +32,25 @@ import {
   isReadOnly,
   operationsFor,
 } from "./operations";
+import { isOperatingMode, OPERATING_MODES } from "./types";
+import { isKnownUser } from "./users";
 import type {
+  AgentPolicy,
   AgentSpec,
   ApprovedPlan,
   BusinessOutcome,
+  Capability,
+  FailurePolicy,
+  Op,
+  OutcomeMetric,
+  OutputSpec,
   PlanValidationError,
+  PolicyLimit,
+  QuietHours,
+  RiskLevel,
+  StepKind,
+  StepSpec,
+  TriggerSpec,
   WorkflowSpec,
 } from "./types";
 
@@ -44,8 +65,97 @@ function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/**
+ * The entries of a collection that can safely be dereferenced. A single `null`
+ * inside `agents` would otherwise take the whole gate down with a TypeError at
+ * the first property access — and the gate's job is to hand D a list, not a
+ * stack trace. Rule 0 reports the dropped entries; the rules below skip them.
+ */
+function objectsIn<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value.filter(isObject) as T[]) : [];
+}
+
 function isNonEmptyString(value: unknown): boolean {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isFiniteNumber(value: unknown): boolean {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isNonNegativeInteger(value: unknown): boolean {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+/** 24-hour HH:MM, which is what QuietHours.start and .end promise to be. */
+const HH_MM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function isHhMm(value: unknown): boolean {
+  return typeof value === "string" && HH_MM.test(value);
+}
+
+/**
+ * A union's members as a runtime set.
+ *
+ * `Record<T, true>` is what makes this trustworthy: TypeScript demands every
+ * member of the union as a key and rejects anything that is not one, so adding
+ * a value to a union in types.ts breaks compilation here until this list
+ * catches up. A hand-typed `string[]` would silently drift out of step with the
+ * type it mirrors — the exact defect class these membership checks exist to
+ * catch. (`OperatingMode` is the one union that needs its member list in three
+ * modules, so types.ts exports it directly as OPERATING_MODES.)
+ */
+function membersOf<T extends string>(map: Record<T, true>): ReadonlySet<string> {
+  return new Set(Object.keys(map));
+}
+
+const OPS = membersOf<Op>({ "<": true, "<=": true, ">": true, ">=": true, "==": true });
+const RISK_LEVELS = membersOf<RiskLevel>({ low: true, medium: true, high: true });
+const STEP_KINDS = membersOf<StepKind>({
+  fetch: true,
+  reason: true,
+  act: true,
+  approve: true,
+});
+const TRIGGER_KINDS = membersOf<TriggerSpec["kind"]>({
+  schedule: true,
+  event: true,
+  threshold: true,
+  dependency: true,
+  manual: true,
+});
+const OUTPUT_KINDS = membersOf<OutputSpec["kind"]>({
+  draft: true,
+  message: true,
+  record_update: true,
+  booking: true,
+  report: true,
+});
+const ON_EXHAUSTED = membersOf<FailurePolicy["onExhausted"]>({
+  escalate: true,
+  notify_owner: true,
+  fail_silent: true,
+});
+const ON_BREACH = membersOf<PolicyLimit["onBreach"]>({
+  require_approval: true,
+  block: true,
+});
+const PRIORITIES = membersOf<BusinessOutcome["priority"]>({
+  high: true,
+  medium: true,
+  low: true,
+});
+const DIRECTIONS = membersOf<OutcomeMetric["direction"]>({
+  decrease: true,
+  increase: true,
+});
+
+function list(members: ReadonlySet<string>): string {
+  return [...members].join(", ");
 }
 
 /* ═══════════════════════ Cron and timezone ═══════════════════════ */
@@ -127,6 +237,411 @@ export function isValidTimezone(timezone: string): boolean {
   }
 }
 
+/* ═════════════════ Rule 0 — the structural pre-pass ═════════════════ */
+
+/**
+ * Every rule in §6 assumes a plan whose required fields are present and whose
+ * union fields hold real members. Nothing established that. A plan missing
+ * `approvedBy`, `reportVersion` and every `agent.version`, carrying junk in
+ * four different unions, used to validate completely clean — and an entirely
+ * empty plan still reported ready at the Activation gate, because a collection
+ * with nothing in it satisfies a loop over it.
+ *
+ * Rule 0 is that missing precondition. It is numbered 0 rather than 17 because
+ * it is not a seventeenth policy question but the ground the other sixteen
+ * stand on, and `validateApprovedPlan` already reported a wholly missing plan
+ * under rule 0 before this pass existed.
+ *
+ * Three limits keep it proportionate:
+ *   - It asks whether a field is PRESENT and the right shape, never whether its
+ *     content is sensible. "Is this cron parseable" stays rule 4.
+ *   - It reports; it never throws and never short-circuits. A malformed
+ *     hand-off must come back as a list D can act on.
+ *   - Where an existing rule already owns a field, rule 0 stays out of its way:
+ *     `operatingMode` membership is rule 2's, `approvalOwner` is rule 8's.
+ *
+ * Note for the contract: docs/PLAN_CONTRACT.md §6 lists sixteen rules and does
+ * not yet carry a row for rule 0. Add one when this lands with D, so the table
+ * and the gate keep saying the same thing.
+ */
+
+type Scope = Pick<
+  PlanValidationError,
+  "agentId" | "workflowId" | "stepId" | "outcomeId" | "capabilityId"
+>;
+
+type Fail = (message: string, scope?: Scope) => void;
+
+/** A readable stand-in so a message about a missing id is still locatable. */
+function idOr(value: unknown, fallback: string): string {
+  return isNonEmptyString(value) ? String(value) : fallback;
+}
+
+/**
+ * `null` is a legal QuietHours — it means "no window" — and so is an omitted
+ * key, which the runtime reads identically. Anything else present has to be a
+ * window the scheduler can actually parse.
+ */
+function checkQuietHours(
+  window: QuietHours | null | undefined,
+  owner: string,
+  scope: Scope,
+  fail: Fail,
+): void {
+  if (window === null || window === undefined) return;
+  if (!isObject(window)) {
+    fail(`${owner} quietHours is ${typeof window}, not a window object or null.`, scope);
+    return;
+  }
+  if (!isHhMm(window.start) || !isHhMm(window.end)) {
+    fail(
+      `${owner} quietHours is "${String(window.start)}" to "${String(window.end)}", which is not 24-hour HH:MM. The runtime parses these into minutes since midnight, so an unparseable value reads as 00:00 and silently becomes a different window from the one the plan meant.`,
+      scope,
+    );
+  }
+  if (!isValidTimezone(window.timezone)) {
+    fail(
+      `${owner} quietHours names timezone "${String(window.timezone)}", which is not an IANA zone. Intl throws on it, and in M4's worker loop that kills the scheduler tick rather than one run.`,
+      scope,
+    );
+  }
+}
+
+function checkPolicy(policy: AgentPolicy, label: string, scope: Scope, fail: Fail): void {
+  // operatingMode is deliberately absent here: rule 2 owns it, so that one
+  // finding carries the rule number D's table already knows.
+
+  if (!Array.isArray(policy.limits)) {
+    fail(
+      `Agent "${label}" has no policy.limits array. The enforcement layer iterates it directly.`,
+      scope,
+    );
+  } else {
+    for (const limit of objectsIn<PolicyLimit>(policy.limits)) {
+      const limitLabel = idOr(limit.id, "(limit with no id)");
+      if (!isNonEmptyString(limit.id)) {
+        fail(`Agent "${label}" has a policy limit with no id. Breached limit ids are what an approval card cites.`, scope);
+      }
+      if (!isNonEmptyString(limit.metric)) {
+        fail(`Limit "${limitLabel}" on agent "${label}" names no metric, so nothing can ever measure it.`, scope);
+      }
+      if (!OPS.has(limit.op as string)) {
+        fail(`Limit "${limitLabel}" on agent "${label}" uses comparison "${String(limit.op)}". Expected one of ${list(OPS)}.`, scope);
+      }
+      if (!isFiniteNumber(limit.value)) {
+        fail(`Limit "${limitLabel}" on agent "${label}" has value ${String(limit.value)}, which is not a finite number. Every comparison against it would be false, so the limit would read as permanently breached.`, scope);
+      }
+      if (!ON_BREACH.has(limit.onBreach as string)) {
+        fail(`Limit "${limitLabel}" on agent "${label}" declares onBreach "${String(limit.onBreach)}". Expected one of ${list(ON_BREACH)} — this is the field that decides whether a breach refuses or asks.`, scope);
+      }
+    }
+  }
+
+  if (!Array.isArray(policy.alwaysApprove)) {
+    fail(`Agent "${label}" has no policy.alwaysApprove array.`, scope);
+  }
+  if (!Array.isArray(policy.forbidden)) {
+    fail(`Agent "${label}" has no policy.forbidden array. An absent hard-deny list reads as "nothing is denied".`, scope);
+  }
+  if (!isFiniteNumber(policy.escalateAfterMins)) {
+    fail(`Agent "${label}" has escalateAfterMins ${String(policy.escalateAfterMins)}, which is not a finite number. Approval due times are computed from it.`, scope);
+  }
+  if (policy.maxRunsPerDay !== null && policy.maxRunsPerDay !== undefined && !isFiniteNumber(policy.maxRunsPerDay)) {
+    fail(`Agent "${label}" has maxRunsPerDay ${String(policy.maxRunsPerDay)}. Expected a number or null.`, scope);
+  }
+
+  checkQuietHours(policy.quietHours, `Agent "${label}"`, scope, fail);
+}
+
+function checkWorkflow(workflow: WorkflowSpec, scope: Scope, fail: Fail): void {
+  const label = idOr(workflow.id, "(workflow with no id)");
+
+  if (!isNonEmptyString(workflow.id)) {
+    fail("A workflow has no id. Runs, schedules and dependency triggers all address it by id.", scope);
+  }
+  if (typeof workflow.enabled !== "boolean") {
+    fail(
+      `Workflow "${label}" has no boolean \`enabled\` flag, so it reads as disabled and would silently never run.`,
+      scope,
+    );
+  }
+
+  const trigger: unknown = workflow.trigger;
+  if (!isObject(trigger)) {
+    fail(`Workflow "${label}" declares no trigger, so nothing could ever start it.`, scope);
+  } else if (!TRIGGER_KINDS.has(String(workflow.trigger.kind))) {
+    fail(
+      `Workflow "${label}" has trigger kind "${String(workflow.trigger.kind)}". Expected one of ${list(TRIGGER_KINDS)}; the scheduler registers nothing for a kind it cannot read.`,
+      scope,
+    );
+  } else if (workflow.trigger.kind === "threshold") {
+    if (!OPS.has(workflow.trigger.op as string)) {
+      fail(`Threshold trigger on workflow "${label}" uses comparison "${String(workflow.trigger.op)}". Expected one of ${list(OPS)}.`, scope);
+    }
+    if (!isFiniteNumber(workflow.trigger.value)) {
+      fail(`Threshold trigger on workflow "${label}" has value ${String(workflow.trigger.value)}, which is not a finite number, so the threshold could never be crossed.`, scope);
+    }
+    if (!isNonEmptyString(workflow.trigger.metric)) {
+      fail(`Threshold trigger on workflow "${label}" names no metric to watch.`, scope);
+    }
+  } else if (workflow.trigger.kind === "event") {
+    if (!isNonEmptyString(workflow.trigger.integrationId) || !isNonEmptyString(workflow.trigger.event)) {
+      fail(
+        `Event trigger on workflow "${label}" is "${String(workflow.trigger.integrationId)}" / "${String(workflow.trigger.event)}". Both an integration and an event name are needed before anything can be subscribed to.`,
+        scope,
+      );
+    }
+  }
+
+  // Rule 10 already reports a MISSING output on an enabled workflow; rule 0
+  // adds the union member, and does it for disabled workflows too — a disabled
+  // workflow is one edit away from being the thing that runs.
+  const output: unknown = workflow.output;
+  if (isObject(output) && !OUTPUT_KINDS.has(String(workflow.output.kind))) {
+    fail(
+      `Workflow "${label}" declares output kind "${String(workflow.output.kind)}". Expected one of ${list(OUTPUT_KINDS)}.`,
+      scope,
+    );
+  }
+
+  const onFailure: unknown = workflow.onFailure;
+  if (!isObject(onFailure)) {
+    fail(
+      `Workflow "${label}" declares no onFailure policy, so a failing tool call has no retry budget and no exhaustion behaviour.`,
+      scope,
+    );
+  } else {
+    if (!isNonNegativeInteger(workflow.onFailure.retries)) {
+      fail(`Workflow "${label}" has onFailure.retries ${String(workflow.onFailure.retries)}. Expected a non-negative whole number.`, scope);
+    }
+    if (!isNonNegativeInteger(workflow.onFailure.backoffSeconds)) {
+      fail(`Workflow "${label}" has onFailure.backoffSeconds ${String(workflow.onFailure.backoffSeconds)}. Expected a non-negative whole number.`, scope);
+    }
+    if (!ON_EXHAUSTED.has(String(workflow.onFailure.onExhausted))) {
+      fail(`Workflow "${label}" has onFailure.onExhausted "${String(workflow.onFailure.onExhausted)}". Expected one of ${list(ON_EXHAUSTED)}.`, scope);
+    }
+  }
+
+  for (const step of objectsIn<StepSpec>(workflow.steps)) {
+    const stepScope: Scope = { ...scope, stepId: isNonEmptyString(step.id) ? step.id : undefined };
+    const stepLabel = idOr(step.id, "(step with no id)");
+
+    if (!isNonEmptyString(step.id)) {
+      fail(
+        `A step in workflow "${label}" has no id. The executor keys accumulated run state by step id, so an absent one collides with every other absent one.`,
+        stepScope,
+      );
+    }
+    if (!STEP_KINDS.has(String(step.kind))) {
+      fail(
+        `Step "${stepLabel}" in workflow "${label}" has kind "${String(step.kind)}". Expected one of ${list(STEP_KINDS)}; the executor has no handler for anything else.`,
+        stepScope,
+      );
+    }
+    if (!isNonEmptyString(step.instruction)) {
+      fail(
+        `Step "${stepLabel}" in workflow "${label}" carries no instruction. It is the prose half of the step and the only thing the model is told to do.`,
+        stepScope,
+      );
+    }
+    if (step.risk !== undefined && !RISK_LEVELS.has(String(step.risk))) {
+      fail(
+        `Step "${stepLabel}" in workflow "${label}" declares risk "${String(step.risk)}". Expected one of ${list(RISK_LEVELS)}.`,
+        stepScope,
+      );
+    }
+  }
+}
+
+function checkOutcome(outcome: BusinessOutcome, fail: Fail): void {
+  const label = idOr(outcome.id, "(outcome with no id)");
+  const scope: Scope = { outcomeId: isNonEmptyString(outcome.id) ? outcome.id : undefined };
+
+  if (!isNonEmptyString(outcome.id)) {
+    fail("A business outcome has no id. Rule 13 matches agents to outcomes by it.", scope);
+  }
+  if (!isNonEmptyString(outcome.name)) {
+    fail(`Outcome "${label}" has no name, so the Workspace has nothing to label its progress with.`, scope);
+  }
+  if (!PRIORITIES.has(String(outcome.priority))) {
+    fail(`Outcome "${label}" has priority "${String(outcome.priority)}". Expected one of ${list(PRIORITIES)}.`, scope);
+  }
+  // Presence only. Nothing in §6 resolves an outcome owner the way rule 8
+  // resolves approvalOwner, and enforcing ahead of the rule table is how the
+  // gate and the contract drift apart in the other direction.
+  if (!isNonEmptyString(outcome.owner)) {
+    fail(`Outcome "${label}" has no owner.`, scope);
+  }
+  if (!Array.isArray(outcome.agentIds)) {
+    fail(`Outcome "${label}" has no agentIds array. It is the only place the outcome-to-agent relationship is stored.`, scope);
+  }
+
+  for (const metric of objectsIn<OutcomeMetric>(outcome.metrics)) {
+    const metricLabel = idOr(metric.id, "(metric with no id)");
+    if (!isNonEmptyString(metric.metric)) {
+      fail(`Metric "${metricLabel}" on outcome "${label}" names no metric key.`, scope);
+    }
+    if (!isNonEmptyString(metric.label)) {
+      fail(`Metric "${metricLabel}" on outcome "${label}" has no label to render.`, scope);
+    }
+    if (!DIRECTIONS.has(String(metric.direction))) {
+      fail(`Metric "${metricLabel}" on outcome "${label}" has direction "${String(metric.direction)}". Expected one of ${list(DIRECTIONS)} — without it, progress cannot be read as good or bad.`, scope);
+    }
+    if (metric.baseline !== null && !isFiniteNumber(metric.baseline)) {
+      fail(`Metric "${metricLabel}" on outcome "${label}" has baseline ${String(metric.baseline)}. Expected a number, or null where nothing has been measured yet.`, scope);
+    }
+  }
+}
+
+/** Reports everything rule 0 owns. Never throws; never returns early. */
+function checkStructure(plan: ApprovedPlan, errors: PlanValidationError[]): void {
+  const fail: Fail = (message, scope = {}) => {
+    errors.push({ severity: "error", rule: 0, ...scope, message });
+  };
+
+  /* ── Plan header ── */
+
+  if (!isNonEmptyString(plan.planId)) fail("Plan has no planId.");
+  if (!isFiniteNumber(plan.version)) {
+    fail(`Plan has version ${String(plan.version)}, which is not a number. Re-approval is detected by comparing it.`);
+  }
+  if (!isNonEmptyString(plan.approvedAt)) fail("Plan has no approvedAt timestamp.");
+  if (!isNonEmptyString(plan.approvedBy)) fail("Plan has no approvedBy user id, so nothing records who authorised this workforce.");
+  if (!isFiniteNumber(plan.reportVersion)) {
+    fail(
+      `Plan has reportVersion ${String(plan.reportVersion)}, which is not a number. Contract §3.1 puts it there specifically so Role C can tell the plan is stale relative to a re-approved company report.`,
+    );
+  }
+
+  const globalPolicy: unknown = plan.globalPolicy;
+  if (!isObject(globalPolicy)) {
+    fail("Plan has no globalPolicy object. Org-wide denies are how a plan constrains every agent at once.");
+  } else {
+    if (!Array.isArray(plan.globalPolicy.forbidden)) {
+      fail("globalPolicy.forbidden is not an array. An absent org-wide deny list reads as \"nothing is denied\".");
+    }
+    checkQuietHours(plan.globalPolicy.quietHours, "globalPolicy", {}, fail);
+  }
+
+  /* ── The two mandatory collections ──
+     Absent and empty get different messages: they point at different upstream
+     faults — a hand-off that broke in transit, versus a plan D genuinely
+     emitted with nothing in it. */
+
+  if (!Array.isArray(plan.agents)) {
+    fail("Plan has no `agents` array. Check the hand-off was not truncated or the field mis-keyed.");
+  } else if (plan.agents.length === 0) {
+    fail(
+      "Plan contains no agents. Every rule below would pass vacuously, and the build gate derives readiness from missing packages — so an empty plan reaches Activation reporting ready, as a workforce with nobody in it.",
+    );
+  }
+
+  if (!Array.isArray(plan.businessOutcomes)) {
+    fail("Plan has no `businessOutcomes` array. Check the hand-off was not truncated or the field mis-keyed.");
+  } else if (plan.businessOutcomes.length === 0) {
+    // Warning, not error, to stay consistent with rules 15 and 16: outcome
+    // coverage is advisory throughout the table, and a plan with agents already
+    // earns one rule-15 warning per agent.
+    errors.push({
+      severity: "warning",
+      rule: 0,
+      message:
+        "Plan declares no business outcomes, so the Workspace has nothing to report the workforce's progress against.",
+    });
+  }
+
+  /* ── Entries that cannot be read at all ── */
+
+  reportUnreadable(plan.agents, "agents", fail);
+  reportUnreadable(plan.businessOutcomes, "businessOutcomes", fail);
+
+  /* ── Agents ── */
+
+  for (const agent of objectsIn<AgentSpec>(plan.agents)) {
+    const label = idOr(agent.id, "(agent with no id)");
+    const scope: Scope = { agentId: isNonEmptyString(agent.id) ? agent.id : undefined };
+
+    if (!isNonEmptyString(agent.id)) {
+      fail("An agent has no id. Packages, runs, approvals and outcome references are all keyed by it.", scope);
+    }
+    if (!isFiniteNumber(agent.version)) {
+      fail(
+        `Agent "${label}" has version ${String(agent.version)}, which is not a number. The Agent Factory rebuilds per agent keyed on the version, so it could never be rebuilt.`,
+        scope,
+      );
+    }
+    if (!isNonEmptyString(agent.name)) fail(`Agent "${label}" has no name.`, scope);
+    if (!isNonEmptyString(agent.role)) fail(`Agent "${label}" has no role.`, scope);
+
+    const guidance: unknown = agent.guidance;
+    if (!isObject(guidance)) {
+      fail(
+        `Agent "${label}" has no guidance object. The Factory dereferences guidance.objective when it compiles the system prompt, so this fails at build time rather than here.`,
+        scope,
+      );
+    } else {
+      if (!isNonEmptyString(agent.guidance.objective)) {
+        fail(`Agent "${label}" has no guidance.objective, which is the first line of its system prompt.`, scope);
+      }
+      if (!isNonEmptyString(agent.guidance.businessContext)) {
+        fail(`Agent "${label}" has no guidance.businessContext, so the prompt never says which business it works for.`, scope);
+      }
+    }
+
+    const policy: unknown = agent.policy;
+    if (!isObject(policy)) {
+      // Rule 8 reports the unreachable approval owner that follows from this;
+      // rule 0 reports the missing object itself.
+      fail(`Agent "${label}" has no policy object, so nothing constrains what it may do.`, scope);
+    } else {
+      checkPolicy(agent.policy, label, scope, fail);
+    }
+
+    reportUnreadable(agent.workflows, `agent "${label}" workflows`, fail, scope);
+    reportUnreadable(agent.capabilities, `agent "${label}" capabilities`, fail, scope);
+
+    for (const capability of objectsIn<Capability>(agent.capabilities)) {
+      if (!isNonEmptyString(capability.id)) {
+        fail(`Agent "${label}" has a capability with no id.`, scope);
+      }
+      if (!Array.isArray(capability.backedBy)) {
+        fail(
+          `Capability "${idOr(capability.id, "(no id)")}" on agent "${label}" has no backedBy array, so rule 14 cannot check it against the agent's grants.`,
+          { ...scope, capabilityId: isNonEmptyString(capability.id) ? capability.id : undefined },
+        );
+      }
+    }
+
+    for (const workflow of objectsIn<WorkflowSpec>(agent.workflows)) {
+      const workflowScope: Scope = {
+        ...scope,
+        workflowId: isNonEmptyString(workflow.id) ? workflow.id : undefined,
+      };
+      reportUnreadable(workflow.steps, `workflow "${idOr(workflow.id, "(no id)")}" steps`, fail, workflowScope);
+      checkWorkflow(workflow, workflowScope, fail);
+    }
+  }
+
+  /* ── Business outcomes ── */
+
+  for (const outcome of objectsIn<BusinessOutcome>(plan.businessOutcomes)) {
+    checkOutcome(outcome, fail);
+  }
+}
+
+/** Names the entries objectsIn() had to drop, so they are not silently lost. */
+function reportUnreadable(value: unknown, label: string, fail: Fail, scope: Scope = {}): void {
+  if (!Array.isArray(value)) return;
+  value.forEach((entry, index) => {
+    if (!isObject(entry)) {
+      fail(
+        `${label}[${index}] is ${entry === null ? "null" : typeof entry}, not an object. Nothing below can read it, so it is skipped entirely.`,
+        scope,
+      );
+    }
+  });
+}
+
 /* ═══════════════════════════ The validator ═══════════════════════════ */
 
 /** Returns [] when the plan is safe to build. Any "error" blocks handoff. */
@@ -145,8 +660,13 @@ export function validateApprovedPlan(plan: ApprovedPlan): PlanValidationError[] 
     return errors;
   }
 
-  const agents = asArray<AgentSpec>(plan.agents);
-  const outcomes = asArray<BusinessOutcome>(plan.businessOutcomes);
+  // Rule 0 first: the sixteen rules below are written against a well-formed
+  // plan, and reporting "your cron is unparseable" on a hand-off that has no
+  // agents array is answering the wrong question.
+  checkStructure(plan, errors);
+
+  const agents = objectsIn<AgentSpec>(plan.agents);
+  const outcomes = objectsIn<BusinessOutcome>(plan.businessOutcomes);
   const globalForbidden = new Set(
     plan.globalPolicy ? asArray<string>(plan.globalPolicy.forbidden) : [],
   );
@@ -229,8 +749,28 @@ export function validateApprovedPlan(plan: ApprovedPlan): PlanValidationError[] 
     const policy = agent.policy;
     const agentForbidden = new Set(policy ? asArray<string>(policy.forbidden) : []);
 
-    // Rule 2 — auto mode with no limits means nothing would ever escalate.
-    if (
+    // Rule 2 — operating-mode coherence, in two parts.
+    //
+    // The membership test comes first and is written as a membership test, not
+    // a typo check: a hand-off that omits the field entirely is the likelier
+    // failure and `undefined` has to fail this too. It matters more than it
+    // looks. The runtime refuses every act under a mode it cannot interpret, so
+    // an unrecognised mode is an unrunnable agent — and until this check
+    // existed a one-character typo also skipped the empty-limits test below,
+    // because that test only fires when the mode is already spelled correctly.
+    // A plan reading `"draft_onlyy"` with `limits: []` passed the gate clean.
+    //
+    // Both branches stay under rule 2 rather than minting a rule 17: §6 already
+    // scopes rule 2 to operating-mode and limit coherence, and a new rule number
+    // would put this file out of step with the agreed sixteen-rule table.
+    if (policy && !isOperatingMode(policy.operatingMode)) {
+      errors.push({
+        severity: "error",
+        rule: 2,
+        agentId,
+        message: `Agent "${agentId}" declares operatingMode "${String(policy.operatingMode)}". Expected one of ${OPERATING_MODES.join(", ")}. The runtime cannot interpret it and would refuse every act step.`,
+      });
+    } else if (
       policy &&
       policy.operatingMode === "auto_within_limits" &&
       asArray(policy.limits).length === 0
@@ -258,14 +798,28 @@ export function validateApprovedPlan(plan: ApprovedPlan): PlanValidationError[] 
       }
     }
 
-    // Rule 8 — approvals need an owner. Resolving the id against a real user
-    // directory lands in M4; at handoff we can only prove the field is set.
+    // Rule 8 — approvalOwner resolves to a real user, in two branches.
+    //
+    // Presence and resolution are separate failures and both are errors. An
+    // empty owner produces an approval addressed to nobody; a well-formed owner
+    // id that is not in the directory is worse, because everything downstream
+    // looks healthy — the agent pauses correctly, the approval is created
+    // correctly, and it waits forever in an inbox no one can open. Resolution
+    // is what makes this rule mean what §6 says it means; a non-empty string
+    // check alone was the rule claiming more than it enforced.
     if (!policy || !isNonEmptyString(policy.approvalOwner)) {
       errors.push({
         severity: "error",
         rule: 8,
         agentId,
         message: `Agent "${agentId}" has no approvalOwner, so a pending approval would have nobody to go to.`,
+      });
+    } else if (!isKnownUser(policy.approvalOwner)) {
+      errors.push({
+        severity: "error",
+        rule: 8,
+        agentId,
+        message: `Agent "${agentId}" names approvalOwner "${policy.approvalOwner}", who is not in the user directory (lib/plan/users.ts). The approval would be addressed to a user that does not exist and would never be seen.`,
       });
     }
 

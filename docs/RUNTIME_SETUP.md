@@ -57,6 +57,10 @@ ORIANT_RUNTIME_MODE=live
 | Determinism | guaranteed when paired with `FixedClock` + seeded `newId` | not guaranteed |
 | Keys needed | none | AI&, plus the tool credentials each workflow touches |
 
+**Composition root:** [`lib/runtime/session.ts`](../lib/runtime/session.ts),
+reached through `getRuntimeSession()`. That is the one place the mode is read
+and the one place the dependencies above are chosen.
+
 Switching modes changes **which dependencies are injected**, nothing else. The
 executor, the policy engine, the limit evaluation and the approval interrupt
 are identical in both modes — that is the point of the injection seam.
@@ -64,10 +68,16 @@ are identical in both modes — that is the point of the injection seam.
 The mode is read fail-closed: an unrecognised value is treated as `fixture`,
 never as `live`.
 
-> **Wiring note.** `createReasoner()` in `lib/runtime/llm.ts` takes
-> `"fixture" | "aiand"`, not the env value. The dependency wiring must map
-> `live` → `"aiand"` explicitly. Passing the raw env string through would land
-> on the `FixtureReasoner` branch and downgrade live mode silently.
+> **Wiring note.** `runtimeMode()` in `lib/runtime/session.ts` reads the
+> variable once: only the exact string `live` selects live mode; unset, blank
+> or anything else yields `fixture`. `createSession()` then picks the reasoner
+> directly — `new AiAndReasoner()` for `live`, `new FixtureReasoner()`
+> otherwise. There is no string-keyed reasoner factory in between, so there is
+> no intermediate enum a raw env value could be threaded into to land on the
+> fixture branch by accident. Live must fail loudly and fixture must be the
+> default; that is what this shape buys. The session is built once per process
+> and cached on `globalThis`, so if you change the variable, call
+> `resetRuntimeSession()` to make the next call re-read it.
 
 > This switch is separate from the older per-provider fallback in
 > `lib/server/providers/env.ts`, which powers the `/demo` lane and drops each
@@ -83,7 +93,7 @@ never as `live`.
 | **M0** Foundations | none | nothing. Fixture plan, validator, schema — all local |
 | **M1** Runtime core | none for fixture. `AIAND_*` **only** for `live` | in `live`, wiring throws `ReasonerConfigError` before any run starts. Fixture mode unaffected: the full M1 exit (send at \$95, pause at \$1,200, resume on approve, always-approve write-off, refused refund) passes with no keys |
 | **M2** Agent Factory | none. `DOUBLEWORD_*` optional | model-driven package generation unavailable. The deterministic local compiler still emits packages, and it is what the M2 equivalence test compares against |
-| **M3** Sandbox | none. `DAYTONA_*` optional | you lose isolation only. Scenarios, checkpoints, pass rates and verdicts all run locally, and determinism is unaffected (it comes from the injected `Clock`, seeded `newId()` and stubbed tools, not from Daytona) |
+| **M3** Sandbox | none. `DAYTONA_*` is **not read by the runtime** | nothing — there is no isolation to lose, because sandbox isolation is not implemented. The `SandboxIsolation` seam exists in `lib/runtime/sandbox/types.ts`, but `InProcessIsolation` is its only implementation, so every scenario runs in this process against stubbed tools. That is sufficient today: no scenario can reach an external system. Determinism comes from the injected `Clock`, seeded `newId()` and stubbed tools — never from Daytona. Setting `DAYTONA_*` affects only the legacy `/demo` lane |
 | **M4** Scheduler + Activation | `DATABASE_URL` **required**. Tool credentials required *only* for live runs against real systems | without a database, a paused run and its pending approval vanish on restart, which defeats the approval interrupt. Without tool credentials, live `act` steps fail and the Activation checklist reports the integration as not connected; fixture activation still works end to end |
 | **M5** Workspace + Approvals | same set as M4 | with the stub client the whole loop still runs: run fires → pauses → approval appears → owner edits and approves → run resumes |
 | **M6** Calendar, Agents, Integrations | tool credentials, for real connection and expiry state | the Integrations screen shows stub connection states rather than real ones |
@@ -99,7 +109,7 @@ Read that table as: **nothing before M4 is blocked by a missing key.**
 | --- | --- | --- | --- |
 | **AI&** | `AIAND_API_KEY`, `AIAND_BASE_URL`, `AIAND_MODEL` | every `reason` step: choosing which invoices to chase, drafting the reminder, judging a thread | AI& console. Base URL and model id are org-specific — copy both, do not guess |
 | **Doubleword** | `DOUBLEWORD_API_KEY`, `DOUBLEWORD_BASE_URL`, `DOUBLEWORD_MODEL` | optional model-driven agent-package generation | Doubleword console |
-| **Daytona** | `DAYTONA_API_KEY`, `DAYTONA_API_URL` | optional isolated sandbox execution | app.daytona.io. URL defaults to `https://app.daytona.io/api` |
+| **Daytona** | `DAYTONA_API_KEY`, `DAYTONA_API_URL` | legacy `/demo` lane validation only (`lib/server/providers/daytona.ts` → `ValidateScreen`). The Role C runtime sandbox does not read these | app.daytona.io. URL defaults to `https://app.daytona.io/api` |
 | **Google** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` | Gmail (read threads, create drafts, send), Calendar (list events, create/update bookings), Drive (read files) | Google Cloud console → Credentials → OAuth 2.0 client (Web application), with the Gmail/Calendar/Drive APIs enabled |
 | **HubSpot** | `HUBSPOT_ACCESS_TOKEN` | contacts, deals, invoices, notes, write-offs, and the refund operation the Finance agent forbids | HubSpot → Settings → Integrations → Private Apps |
 | **WhatsApp Business** | `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN` | read and send customer messages | Meta for Developers → WhatsApp → API Setup; use a system-user token, not a temporary one |

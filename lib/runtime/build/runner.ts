@@ -20,10 +20,13 @@
  *   executor would refuse is worse than an obvious failure.
  *
  *   FAILURE IS PER AGENT. One agent failing to build must not stop the other
- *   three, or a single bad spec blocks the whole workforce.
+ *   three, or a single bad spec blocks the whole workforce. The one exception
+ *   is a plan that fails the handoff validator: that is not one agent's
+ *   problem, so `buildPlan` refuses the whole plan before it builds anything.
  */
 
-import type { ApprovedPlan, AgentSpec } from "../../plan/types";
+import type { ApprovedPlan, AgentSpec, PlanValidationError } from "../../plan/types";
+import { validateApprovedPlan } from "../../plan/validate";
 import type { AgentPackage } from "../types";
 import { compileAgent } from "../factory";
 import { validatePackage } from "./validate-package";
@@ -217,11 +220,50 @@ async function fail(job: BuildJob, deps: BuildDeps, error: string): Promise<Buil
 
 /* ═══════════════════════ Building a whole plan ═══════════════════════ */
 
+/**
+ * `BuildPlanResult` plus the one thing that only exists at plan scope. Per-agent
+ * outcomes live in `jobs`; a plan refused as a whole has no job to hang off, so
+ * the refusal needs its own channel. Empty on every path where the plan itself
+ * was acceptable, which lets a caller tell "the plan was rejected" apart from
+ * "the agents failed to build" — two very different things to show an owner.
+ */
+export interface PlanBuildOutcome extends BuildPlanResult {
+  planErrors: PlanValidationError[];
+}
+
 export async function buildPlan(
   plan: ApprovedPlan,
   deps: BuildDeps,
   options: BuildAgentOptions = {},
-): Promise<BuildPlanResult> {
+): Promise<PlanBuildOutcome> {
+  /* ── The handoff gate, standing in front of the Factory ──
+     PLAN_CONTRACT §6 calls the plan validator "the entire integration risk
+     between the two lanes, reduced to one green/red check". A gate nothing
+     calls is decoration, and this is the boundary the contract names: the
+     Agent Factory entry point. Building agents out of a plan the validator has
+     already judged unrunnable would bury the real error under four build logs
+     and hand Activation a workforce assembled from an invalid plan.
+
+     validateApprovedPlan rather than assertValidPlan: the caller needs the
+     structured list to show, not an exception to catch and flatten into a
+     string. Errors only — warnings are advisory by definition and must not
+     block a build. */
+  const planErrors = validateApprovedPlan(plan).filter((e) => e.severity === "error");
+  if (planErrors.length > 0) {
+    return {
+      planId: plan.planId,
+      planVersion: plan.version,
+      jobs: [],
+      built: 0,
+      skipped: 0,
+      failed: 0,
+      // Not `isPlanBuilt`: a previous run may have left current packages
+      // behind, but a plan that fails the gate must never read as ready.
+      ready: false,
+      planErrors,
+    };
+  }
+
   const jobs: BuildJob[] = [];
 
   // Sequential on purpose: build logs are read as a narrative in the UI, and a
@@ -263,6 +305,7 @@ export async function buildPlan(
     skipped,
     failed,
     ready: await isPlanBuilt(plan, deps),
+    planErrors: [],
   };
 }
 

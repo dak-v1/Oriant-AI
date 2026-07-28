@@ -33,6 +33,16 @@ import type { PolicyDecision, ToolInvocation } from "./types";
 
 /* ═══════════════════════════ Limits ═══════════════════════════ */
 
+/**
+ * A policy arrives as JSON over the seam, so a declared array is a promise
+ * rather than proof — the same posture lib/plan/validate.ts takes at the gate.
+ * A missing collection must read as empty here, never throw: a TypeError
+ * escaping the enforcement layer is a run that dies without a decision.
+ */
+function asArray<T>(value: T[] | null | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
 function satisfies(value: number, op: Op, limit: number): boolean {
   switch (op) {
     case "<":
@@ -166,50 +176,81 @@ export function resolveAct(input: ResolveActInput): PolicyDecision {
   }
 
   // 6. auto_within_limits — the only mode that can proceed unattended.
-  const evaluation = evaluateLimits(policy.limits, invocation.metrics);
+  //
+  // Written as a GUARDED branch, never as the fall-through the other five steps
+  // drop into. "Anything I do not recognise" must not land in the one path that
+  // can act on a customer without asking, and a fall-through puts it there.
+  if (policy.operatingMode === "auto_within_limits") {
+    // `limits` is read defensively because evaluateLimits iterates it directly.
+    // An absent list is a handoff defect, not a licence: validator rule 2 makes
+    // an empty limit set in this mode a blocking error, so the tolerance here
+    // is only about refusing to crash mid-decision.
+    const limits = asArray(policy.limits);
+    const evaluation = evaluateLimits(limits, invocation.metrics);
 
-  if (evaluation.blocked.length > 0) {
-    return {
-      action: "refuse",
-      reason:
-        `Blocked by limit ${evaluation.blocked.map(describeLimit).join(", ")}.` +
-        (evaluation.unmeasured.length > 0
-          ? ` Unmeasured: ${evaluation.unmeasured.map((l) => l.metric).join(", ")}.`
-          : ""),
-    };
-  }
-
-  if (evaluation.needsApproval.length > 0) {
-    const unmeasured = evaluation.needsApproval.filter((l) =>
-      evaluation.unmeasured.includes(l),
-    );
-    const exceeded = evaluation.needsApproval.filter(
-      (l) => !evaluation.unmeasured.includes(l),
-    );
-
-    const parts: string[] = [];
-    if (exceeded.length > 0) {
-      parts.push(`exceeds ${exceeded.map(describeLimit).join(", ")}`);
+    if (evaluation.blocked.length > 0) {
+      return {
+        action: "refuse",
+        reason:
+          `Blocked by limit ${evaluation.blocked.map(describeLimit).join(", ")}.` +
+          (evaluation.unmeasured.length > 0
+            ? ` Unmeasured: ${evaluation.unmeasured.map((l) => l.metric).join(", ")}.`
+            : ""),
+      };
     }
-    if (unmeasured.length > 0) {
-      parts.push(
-        `could not confirm ${unmeasured.map((l) => l.metric).join(", ")}`,
+
+    if (evaluation.needsApproval.length > 0) {
+      const unmeasured = evaluation.needsApproval.filter((l) =>
+        evaluation.unmeasured.includes(l),
       );
+      const exceeded = evaluation.needsApproval.filter(
+        (l) => !evaluation.unmeasured.includes(l),
+      );
+
+      const parts: string[] = [];
+      if (exceeded.length > 0) {
+        parts.push(`exceeds ${exceeded.map(describeLimit).join(", ")}`);
+      }
+      if (unmeasured.length > 0) {
+        parts.push(
+          `could not confirm ${unmeasured.map((l) => l.metric).join(", ")}`,
+        );
+      }
+
+      return {
+        action: "require_approval",
+        reason: `Needs approval because it ${parts.join(" and ")}.`,
+        risk: escalate(baseRisk, "high"),
+        breachedLimits: evaluation.needsApproval.map((l) => l.id),
+      };
     }
 
     return {
-      action: "require_approval",
-      reason: `Needs approval because it ${parts.join(" and ")}.`,
-      risk: escalate(baseRisk, "high"),
-      breachedLimits: evaluation.needsApproval.map((l) => l.id),
+      action: "allow",
+      reason: limits.length
+        ? `Within all limits (${limits.map(describeLimit).join(", ")}).`
+        : "Within policy.",
     };
   }
 
+  // Unreachable through the type system — the union is exhausted above — but
+  // reachable at run time, because the plan is JSON: a typo, an omitted field,
+  // or a fourth mode added to the contract before this build implemented it.
+  //
+  // Refuse, deliberately, rather than require_approval. An unrecognised mode is
+  // not a risky act awaiting a judgement call; it means there is no policy
+  // regime to judge it under. Routing it to a human would hide the contract
+  // drift behind an ordinary-looking approval card and the owner would never
+  // learn the plan is unrunnable — the same reason steps 1 and 2 refuse rather
+  // than escalate. The `never` binding is compile-time only: it forces this
+  // branch to be revisited if OPERATING_MODES grows, and must stay paired with
+  // the runtime return, which is what actually closes the hole.
+  const unhandledMode: never = policy.operatingMode;
   return {
-    action: "allow",
-    reason: policy.limits.length
-      ? `Within all limits (${policy.limits.map(describeLimit).join(", ")}).`
-      : "Within policy.",
+    action: "refuse",
+    reason:
+      `Agent policy declares operating mode "${String(unhandledMode)}", which this runtime ` +
+      `does not implement. No act can be resolved under an unrecognised mode.`,
   };
 }
 
@@ -277,13 +318,20 @@ function parseHhMm(value: string): number {
 /**
  * Quiet hours normally wrap midnight (18:00 to 09:00), so the inside test is
  * a union of two ranges rather than a simple between.
+ *
+ * This answers for ONE window only. Since resolveRunStart takes the union of
+ * the agent's window and the plan's global one, a `false` here is not the same
+ * as "this agent may run" — the other window still gets a vote.
  */
 export function isWithinQuietHours(at: Date, quietHours: QuietHours | null): boolean {
   if (!quietHours) return false;
   const now = localMinutes(at, quietHours.timezone);
   const start = parseHhMm(quietHours.start);
   const end = parseHhMm(quietHours.end);
-  if (start === end) return false; // degenerate window means "never quiet"
+  // A degenerate window is an empty range: this window is never quiet. It no
+  // longer opts the agent out of the org-wide window, which is what a plan
+  // wanting an always-available agent has to say some other way.
+  if (start === end) return false;
   return start < end ? now >= start && now < end : now >= start || now < end;
 }
 
@@ -295,21 +343,46 @@ export interface RunGateInput {
   runsToday: number;
 }
 
+/** Unset is unreachable at the call sites below, but keeps the access honest. */
+function describeWindow(window: QuietHours | null): string {
+  return window ? `${window.start} to ${window.end} ${window.timezone}` : "unset";
+}
+
 /**
  * Gates whether a triggered run may start at all. Enforced by the scheduler
  * (M4); exposed here so the same rules govern sandbox and production.
  *
- * The agent's own quiet hours take precedence when set, otherwise the plan's
- * global window applies.
+ * Quiet hours are the UNION of the agent's window and the plan's global one:
+ * it is quiet if EITHER says quiet. Contract §3.1 says globalPolicy "applies to
+ * every agent unless the agent is stricter", and for a restriction "stricter"
+ * can only mean quiet for longer. Reading the agent's window as a REPLACEMENT
+ * inverted that — an agent declaring a narrower window escaped an org-wide
+ * constraint simply by mentioning quiet hours at all, which is the one thing a
+ * global floor exists to prevent.
+ *
+ * The two windows are tested separately rather than merged into a single minute
+ * range: each `QuietHours` carries its own IANA timezone, and a merged range
+ * across two zones would not mean anything. `isWithinQuietHours` already
+ * handles the midnight wrap and reads an unset window as "not quiet", so the
+ * one-window and no-window cases need no special casing here.
  */
 export function resolveRunStart(input: RunGateInput): PolicyDecision {
   const { at, policy, globalQuietHours, runsToday } = input;
-  const quiet = policy.quietHours ?? globalQuietHours;
 
-  if (isWithinQuietHours(at, quiet)) {
+  // Reported separately so the refusal names the window that actually blocked
+  // the run. An owner shown an org-wide window they cannot find in the agent's
+  // own config has no way to act on the message.
+  if (isWithinQuietHours(at, policy.quietHours)) {
     return {
       action: "refuse",
-      reason: `Inside quiet hours (${quiet?.start} to ${quiet?.end} ${quiet?.timezone}).`,
+      reason: `Inside this agent's quiet hours (${describeWindow(policy.quietHours)}).`,
+    };
+  }
+
+  if (isWithinQuietHours(at, globalQuietHours)) {
+    return {
+      action: "refuse",
+      reason: `Inside org-wide quiet hours (${describeWindow(globalQuietHours)}).`,
     };
   }
 

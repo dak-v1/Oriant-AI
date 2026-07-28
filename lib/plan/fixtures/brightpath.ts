@@ -19,6 +19,16 @@
  *      service-recovery  act_after_approval  explicit `approve` checkpoint,
  *                                            then resume and act
  *
+ *      ROLE_C_PLAN's M0 fixture table has a fifth row — the "broken set", whose
+ *      three paths are throws mid-run, needs a disconnected tool, and hangs.
+ *      There is deliberately no fifth agent here for it. All three are
+ *      properties of the TOOL DOUBLE rather than of an `AgentSpec`, so they
+ *      live as sandbox scenarios (SC-11, SC-22, SC-24) instead. An agent that
+ *      is meant to misbehave could not both sit in this array and pass its
+ *      scenarios, so it would hold the M3 Activation gate shut permanently, and
+ *      it would break M0-4 ("every agent serves a business outcome"), M2's
+ *      "4 generated packages" exit and M3's "all 4 agents pass".
+ *
  * Ids match lib/mock/fixtures/ids.ts (AGENT.*, APP.*) so the demo surfaces and
  * the runtime speak the same language. They are written out literally rather
  * than imported: the contract is the boundary between the lanes, and nothing
@@ -1139,6 +1149,8 @@ export const BRIGHTPATH_PLAN: ApprovedPlan = {
   approvedBy: OWNER,
   reportVersion: 2,
   businessOutcomes,
+  // Four, deliberately. The M0 fixture table's "broken set" is covered by
+  // sandbox scenarios rather than a fifth agent here — see the file header.
   agents: [adminOperations, marketing, financeFollowUp, serviceRecovery],
   globalPolicy: {
     quietHours: WORKING_HOURS,

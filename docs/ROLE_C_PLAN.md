@@ -48,13 +48,21 @@ Sizes are relative, not calendar. Recalibrate to actual hours available.
 
 **Goal:** load a valid plan in code and prove it is valid.
 
-- [ ] Rewrite `lib/mock/fixtures/workflow-plan.ts` as a real `ApprovedPlan`
-      — 4 BrightPath agents, 2–3 `BusinessOutcome`s, capabilities, policies, limits
+- [ ] Write `lib/plan/fixtures/brightpath.ts` as a real `ApprovedPlan`
+      — 4 BrightPath agents, 2–3 `BusinessOutcome`s, capabilities, policies, limits.
+      **Not** `lib/mock/fixtures/workflow-plan.ts`: that file still feeds the
+      scripted demo lane and keeps its prose shapes (`PLAN_CONTRACT.md` §7)
 - [ ] Implement `validateApprovedPlan()` — all 16 rules from `PLAN_CONTRACT.md` §6
 - [ ] Decide storage (the shared `data/db.json` will not survive real runs)
 - [ ] Write the schema: `runs`, `run_events`, `approvals`, `packages`,
       `deployments`, `schedules`, `agent_runtime_config`
 - [ ] Claim directories; agree shared-file owners with D and YJ
+
+> The two storage items are still open, and they are **the M4 blocker.** The
+> only `RunStore` is `InMemoryRunStore`, and no schema exists for any of the
+> seven tables above. `RUNTIME_SETUP.md` §3 already states the consequence: a
+> paused run and its pending approval must outlive the process, or the approval
+> interrupt is defeated. Nothing before M4 is blocked by it.
 
 **Fixture agents — chosen for path coverage, not looks:**
 
@@ -127,20 +135,31 @@ test is the real acceptance criterion, not "the job turned green".
 
 **Goal:** prove the workforce behaves before anything touches a real customer.
 
-- [ ] Scenario fixtures (extend `lib/mock/fixtures/sandbox-scenarios.ts`)
+- [ ] Scenario fixtures in `lib/runtime/sandbox/scenarios.ts` — same lane split
+      as the plan fixture: `lib/mock/fixtures/sandbox-scenarios.ts` stays with
+      the scripted demo screens and is not extended
 - [ ] Run scenarios through the M1 runtime with stubbed tools
 - [ ] Live event timeline + output panel
 - [ ] Approval checkpoints inside the simulation
 - [ ] 20-case stress test + pass rate
 - [ ] **Determinism** — fixed seed, fixed clock, stubbed tools, pinned model params
 - [ ] Verdict per scenario → overall "ready for activation"
-- [ ] Daytona isolation
+- [ ] Daytona isolation — **outstanding, not started.** The `SandboxIsolation`
+      seam exists in `lib/runtime/sandbox/types.ts`, but `InProcessIsolation` is
+      its only implementation and nothing under `lib/runtime` reads `DAYTONA_*`.
+      Scenarios run in this process against stubbed tools
 
 **Exit:** all 4 agents pass, **and** the same scenario yields an identical
 verdict across 5 consecutive runs.
 
 > If the verdict is flaky, stop and fix it before moving on. Activation gates
 > on this verdict — a flaky gate is no gate.
+
+> Isolation is deliberately *not* part of that exit. Every tool is stubbed, so
+> no scenario can reach an external system, and determinism comes from the
+> injected clock, seeded ids and stubs rather than from a remote isolate. A
+> Daytona implementation of the seam buys defence against a future generator
+> that emits executable code — worth having, not load-bearing yet.
 
 ---
 
@@ -150,21 +169,81 @@ verdict across 5 consecutive runs.
 
 **Trigger engine (headless)**
 - [ ] `schedule` → cron · `event` → listeners · `threshold` → evaluation ·
-      `dependency` → ordering
-- [ ] Job queue + worker executing runs in the background
-- [ ] Concurrency, retries, dead-letter
-- [ ] Enforce `quietHours` and `maxRunsPerDay`
-- [ ] Idempotency keys — never double-fire a scheduled run
+      `dependency` → ordering — **two of the four run end to end.** All five
+      `TriggerSpec` kinds register and can derive a firing
+      (`lib/runtime/schedule/triggers.ts`), and the worker drives `schedule` and
+      `dependency` from due to run. `eventFirings` and `thresholdFirings` are
+      written and proven pure, but **nothing delivers into them**: there is no
+      webhook route and no metric poller, so an `event` or `threshold` workflow
+      registers, shows as live, and never starts. Listeners need D's integration
+      layer (`PLAN_CONTRACT.md` §8 Q3)
+- [x] Job queue + worker executing runs in the background —
+      `schedule/{queue,worker}.ts`. `runDueWork` is one pass and returns;
+      `startPoller` is the daemon. **No process starts the poller yet** — no
+      route or server hook calls into `lib/runtime/schedule` at all
+- [x] Concurrency, retries, dead-letter — capped lanes, exponential backoff by
+      moving `runAfter`, terminal `dead_letter` at `maxAttempts`
+- [x] Enforce `quietHours` and `maxRunsPerDay` — `resolveRunStart` gates the
+      START, and a refusal settles the job `skipped` with the reason, never
+      `failed`. The daily boundary is the agent's own timezone, not UTC
+- [x] Idempotency keys — never double-fire a scheduled run. Two layers: the
+      queue refuses a second job for a key it holds, and
+      `RunStore.claimIdempotencyKey` refuses a second run. Only the second is a
+      guarantee, and it is the one M4-3 forces
 
 **Activation screen**
 - [ ] Checklist with three inputs: packages built (M2) · sandbox passed (M3) ·
-      required integrations connected (**D's registry**)
-- [ ] Blocked states with links to whatever is missing
-- [ ] Go-live: register triggers, flip agents to `active`
+      required integrations connected (**D's registry**) — **the derivation is
+      done, the screen is not.** `activationChecklist` re-derives all three on
+      every read and each one blocks on its own; `/app/deploy` still renders the
+      scripted demo lane (`lib/mock/store`) and reads none of it
+- [ ] Blocked states with links to whatever is missing — `ActivationBlocker`
+      carries the message, the `href` and the agent or integration at fault.
+      Nothing renders them yet
+- [x] Go-live: register triggers, flip agents to `active` — `activate()` writes
+      triggers, then `AgentRuntimeRecord`s, then the `Deployment`, in that order
+      so an interrupted go-live leaves work to finish rather than a record of
+      work that never happened. Re-activating the live version writes nothing
 - [ ] Transition into Workspace
 
 **Exit:** activate the fixture plan → the Friday sweep fires on schedule → a
 run appears with no human involvement.
+
+> **Met, headlessly — `npm run verify:m4`.** M4-1 is that sentence executed:
+> `BRIGHTPATH_PLAN` activates behind its three real gates, a `FixedClock` moves
+> from 08:30 to 09:00 Asia/Singapore, one call to `runDueWork` claims the job
+> that `0 9 * * 5` queued, and a run for `finance-followup/payment-reminder-drafting`
+> exists with no decision recorded against it. The other eleven checks are there
+> because firing once under laboratory conditions proves almost nothing: one run
+> per redelivered trigger at both layers, quiet hours skipping rather than
+> failing, the daily cap resetting on the agent's midnight and not UTC, a paused
+> run leaving its job `succeeded`, backoff that a retry cannot skip, a
+> concurrency ceiling that is also demonstrably parallel, each activation gate
+> shutting on its own, and the whole sequence byte-identical on a rerun.
+>
+> The sweep ends `awaiting_approval`, and that **is** the criterion met — its
+> `act` step breaches `invoice.amount <= 500`, so the run pauses for Sarah. A run
+> appeared unattended; the decision waiting on her is the product working.
+>
+> The HTTP surface exists: `GET/POST /api/runtime/activation` (the checklist,
+> and go-live returning **409 with the checklist** when a gate blocks) and
+> `GET/POST /api/runtime/scheduler` (triggers, queue, one `runDueWork` pass,
+> agent pause/resume). The `now` override that lets the Friday sweep be
+> demonstrated on a Tuesday is honoured in fixture mode only — in live mode it
+> would be a replay button pointed at real customer systems.
+>
+> What M4 does **not** yet have: the deploy screen, an inbound path for `event`
+> and `threshold` triggers, and any process that runs the worker on its own.
+> `startPoller()` exists but nothing calls it, so in a deployed build every
+> firing still needs someone to POST the scheduler route.
+> Storage is no longer the blocker M0 records — `lib/runtime/persist/` backs
+> runs, packages and the scheduler on disk, and `session.ts` defaults to it.
+>
+> One handoff for M5, easy to miss and silent when missed:
+> `fireDependencies()` must be called wherever a paused run resumes, because a
+> worker pass never observes that completion. On BrightPath the sweep pausing
+> for approval is the *ordinary* path, so anything chained behind it only
+> becomes due once the owner decides.
 
 ---
 
@@ -261,7 +340,10 @@ product.
 
 ## This week
 
-- [ ] Send `PLAN_CONTRACT.md` to D; chase §8 Q1 (who authors `StepSpec[]`) specifically
+- [ ] Send `PLAN_CONTRACT.md` to D; chase §8 Q1 (who authors `StepSpec[]`)
+      specifically. §7 changed — the structured types live in `lib/plan/types.ts`
+      and steps 1–2 are now D's to do — so per §10 this goes over as a pull
+      request both lanes review, not as a link
 - [ ] Write the `ApprovedPlan` fixture — 4 agents, mixed modes, one broken
 - [ ] Implement `validateApprovedPlan()`; get it to `[]`
 - [ ] Decide storage and write the schema
@@ -273,9 +355,31 @@ product.
 
 | Need | From | Blocks | Status |
 | --- | --- | --- | --- |
-| `ApprovedPlan` sign-off | D | nothing (fixture covers it) | ☐ |
+| `ApprovedPlan` sign-off, and D's planner emitting one (`PLAN_CONTRACT.md` §7 steps 1–2) | D | nothing (`brightpath.ts` covers it) | ☐ |
 | `getToolClient()` signature | D | M4 real tools (stub unblocks M1) | ☐ |
 | Operation vocabulary registry | D | runtime enforcement polish | ☐ |
+| May an agent's `quietHours` ever be **looser** than `globalPolicy.quietHours`? (`PLAN_CONTRACT.md` §3.1, §3.10) | D | nothing today — the union is enforced and proven by `verify:m4` M4-4 | ☐ |
 | Outcome baselines in the company report | YJ | M5 outcome progress | ☐ |
 
 None of these block the start of M1.
+
+**On the quiet-hours question.** §3.1 says `globalPolicy` "applies to every agent
+unless the agent is stricter", and for a restriction stricter can only mean quiet
+for *longer*. `resolveRunStart` now reads it that way: quiet hours are the UNION
+of the agent's window and the plan's, so an agent cannot escape an org-wide floor
+merely by mentioning quiet hours at all. That closes a real hole — and it closes
+an escape hatch the fixture was using. `service-recovery` declares a degenerate
+`00:00–00:00` window specifically to opt out of BrightPath's 18:00–09:00 block,
+because a complaint landing at 7pm must not wait until morning; under the union
+that window is simply never quiet on its own and the org-wide one still refuses
+the run. M4-4 asserts exactly that, so the behaviour is pinned rather than
+drifting.
+
+The contract has no way to say what the fixture was trying to say. Either an
+agent may declare itself exempt — in which case §3.1 needs a word for it and the
+runtime needs a field that is not a degenerate time range — or it may not, in
+which case the fixture's comment at `brightpath.ts` is stale and the
+service-recovery agent genuinely cannot answer a 7pm complaint until 9am. That is
+D's call, not Role C's: it is a question about what the plan is allowed to
+express. Role C's position is that a silent exemption expressed as `00:00–00:00`
+is the wrong mechanism either way — it is indistinguishable from a typo.

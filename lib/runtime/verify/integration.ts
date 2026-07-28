@@ -15,6 +15,7 @@
  */
 
 import { BRIGHTPATH_PLAN } from "../../plan/fixtures/brightpath";
+import { isReadOnly } from "../../plan/operations";
 import type { AgentSpec } from "../../plan/types";
 import { bundleAgent } from "../factory";
 import { startRun, decideAndResume } from "../executor";
@@ -32,6 +33,17 @@ export interface Check {
 
 const BUILT_AT = "2026-07-24T08:00:00.000Z";
 const NOW = "2026-07-24T01:00:00.000Z"; // 09:00 Asia/Singapore, outside quiet hours
+
+/**
+ * Step 4 of the resolution order, verbatim from lib/runtime/policy.ts.
+ *
+ * Duplicated on purpose rather than imported: the point of INT-3 is to prove
+ * the run stopped for THIS reason and not for one of the other four that also
+ * end in `awaiting_approval`, and a shared constant would match whatever the
+ * resolver happened to say. If policy.ts rewords step 4, this line is the
+ * deliberate second edit.
+ */
+const DRAFT_ONLY_REASON = "This agent prepares work but never acts on its own.";
 
 function agent(id: string): AgentSpec {
   const found = BRIGHTPATH_PLAN.agents.find((a) => a.id === id);
@@ -109,20 +121,38 @@ export async function runINTEGRATIONVerification(): Promise<Check[]> {
     );
   }
 
-  /* 3. draft_only never acts. The Marketing agent must always pause. */
+  /* 3. draft_only never acts. The Marketing agent must always pause.
+        Every clause here is load-bearing, and the check used to have none of
+        them: it computed the writes and then asserted only
+        `awaiting_approval || completed`, which is true of every non-error
+        outcome. Delete the draft_only branch from the policy engine and the
+        marketing agent — whose limits are empty — would auto-send and finish
+        `completed`, with this check still green.
+
+        So: the run must pause, it must have produced a real reviewable item,
+        and the pause must be the one draft_only causes. Asserting the reason
+        pins the DECISION PATH; a status alone cannot tell "never acts on its
+        own" apart from "breached a limit" or "always-approve operation". */
   {
     const spec = agent("marketing");
     const d = deps("mkt");
     const bundle = bundleAgent(spec, { builtAt: BUILT_AT });
     const out = await startRun(bundle, triggerFor(spec), d);
-    const writes = d.provider.client.calls.filter((c) => {
-      const grant = spec.tools.find((t) => t.integrationId === c.integrationId);
-      return grant && !c.operation.endsWith(".read") && !c.operation.includes(".list");
-    });
+    // Classified from the registry's `access` field rather than from the shape
+    // of the operation name. A `.endsWith(".read")` heuristic silently depends
+    // on a naming convention surviving D's real vocabulary (contract §8 Q2),
+    // and isReadOnly already fails closed on an id it does not know.
+    const writes = d.provider.client.calls.filter((c) => !isReadOnly(c.operation));
+    const pending = await d.store.listPendingApprovals();
+    const reason = pending[0]?.reason ?? "";
     add(
       "INT-3 draft_only agent pauses instead of acting",
-      out.status === "awaiting_approval" || out.status === "completed",
-      `status=${out.status} approval=${out.approvalId ?? "none"} writes=${writes.length}`,
+      out.status === "awaiting_approval" &&
+        writes.length === 0 &&
+        pending.length === 1 &&
+        out.approvalId !== null &&
+        reason === DRAFT_ONLY_REASON,
+      `status=${out.status} approval=${out.approvalId ?? "none"} writes=${writes.length} pending=${pending.length} reason=${JSON.stringify(reason)}`,
     );
   }
 
@@ -257,9 +287,13 @@ export function formatResults(results: Check[]): string {
   const failed = results.filter((r) => !r.pass).length;
   lines.push("");
   lines.push(
-    failed === 0
-      ? `INTEGRATION OK — ${results.length}/${results.length} checks passed.`
-      : `INTEGRATION BROKEN — ${failed} of ${results.length} checks failed.`,
+    // An empty result set is not a pass: `[].filter(...).length === 0` is true,
+    // so the two-branch version reports OK for a runner that asserted nothing.
+    results.length === 0
+      ? "INTEGRATION BROKEN — the runner produced no checks."
+      : failed === 0
+        ? `INTEGRATION OK — ${results.length}/${results.length} checks passed.`
+        : `INTEGRATION BROKEN — ${failed} of ${results.length} checks failed.`,
   );
   return lines.join("\n");
 }

@@ -63,12 +63,22 @@ export async function POST(request: Request) {
         { status: 404 },
       );
     }
-    const result = await runScenario(scenario, session.plan);
+    const result = await runScenario(scenario, session.plan, { packages: session.build });
     return NextResponse.json({ result });
   }
 
-  const stress = body.stress === false ? null : await runStressSweep(session.plan);
-  const verdict = await runSuite(BRIGHTPATH_SCENARIOS, session.plan, { stress });
+  // `packages` is supplied so the suite proves the artefact the Factory BUILT
+  // and stored, not a fresh compile of the spec. Activation's sandbox gate
+  // resolves it the same way; without this the two could disagree — a green
+  // verdict here and a shut gate there for an agent whose package is missing.
+  const stress =
+    body.stress === false
+      ? null
+      : await runStressSweep(session.plan, { packages: session.build });
+  const verdict = await runSuite(BRIGHTPATH_SCENARIOS, session.plan, {
+    stress,
+    packages: session.build,
+  });
 
   return NextResponse.json({
     ready: verdict.ready,
