@@ -1,0 +1,743 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   components/live/agents/live-agents.module.css — layout for the LIVE agent
+   roster (ROLE_C_PLAN M6).
+
+   Tokens and primitives come from app/app/app.css (`.oa` scope): surfaces,
+   type scale, buttons, `.oa-status--*` badges, focus rings. Nothing below
+   invents a colour, a radius or an easing. The scripted roster
+   (components/mock/workspace/AgentRoster.tsx) and this one have to read as the
+   same screen with different data in it, so the card, the section headings and
+   the chips deliberately echo `workspace.module.css` rather than improving on
+   it.
+
+   TWO RULES SHAPE ALMOST EVERYTHING HERE.
+
+   Colour is never the only signal. Every state, every gate note and every
+   transition result carries a word and, where it matters, an icon; the tint is
+   reinforcement. On this screen that is a correctness requirement as much as a
+   WCAG one — "paused" and "failed" ask completely different things of an owner,
+   and a roster read at a glance is exactly where a colour-only distinction
+   fails.
+
+   An unknown value never looks like a value. `.unknown` is italic, muted and
+   underlined with the same dashed border the disabled rows use, so "runs today
+   could not be counted" cannot be mistaken for "no runs today". Several facts
+   this screen would like to show genuinely do not exist yet, and they must
+   read as absent rather than as zero.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.head {
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.headTitles {
+  display: grid;
+  gap: 8px;
+  max-width: 62ch;
+}
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.headMeta {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.headStamp {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+}
+
+.headZone {
+  font-size: 11.5px;
+  color: var(--oa-muted);
+}
+
+.modeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--oa-r-chip);
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--oa-border-strong);
+  color: var(--oa-muted-strong);
+  background: var(--oa-surface);
+  white-space: nowrap;
+}
+
+.headNotes {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+  max-width: 92ch;
+}
+
+/* ── The roster ─────────────────────────────────────────────────────────── */
+
+/* One column on purpose. The detail panel expands INSIDE a card, and a
+   multi-column grid would reflow every other card when one is opened. */
+.roster {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.agentCard {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.agentHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.agentTitles {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.agentName {
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.agentSide {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.stateDetail {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+  overflow-wrap: anywhere;
+}
+
+/* ── "Doing now" / "Next run" ───────────────────────────────────────────── */
+
+.nowGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+}
+
+.nowCell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.nowTerm {
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+}
+
+.nowValue {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.nowSub {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--oa-muted-strong);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ── Counts ─────────────────────────────────────────────────────────────── */
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 12px 0;
+  border-top: 1px solid var(--oa-border);
+  border-bottom: 1px solid var(--oa-border);
+  margin: 0;
+}
+
+.stat {
+  display: grid;
+  gap: 2px;
+  padding: 0 14px;
+  border-left: 1px solid var(--oa-border);
+  min-width: 0;
+}
+.stat:first-child {
+  border-left: none;
+  padding-left: 0;
+}
+
+.statNum {
+  font-size: 20px;
+  font-weight: 750;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.statAttention {
+  color: var(--oa-amber-ink);
+}
+.statMissing {
+  color: var(--oa-muted);
+}
+
+.statLabel {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.statSub {
+  font-size: 11px;
+  color: var(--oa-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ── Notes: the start gate, drift, unregistered workflows ───────────────── */
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-surface);
+  color: var(--oa-muted-strong);
+}
+
+.noteIcon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.noteWarn {
+  border-color: var(--oa-amber-border);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+}
+
+/* ── Controls ───────────────────────────────────────────────────────────── */
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.controlNote {
+  font-size: 11.5px;
+  color: var(--oa-muted);
+}
+
+.result {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-border-strong);
+  background: var(--oa-surface);
+}
+
+.resultApplied {
+  border-color: var(--oa-teal-deep);
+  background: var(--oa-soft-teal);
+}
+
+.resultRefused {
+  border-color: var(--oa-red);
+  background: var(--oa-soft-red);
+}
+
+.resultTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 750;
+  margin: 0;
+}
+
+.resultBody {
+  font-size: 12.5px;
+  line-height: 1.55;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ── The drill-in ───────────────────────────────────────────────────────── */
+
+.detail {
+  display: grid;
+  gap: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--oa-border);
+}
+
+.section {
+  display: grid;
+  gap: 10px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.list {
+  display: grid;
+  gap: 2px;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--oa-border);
+}
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowMain {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.rowTitle {
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.rowSub {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--oa-muted-strong);
+  overflow-wrap: anywhere;
+}
+
+.rowSide {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.rowOff {
+  opacity: 0.72;
+}
+
+/* ── Config ─────────────────────────────────────────────────────────────── */
+
+.configGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin: 0;
+}
+
+.configItem {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.configTerm {
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+}
+
+.configValue {
+  font-size: 13.5px;
+  font-weight: 700;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.chipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--oa-r-chip);
+  padding: 3px 10px;
+  font-size: 11.5px;
+  font-weight: 650;
+  border: 1px solid var(--oa-border);
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  overflow-wrap: anywhere;
+}
+
+.chipDeny {
+  border-color: var(--oa-red);
+  background: var(--oa-soft-red);
+  color: var(--oa-red-ink);
+}
+
+.chipGate {
+  border-color: var(--oa-amber-border);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+}
+
+.toolCard {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-surface);
+}
+
+.toolHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.toolName {
+  font-family: var(--oa-mono);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.mono {
+  font-family: var(--oa-mono);
+  font-size: 11.5px;
+  color: var(--oa-muted-strong);
+  overflow-wrap: anywhere;
+}
+
+/* ── Unknowns, empties, errors ──────────────────────────────────────────── */
+
+/* "We could not work this out" must not read as a value. */
+.unknown {
+  font-size: 12.5px;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--oa-muted);
+  border-bottom: 1px dashed var(--oa-border-strong);
+  justify-self: start;
+}
+
+.emptyNote {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted);
+  margin: 0;
+}
+
+.errorBox {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-red);
+  background: var(--oa-soft-red);
+  margin-bottom: 16px;
+}
+
+.errorTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--oa-red-ink);
+  margin: 0;
+}
+
+.errorBody {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-red-ink);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ── The four page states, kept visually apart ──────────────────────────────
+   A reader has to tell these apart before reading a word of them:
+
+     .errorBox   something failed and may work on the next try — red, alert
+     .blockedBox nothing failed; a named gate has not been passed, and no amount
+                 of refreshing changes that — amber, solid, with the way through
+     .stateBox   nothing is wrong and nothing is here — dashed, quiet
+     .skelCard   nothing is known yet — shaped like the thing that is coming
+
+   Blocked was an `.oa-card` notice through M6, which made it look like one more
+   panel of information rather than the one thing standing between this plan and
+   a working workforce. */
+
+.blockedBox {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  border: 1px solid var(--oa-amber-border);
+  border-left-width: 4px;
+  border-radius: var(--oa-r-card);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.blockedBox p {
+  margin: 0;
+  max-width: 84ch;
+}
+
+.blockedHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.blockedTitle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.blockedTitle svg {
+  flex: none;
+}
+
+.stateBox {
+  display: grid;
+  gap: 10px;
+  padding: 30px 22px;
+  border: 1px dashed var(--oa-border);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-surface);
+  color: var(--oa-muted-strong);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.stateBox p {
+  margin: 0;
+  max-width: 80ch;
+}
+
+.stateTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--oa-ink);
+}
+
+.stateTitle svg {
+  flex: none;
+}
+
+/* ── The change stream's own state ──────────────────────────────────────── */
+
+.stream,
+.streamState {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.stream {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted);
+}
+
+.stream svg {
+  align-self: center;
+  flex: none;
+}
+
+/* Outside the live region on purpose — see the roster's comment on it. */
+.streamRead {
+  min-width: 0;
+}
+
+/* The status as a WORD, beside an icon that differs per state. Whether this page
+   is live is never said by colour. */
+.streamWord {
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+
+.streamDetail {
+  min-width: 0;
+}
+
+.notice {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.noticeBody {
+  display: grid;
+  gap: 8px;
+  max-width: 78ch;
+}
+
+.noticeHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.noticeTitle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.noticeIcon {
+  color: var(--oa-blue);
+  flex: none;
+}
+
+.footNote {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--oa-muted);
+  margin: 16px 0 0;
+}
+
+.inlineLink {
+  color: var(--oa-blue-dark);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Skeletons ──────────────────────────────────────────────────────────── */
+
+.skelCard {
+  display: grid;
+  gap: 12px;
+  padding: 22px 24px;
+}
+
+.skelLine {
+  height: 11px;
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-bg-alt);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .statRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 4px;
+  }
+  .stat:nth-child(3) {
+    border-left: none;
+    padding-left: 0;
+  }
+  .nowGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .headMeta {
+    text-align: left;
+  }
+}
+
+@media (max-width: 560px) {
+  .statRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stat {
+    border-left: none;
+    padding-left: 0;
+  }
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rowSide {
+    justify-content: flex-start;
+  }
+}

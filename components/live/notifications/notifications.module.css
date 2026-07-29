@@ -1,0 +1,298 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   components/live/notifications/notifications.module.css — the attention
+   surface (ROLE_C_PLAN M7).
+
+   Tokens and primitives come from app/app/app.css (`.oa` scope): surfaces, the
+   type scale, buttons, `.oa-status--*` badges and the focus ring. Nothing below
+   defines a colour, a radius or an easing of its own. A second palette in this
+   folder would make the notification surface look like a different product from
+   the five screens that host it, and the whole point is that it is part of them.
+
+   ONE RULE SHAPES EVERY DECLARATION HERE: colour is never the only signal. Each
+   row carries a severity word and an icon before any tint appears, each group
+   carries a heading and a sentence, and the left edge stripe below is
+   reinforcement for a distinction that is already written down twice. A reader
+   who cannot separate amber from red, or who is listening rather than looking,
+   loses nothing.
+
+   THE SECOND RULE IS THAT NOTHING ANIMATES INTO VIEW. A list that slides or
+   fades when it changes is a list that moves under a pointer at the moment a
+   reader is trying to click "Decide this now", and the change signal can deliver
+   that moment at any time. New rows simply appear.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.card {
+  display: grid;
+  gap: 16px;
+}
+
+/* ── Screen-reader-only ─────────────────────────────────────────────────
+   The live region and the per-row accessible names. `clip-path` with a 1px box
+   rather than `display: none`, which removes an element from the accessibility
+   tree entirely and would silence the announcement it exists to make. */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.headTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.headIcon {
+  color: var(--oa-muted-strong);
+  flex: none;
+}
+
+/* ── Groups ─────────────────────────────────────────────────────────────── */
+
+.group {
+  display: grid;
+  gap: 10px;
+}
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--oa-ink);
+}
+
+.groupCount {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--oa-muted);
+}
+
+.rows {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── One item ───────────────────────────────────────────────────────────── */
+
+.row {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.rowIcon {
+  color: var(--oa-muted-strong);
+  flex: none;
+  margin-top: 2px;
+}
+
+.rowBody {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rowMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rowAgent {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+}
+
+.rowTime {
+  font-size: 11.5px;
+  color: var(--oa-muted);
+}
+
+/* An unreadable instant, or one ahead of the runtime's clock. Underlined as
+   well as tinted, because "this timestamp is wrong" must not be a colour. */
+.rowTimeOdd {
+  font-size: 11.5px;
+  color: var(--oa-amber-ink);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.rowTitle {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--oa-ink);
+}
+
+/* The concrete thing — an operation id, a workflow, an integration. Mono, so an
+   id reads as an id rather than as prose. */
+.rowSubject {
+  font-family: var(--oa-mono);
+  font-size: 11.5px;
+  color: var(--oa-muted-strong);
+  word-break: break-word;
+}
+
+.rowNoAction {
+  font-style: italic;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: none;
+}
+
+.dismissButton {
+  color: var(--oa-muted-strong);
+}
+
+.rowMuted {
+  opacity: 0.72;
+}
+
+/* ── Failures ───────────────────────────────────────────────────────────── */
+
+.errorBox,
+.partialBox {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--oa-r-inner);
+  border: 1px solid var(--oa-red);
+  background: var(--oa-soft-red);
+}
+
+/* The list is partial rather than absent: a different fact, and a different
+   border, but the same amount of text saying which. */
+.partialBox {
+  border-color: var(--oa-amber-border);
+  background: var(--oa-soft-amber);
+}
+
+.errorTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--oa-red-ink);
+}
+
+.partialBox .errorTitle {
+  color: var(--oa-amber-ink);
+}
+
+.errorBody {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+}
+
+.partialList {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+}
+
+/* ── Empty, dismissed, footer ───────────────────────────────────────────── */
+
+.empty {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 14px 16px;
+  border-radius: var(--oa-r-inner);
+  border: 1px dashed var(--oa-border-strong);
+  background: var(--oa-bg-alt);
+}
+
+.dismissedBlock {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--oa-border);
+}
+
+.footer {
+  display: grid;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--oa-border);
+}
+
+.footNotes {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--oa-muted);
+}
+
+.inlineLink {
+  color: var(--oa-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.note {
+  max-width: 72ch;
+}
+
+.status {
+  color: var(--oa-muted);
+  max-width: 78ch;
+}
+
+/* ── Narrow ─────────────────────────────────────────────────────────────
+   The action column drops beneath the body rather than squeezing: "Decide this
+   now" and "Dismiss" both have to stay full-size targets, and a 44px control
+   is not negotiable on the surface whose whole job is being actioned. */
+
+@media (max-width: 720px) {
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .rowActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

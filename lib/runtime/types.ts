@@ -196,8 +196,16 @@ export interface ApprovalDecision {
   /** Required when rejected. */
   reason?: string;
   /**
-   * Owner edits before approving. Merged over the frozen invocation's args,
-   * producing an ApprovalVersion in the Operate surface (M5).
+   * Owner edits before approving. A PATCH over the frozen invocation's args,
+   * never a replacement for them: `resolvedApprovalArgs` (lib/runtime/executor.ts)
+   * lays it over the proposal and the result is what executes, and
+   * `approvalVersions` (lib/runtime/approvals.ts) reads this pair back as the
+   * `ApprovalVersion` the Operate surface shows. Both go through the same merge,
+   * so what an audit reads is what ran.
+   *
+   * Meaningful only on an approval. Edits attached to a rejection describe an
+   * action that never happened, so no version is derived for them and the
+   * Approvals route refuses the combination rather than storing it.
    */
   editedArgs?: Record<string, unknown>;
 }

@@ -1,0 +1,712 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Live Integrations — the delta over the scripted screen's stylesheet.
+
+   Deliberately small. The card body, head, "needed by" chips, permission
+   columns and the Advanced-style disclosure button are IMPORTED from
+   components/mock/integrations/integrations.module.css rather than restated
+   here, so the runtime-backed view is visibly the same product as the scripted
+   one instead of a near-miss of it. That file is read-only from this lane: it
+   belongs to the scripted screens and editing it would move the demo, which
+   must not move. What lives here is only what this lane genuinely adds — the
+   list/rail split, the severity groups, the blocker quotations, the operation
+   identifiers, and the treatment for a field this build cannot know.
+
+   Colours come exclusively from the --oa-* tokens in app/app/app.css, and
+   status is never carried by colour alone: every tinted surface below sits
+   beside a word that says the same thing.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+
+.headSide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 420px;
+}
+
+/* ── Split: connections left, the rail right ───────────────────────────── */
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1.35fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.mainPane {
+  display: grid;
+  gap: 26px;
+  min-width: 0;
+  align-content: start;
+}
+
+.railPane {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .railPane {
+    position: sticky;
+    top: calc(var(--oa-topbar-h) + 20px);
+  }
+}
+
+@media (max-width: 1023px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── Groups ────────────────────────────────────────────────────────────── */
+
+.group {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.groupHead {
+  display: grid;
+  gap: 4px;
+  max-width: 760px;
+}
+
+.groupCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  margin-left: 10px;
+  border-radius: 999px;
+  background: var(--oa-bg-alt);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/* ── Cards ─────────────────────────────────────────────────────────────── */
+
+.card {
+  min-width: 0;
+}
+
+/* Blocking and attention are outlined AND tinted AND grouped under a heading
+   that says which is which; the tint is never the signal on its own. */
+.cardBlocking {
+  border-color: var(--oa-red);
+  background: linear-gradient(0deg, var(--oa-soft-red) 0%, var(--oa-surface) 58%);
+}
+
+.cardAttention {
+  border-color: var(--oa-amber-border);
+  background: linear-gradient(0deg, var(--oa-soft-amber) 0%, var(--oa-surface) 58%);
+}
+
+/* The id the plan, the runtime and D's registry all agree on. Always shown. */
+.idLine {
+  margin: 0;
+  font-family: var(--oa-mono);
+  font-size: 11.5px;
+  color: var(--oa-muted);
+  overflow-wrap: anywhere;
+}
+
+.chipState {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+}
+
+/* ── Problems and notes ────────────────────────────────────────────────── */
+
+.problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--oa-red);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-soft-red);
+  color: var(--oa-red-ink);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.problem svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--oa-border-strong);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.note svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.quiet {
+  display: block;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--oa-muted);
+}
+
+.mismatch {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--oa-amber-ink);
+}
+
+/* ── Quoted activation blockers ────────────────────────────────────────── */
+
+.blockerBox {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--oa-red);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+}
+
+.blockerTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--oa-red-ink);
+}
+
+.blockerList {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-ink);
+}
+
+.blockerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.unknownBox {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--oa-amber-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-soft-amber);
+}
+
+.unknownBox .blockerTitle {
+  color: var(--oa-amber-ink);
+}
+
+/* ── Operations ────────────────────────────────────────────────────────── */
+
+.opText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.opId {
+  font-family: var(--oa-mono);
+  font-size: 11px;
+  color: var(--oa-muted);
+  overflow-wrap: anywhere;
+}
+
+.opIdList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.opIdList .opId {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-surface);
+  padding: 3px 9px;
+  font-size: 11px;
+  color: var(--oa-muted-strong);
+}
+
+/* An acting operation carries the word "acts" beside it; the tint is a second
+   signal, never the only one. */
+.opIdList .opId[data-access="write"] {
+  border-color: var(--oa-amber-border);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+}
+
+.opIdList .opId[data-access="unknown"] {
+  border-style: dashed;
+  border-color: var(--oa-amber-border);
+}
+
+.opAccess {
+  font-family: var(--oa-font);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.opRefused {
+  font-family: var(--oa-font);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-red-ink);
+}
+
+/* ── Per-agent disclosure ──────────────────────────────────────────────── */
+
+.agentPanel {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.grantBlock {
+  display: grid;
+  gap: 7px;
+  padding: 12px 14px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+}
+
+.grantHead {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.grantAgent {
+  font-size: 13.5px;
+  font-weight: 780;
+  letter-spacing: -0.01em;
+}
+
+.grantPurpose {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+}
+
+/* ── The footnote every card carries ───────────────────────────────────── */
+
+.footNote {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--oa-border);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--oa-muted);
+}
+
+.footNote svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ── The provider callout ──────────────────────────────────────────────── */
+
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  border: 1px solid var(--oa-amber-border);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-soft-amber);
+}
+
+.calloutIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--oa-surface);
+  color: var(--oa-amber-ink);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.calloutText {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.calloutTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--oa-amber-ink);
+}
+
+/* ── The rail ──────────────────────────────────────────────────────────── */
+
+.railCard {
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.railHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.railRows {
+  display: grid;
+  gap: 6px;
+}
+
+.railRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+}
+
+.railLabel {
+  color: var(--oa-muted-strong);
+  font-weight: 650;
+}
+
+.railValue {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 0;
+}
+
+.railActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Fields this build cannot know ─────────────────────────────────────── */
+
+.unavailableList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.unavailableRow {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px dashed var(--oa-border-strong);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+}
+
+.unavailableRow dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  font-weight: 780;
+}
+
+.unavailableRow dd {
+  margin: 0;
+  font-size: 11.8px;
+  line-height: 1.55;
+  color: var(--oa-muted);
+}
+
+.unavailableTag {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+  border: 1px solid var(--oa-border-strong);
+  border-radius: var(--oa-r-chip);
+  padding: 2px 7px;
+}
+
+/* ── The change stream's own state, and the rule under it ──────────────── */
+
+.stream,
+.streamState {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.stream {
+  margin: -8px 0 10px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--oa-muted);
+}
+
+.stream svg {
+  align-self: center;
+  flex: none;
+}
+
+/* Outside the live region on purpose — see the screen's comment on it. */
+.streamRead {
+  min-width: 0;
+}
+
+/* The status as a WORD, beside an icon that differs per state. */
+.streamWord {
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+
+.streamDetail {
+  min-width: 0;
+}
+
+/* The required/optional distinction, stated before there is a list to infer it
+   from. Rendered in every state, which is why it is not inside the split below. */
+.groundRule {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 11px 13px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  font-size: 12.5px;
+  line-height: 1.55;
+  max-width: 108ch;
+}
+
+.groundRule svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ── Page-level states ─────────────────────────────────────────────────────
+   Four treatments, because a reader must tell them apart before reading them:
+
+     .errorBox   something failed and may work on the next try — red, alert
+     .blockedBox nothing failed; a named gate has not been passed, and no amount
+                 of refreshing changes that — amber, solid, with the way through
+     .stateBox   nothing is wrong and nothing is here — dashed, quiet
+     .skelCard   nothing is known yet — shaped like what is coming            */
+
+.blockedBox {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  border: 1px solid var(--oa-amber-border);
+  border-left-width: 4px;
+  border-radius: var(--oa-r-card);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.blockedBox p {
+  margin: 0;
+  max-width: 96ch;
+}
+
+.blockedTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.blockedTitle svg {
+  flex: none;
+}
+
+/* The checklist's own sentence, marked as a quotation rather than as our prose. */
+.blockedQuote {
+  padding-left: 12px;
+  border-left: 2px solid var(--oa-amber-border);
+  font-size: 12.5px;
+}
+
+.blockedActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stateBox {
+  display: grid;
+  gap: 10px;
+  padding: 30px 22px;
+  border: 1px dashed var(--oa-border);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-surface);
+  color: var(--oa-muted-strong);
+  font-size: 13.5px;
+}
+
+.stateTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--oa-ink);
+}
+
+.stateSteps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 7px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+}
+
+.stateSteps code,
+.stateBox code {
+  font-family: var(--oa-mono);
+  font-size: 11.5px;
+  background: var(--oa-bg-alt);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+.errorBox {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  border: 1px solid var(--oa-red);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-soft-red);
+  color: var(--oa-red-ink);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.errorTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.errorDetail {
+  margin: 0;
+  font-family: var(--oa-mono);
+  font-size: 12px;
+  word-break: break-word;
+}
+
+/* Loading placeholders, shape-matched so the grid does not jump. */
+.skelCard {
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+}
+
+.skelLine {
+  height: 11px;
+  border-radius: 6px;
+  background: var(--oa-bg-alt);
+  animation: skelPulse 1.3s var(--oa-ease) infinite;
+}
+
+@keyframes skelPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  .cardGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .headSide {
+    justify-content: flex-start;
+    max-width: none;
+  }
+}

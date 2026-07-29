@@ -1,0 +1,839 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   components/live/workspace/live-workspace.module.css — layout for the LIVE
+   Workspace (ROLE_C_PLAN M5).
+
+   Tokens and primitives come from app/app/app.css (`.oa` scope): surfaces,
+   type scale, buttons, `.oa-status--*` badges, focus rings. Nothing below
+   redefines a colour, a radius or an easing — a second palette in the live
+   lane would make the two lanes look like two products, and the whole point of
+   the switch is that the owner sees the same product with real data in it.
+
+   ONE RULE SHAPES ALMOST EVERY DECLARATION HERE: colour is never the only
+   signal. `.overdue`, `.riskHigh` and `.attentionKind` all carry text and an
+   icon; the tinting is reinforcement. That is a WCAG requirement and, on this
+   screen specifically, a correctness one — the difference between "waiting"
+   and "overdue" is the difference between the product working and the product
+   being ignored.
+
+   The hatched metric rail is the other deliberate piece. It is the visual form
+   of "we do not know", and it is `aria-hidden` because the `<dl>` beside it
+   already states baseline, target and the absence of a measurement in words.
+   A solid progress bar was the obvious thing to draw here and is exactly what
+   must not be drawn: a filled bar asserts a current position, and there is no
+   measurement behind one.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.head {
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.headTitles {
+  display: grid;
+  gap: 8px;
+  max-width: 62ch;
+}
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.headMeta {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.headStamp {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+}
+
+.headZone {
+  font-size: 11.5px;
+  color: var(--oa-muted);
+}
+
+.modeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--oa-r-chip);
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--oa-border-strong);
+  color: var(--oa-muted-strong);
+  background: var(--oa-surface);
+  white-space: nowrap;
+}
+
+/* Read-state and mode disclosure, between the header and the numbers. */
+.headNotes {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+  max-width: 92ch;
+}
+
+/* ── The change stream's own health (M7) ────────────────────────────────────
+   Four states, and each one carries its word. The dot is a second signal, not
+   the signal — an owner who cannot distinguish teal from amber must still be
+   able to read whether the screen in front of them is current. */
+
+.streamNote {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--oa-muted);
+  margin: 0;
+}
+
+.streamLine {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.streamStamp {
+  font-variant-numeric: tabular-nums;
+}
+
+.streamState {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--oa-r-chip);
+  border: 1px solid var(--oa-border);
+  padding: 2px 10px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+  flex: none;
+}
+
+.streamState::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.streamLive {
+  border-color: var(--oa-teal-deep);
+  color: var(--oa-teal-deep);
+}
+
+.streamWaiting {
+  border-color: var(--oa-border-strong);
+  color: var(--oa-muted-strong);
+}
+
+.streamDegraded {
+  border-color: var(--oa-amber-border);
+  color: var(--oa-amber-ink);
+  background: var(--oa-soft-amber);
+}
+
+.streamDetail {
+  min-width: 0;
+}
+
+/* A background refresh that failed while earlier figures are still on screen. */
+.staleNote {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--oa-amber-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.staleTitle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 800;
+  margin: 0;
+}
+
+/* ── Summary strip ──────────────────────────────────────────────────────── */
+
+.summaryCard {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+
+.sumStat {
+  display: grid;
+  gap: 3px;
+  padding: 4px 16px;
+  border-left: 1px solid var(--oa-border);
+}
+.sumStat:first-child {
+  border-left: none;
+  padding-left: 0;
+}
+
+.sumNum {
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 750;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.sumNumAttention {
+  color: var(--oa-amber-ink);
+}
+.sumNumMissing {
+  color: var(--oa-muted);
+}
+
+.sumLabel {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sumTime {
+  font-size: 11.5px;
+  color: var(--oa-muted);
+}
+
+/* A tile whose source has not answered YET. Deliberately not the dash: a dash
+   is the shape of an answered-and-missing value, and this is neither. The bar
+   is decorative — `.sumTime` beside it names the source being read. */
+.sumSkel {
+  display: block;
+  width: 54px;
+  height: clamp(26px, 3vw, 34px);
+  border-radius: 8px;
+  background: var(--oa-bg-alt);
+  animation: wsPulse 1.3s var(--oa-ease) infinite;
+}
+
+/* ── Cards and their heads ──────────────────────────────────────────────── */
+
+.card {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.cardIcon {
+  color: var(--oa-blue);
+  flex: none;
+}
+
+.countTag {
+  margin-left: 2px;
+}
+
+.emptyNote {
+  margin: 0;
+}
+
+/* ── Loading, which must not be mistakable for empty ────────────────────────
+   Dashed box + motion + a spinner, against `.emptyNote`'s single flat
+   sentence. See the header of ui.tsx: an empty panel is an answer, a loading
+   one is the absence of one, and at a glance they used to read the same. */
+
+.loadingNote {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px dashed var(--oa-border-strong);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+}
+
+.loadingText {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--oa-muted-strong);
+}
+
+.loadingBar {
+  height: 10px;
+  border-radius: 6px;
+  background: var(--oa-border);
+  animation: wsPulse 1.3s var(--oa-ease) infinite;
+}
+
+.loadingBarShort {
+  width: 62%;
+}
+
+@keyframes wsPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+.footNote {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--oa-muted);
+  margin: 0;
+}
+
+/* ── Generic rows ───────────────────────────────────────────────────────── */
+
+.rows {
+  display: grid;
+  gap: 10px;
+}
+
+.itemRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.rowMain {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rowTitle {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.rowSub {
+  font-size: 12.5px;
+  color: var(--oa-muted-strong);
+  overflow-wrap: anywhere;
+}
+
+.rowMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.rowSide {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.mono {
+  font-family: var(--oa-mono);
+  font-size: 11.5px;
+  color: var(--oa-muted-strong);
+  overflow-wrap: anywhere;
+}
+
+/* ── Risk and deadline markers (never colour alone) ─────────────────────── */
+
+.risk {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: var(--oa-r-chip);
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: capitalize;
+  border: 1px solid transparent;
+}
+.riskHigh {
+  background: var(--oa-soft-red);
+  border-color: var(--oa-red);
+  color: var(--oa-red-ink);
+}
+.riskMedium {
+  background: var(--oa-soft-amber);
+  border-color: var(--oa-amber-border);
+  color: var(--oa-amber-ink);
+}
+.riskLow {
+  background: var(--oa-bg-alt);
+  border-color: var(--oa-border);
+  color: var(--oa-muted-strong);
+}
+
+.deadline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--oa-muted-strong);
+}
+.deadlineLate {
+  color: var(--oa-red-ink);
+  font-weight: 750;
+}
+
+/* ── Flat time-led lists (schedule, next runs) ──────────────────────────── */
+
+.flatList {
+  display: grid;
+  gap: 2px;
+}
+
+.flatRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--oa-border);
+}
+.flatRow:last-child {
+  border-bottom: none;
+}
+
+.timeBlock {
+  display: grid;
+  gap: 1px;
+  min-width: 74px;
+  flex: none;
+}
+
+.timeMain {
+  font-size: 14px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeSub {
+  font-size: 11px;
+  color: var(--oa-muted);
+}
+
+/* ── Attention (at risk) ────────────────────────────────────────────────── */
+
+.attentionCard {
+  border-color: var(--oa-amber-border);
+  margin-bottom: 16px;
+}
+
+.attentionKind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: var(--oa-r-chip);
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 750;
+  border: 1px solid var(--oa-amber-border);
+  color: var(--oa-amber-ink);
+  background: var(--oa-soft-amber);
+  white-space: nowrap;
+}
+
+/* ── Waiting-on-a-signal list ───────────────────────────────────────────── */
+
+.signalList {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px dashed var(--oa-border-strong);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+}
+
+.signalHead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  color: var(--oa-muted-strong);
+  margin: 0;
+}
+
+.signalRow {
+  display: grid;
+  gap: 2px;
+  padding: 6px 0;
+}
+
+.signalName {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.signalWhy {
+  font-size: 11.5px;
+  color: var(--oa-muted-strong);
+}
+
+/* ── Outcome progress ───────────────────────────────────────────────────── */
+
+.outcomeSection {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.outcomeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.outcomeCard {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.outcomeHead {
+  display: grid;
+  gap: 6px;
+}
+
+.outcomeTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.metricList {
+  display: grid;
+  gap: 18px;
+}
+
+.metric {
+  display: grid;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--oa-border);
+}
+.metric:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.metricHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.metricLabel {
+  font-size: 13.5px;
+  font-weight: 750;
+}
+
+.metricDirection {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+
+/* The rail: a route with both ends known and no position on it. Decorative —
+   every fact it hints at is stated in `.metricFacts` beside it. */
+.metricTrack {
+  position: relative;
+  height: 30px;
+  border-radius: var(--oa-r-chip);
+  border: 1px dashed var(--oa-border-strong);
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--oa-bg-alt) 0 7px,
+    transparent 7px 14px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.metricTrackNote {
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+  background: var(--oa-surface);
+  padding: 2px 10px;
+  border-radius: var(--oa-r-chip);
+}
+
+.metricFacts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.fact {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.factTerm {
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+}
+
+.factValue {
+  font-size: 15px;
+  font-weight: 750;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.factTarget {
+  color: var(--oa-teal-deep);
+}
+
+/* "Not measured" must not read as a value. Italic, muted, and marked with the
+   same dashed border the rail uses, so the two say the same thing. */
+.factUnknown {
+  font-size: 12.5px;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--oa-muted);
+  border-bottom: 1px dashed var(--oa-border-strong);
+  justify-self: start;
+}
+
+.metricNote {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--oa-muted);
+  margin: 0;
+}
+
+.metricId {
+  font-family: var(--oa-mono);
+  font-size: 11px;
+  color: var(--oa-muted);
+}
+
+.attribution {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+}
+
+.attributionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.attributionName {
+  font-size: 12.5px;
+  font-weight: 750;
+}
+
+.attributionFacts {
+  font-size: 11.5px;
+  color: var(--oa-muted-strong);
+}
+
+/* ── Errors, empties, activation ────────────────────────────────────────── */
+
+.errorCard {
+  border-color: var(--oa-red);
+  background: var(--oa-soft-red);
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--oa-r-inner);
+  border-width: 1px;
+  border-style: solid;
+}
+
+.errorTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--oa-red-ink);
+}
+
+.errorBody {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-red-ink);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.notice {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.noticeBody {
+  display: grid;
+  gap: 8px;
+  max-width: 76ch;
+}
+
+.gateBlock {
+  display: grid;
+  gap: 10px;
+}
+
+.gateList {
+  display: grid;
+  gap: 10px;
+}
+
+.gate {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+}
+
+.gateHead {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.gateName {
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.blockerList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.blocker {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--oa-muted-strong);
+}
+
+.inlineLink {
+  color: var(--oa-blue-dark);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── The grid ───────────────────────────────────────────────────────────── */
+
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.col {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 860px) {
+  .summaryCard {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px 4px;
+  }
+  .sumStat:nth-child(3) {
+    border-left: none;
+    padding-left: 0;
+  }
+  .metricFacts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .headMeta {
+    text-align: left;
+  }
+}
+
+@media (max-width: 560px) {
+  .summaryCard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sumStat {
+    border-left: none;
+    padding-left: 0;
+  }
+  .itemRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .flatRow {
+    align-items: flex-start;
+  }
+}

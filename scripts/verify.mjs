@@ -12,6 +12,9 @@
  *   npm run verify:m2     agent factory
  *   npm run verify:m3     sandbox
  *   npm run verify:m4     scheduler + activation
+ *   npm run verify:m5     workspace + approvals
+ *   npm run verify:m6     calendar, agents, integrations
+ *   npm run verify:m7     hardening
  *   npm run verify:int    real modules end to end
  *   npm run verify        all of the above
  *
@@ -29,10 +32,10 @@
  *     commit.
  */
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { createRequire } from "node:module";
+import Module, { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const repoRoot = path.resolve(import.meta.dirname, "..");
@@ -71,6 +74,24 @@ const TARGETS = {
     out: "lib/runtime/verify/m4.js",
     label: "M4 — scheduler + activation",
     expectedChecks: 17,
+  },
+  m5: {
+    entry: "lib/runtime/verify/m5.ts",
+    out: "lib/runtime/verify/m5.js",
+    label: "M5 — workspace + approvals",
+    expectedChecks: 9,
+  },
+  m6: {
+    entry: "lib/runtime/verify/m6.ts",
+    out: "lib/runtime/verify/m6.js",
+    label: "M6 — calendar, agents, integrations",
+    expectedChecks: 9,
+  },
+  m7: {
+    entry: "lib/runtime/verify/m7.ts",
+    out: "lib/runtime/verify/m7.js",
+    label: "M7 — hardening",
+    expectedChecks: 7,
   },
   integration: {
     entry: "lib/runtime/verify/integration.ts",
@@ -114,6 +135,81 @@ const tscBin = (() => {
   }
 })();
 
+/*
+ * The compiler options this harness builds every milestone with.
+ *
+ * Written to a generated tsconfig rather than passed as flags, and the reason is
+ * `paths`: it is object-valued, so it cannot be expressed on the command line at
+ * all, and M6 needs it — its checks import `app/api/runtime/*` route handlers,
+ * which reach for `@/lib/...` the way every file under app/ does. Naming a file
+ * on the command line also makes tsc ignore tsconfig.json entirely, so this list
+ * has always had to restate every option the sources are written against; a
+ * config file is simply the honest shape for that list.
+ *
+ * `esModuleInterop` earned its place the hard way: lib/runtime/persist reaches
+ * for `import path from "node:path"`, which is an error without it and nowhere
+ * else in the repo, because Next compiles the app from tsconfig.json and never
+ * noticed.
+ */
+function compilerOptions(outDir) {
+  return {
+    outDir,
+    rootDir: repoRoot,
+    // CommonJS so Node resolves the extensionless relative imports that
+    // TypeScript emits verbatim. Next bundles the app itself, so this choice is
+    // confined to verification.
+    module: "commonjs",
+    target: "es2022",
+    moduleResolution: "node",
+    strict: true,
+    skipLibCheck: true,
+    esModuleInterop: true,
+    baseUrl: repoRoot,
+    paths: { "@/*": ["./*"] },
+    // Named because this config file does NOT live in the repository: TypeScript
+    // discovers ambient @types relative to the tsconfig's own directory, and the
+    // directory here is a throwaway one under the system temp. Without this,
+    // `process` in lib/runtime/llm.ts stops being a name anything has heard of —
+    // which is how the command-line invocation this replaced got away with never
+    // mentioning it.
+    typeRoots: [path.join(repoRoot, "node_modules", "@types")],
+  };
+}
+
+/*
+ * `@/` and bare package names, resolved for the compiled output.
+ *
+ * TypeScript rewrites neither: `@/lib/runtime/session` and `next/server` are
+ * emitted verbatim, and the emitted files live in a temp directory outside the
+ * repo, so Node can resolve neither on its own. Two rules fix that, and both are
+ * no-ops for every milestone that does not reach into app/ — the alias branch
+ * because nothing else uses it, and the package branch because it only runs
+ * after the ordinary resolution has already thrown.
+ *
+ * `aliasRoot` is set per milestone before the module is required; the hook is
+ * installed once because patching it per iteration would stack.
+ */
+let aliasRoot = null;
+const resolveFilename = Module._resolveFilename;
+Module._resolveFilename = function (request, parent, isMain, options) {
+  if (aliasRoot !== null && request.startsWith("@/")) {
+    return resolveFilename.call(this, path.join(aliasRoot, request.slice(2)), parent, isMain, options);
+  }
+  const bare =
+    !request.startsWith(".") && !request.startsWith("node:") && !path.isAbsolute(request);
+  if (!bare) return resolveFilename.call(this, request, parent, isMain, options);
+  try {
+    return resolveFilename.call(this, request, parent, isMain, options);
+  } catch {
+    // Everything the compiled output imports by name lives in the repo's own
+    // node_modules; nothing here invents a package that is not installed.
+    return resolveFilename.call(this, request, parent, isMain, {
+      ...(options ?? {}),
+      paths: [repoRoot],
+    });
+  }
+};
+
 let failed = false;
 
 for (const key of milestones) {
@@ -123,32 +219,23 @@ for (const key of milestones) {
   try {
     console.log(`\n──── ${target.label} ────`);
 
-    const compiled = spawnSync(
-      process.execPath,
-      [
-        tscBin,
-        path.join(repoRoot, target.entry),
-        "--outDir", outDir,
-        "--rootDir", repoRoot,
-        // CommonJS so Node resolves the extensionless relative imports that
-        // TypeScript emits verbatim. Next bundles the app itself, so this
-        // choice is confined to verification.
-        "--module", "commonjs",
-        "--target", "es2022",
-        "--moduleResolution", "node",
-        "--strict",
-        "--skipLibCheck",
-        // Matches tsconfig.json, which this invocation does not read: naming a
-        // file on the command line makes tsc ignore the project config, so every
-        // option the sources depend on has to be repeated here. The app never
-        // noticed the omission because Next compiles it from tsconfig; only this
-        // list could disagree with the settings the code is written against, and
-        // it did — lib/runtime/persist reaches for `import path from "node:path"`,
-        // which is an error without this flag and nowhere else in the repo.
-        "--esModuleInterop",
-      ],
-      { stdio: "inherit", cwd: repoRoot },
+    const projectFile = path.join(outDir, "tsconfig.verify.json");
+    writeFileSync(
+      projectFile,
+      JSON.stringify(
+        {
+          compilerOptions: compilerOptions(outDir),
+          files: [path.join(repoRoot, target.entry)],
+        },
+        null,
+        2,
+      ),
     );
+
+    const compiled = spawnSync(process.execPath, [tscBin, "-p", projectFile], {
+      stdio: "inherit",
+      cwd: repoRoot,
+    });
 
     if (compiled.status !== 0) {
       console.error(`TypeScript compilation failed; ${key.toUpperCase()} did not run.`);
@@ -156,6 +243,7 @@ for (const key of milestones) {
       continue;
     }
 
+    aliasRoot = outDir;
     const mod = require(path.join(outDir, target.out));
     const run = mod[`run${key.toUpperCase()}Verification`];
     if (typeof run !== "function") {
@@ -191,6 +279,9 @@ for (const key of milestones) {
       failed = true;
     }
   } finally {
+    // Cleared with the directory it points into, so a later milestone cannot
+    // resolve an alias against output that no longer exists.
+    aliasRoot = null;
     rmSync(outDir, { recursive: true, force: true });
   }
 }

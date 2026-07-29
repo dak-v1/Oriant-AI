@@ -63,7 +63,7 @@ import type { BuildDeps } from "../build/types";
 import type { ExecutorOptions } from "../executor";
 import { startRun } from "../executor";
 import { resolveRunStart } from "../policy";
-import type { AgentBundle, RunState, RunStatus, RunStore } from "../types";
+import type { AgentBundle, RunState, RunStatus } from "../types";
 import { enqueueFiring, markFailed, markSkipped, markSucceeded } from "./queue";
 import {
   advanceScheduleTrigger,
@@ -306,8 +306,12 @@ function localDayKey(at: Date, timezone: string): string {
  * Which day boundary this agent's cap resets on. Quiet hours are the only place
  * the contract attaches a timezone to an agent, so they are the only honest
  * source; see FALLBACK_TIMEZONE for what happens when neither declares one.
+ *
+ * EXPORTED FOR THE SAME REASON `countRunsToday` BELOW IS. A screen that shows a
+ * cap must resolve the day against the zone the scheduler will resolve it
+ * against, or the count and the limit are about different days.
  */
-function agentTimezone(spec: AgentSpec, plan: ApprovedPlan): string {
+export function agentTimezone(spec: AgentSpec, plan: ApprovedPlan): string {
   return (
     spec.policy.quietHours?.timezone ??
     plan.globalPolicy?.quietHours?.timezone ??
@@ -322,17 +326,28 @@ function agentTimezone(spec: AgentSpec, plan: ApprovedPlan): string {
  * run that failed, was refused or is still waiting on an approval counts the
  * same as one that finished — counting only successes would let an agent that
  * fails repeatedly retry its way past the owner's limit.
+ *
+ * EXPORTED BECAUSE THE ENFORCEMENT AND THE DISPLAY MUST BE ONE FUNCTION.
+ * `startGated` below feeds this number to `resolveRunStart`, and the roster
+ * (`app/api/runtime/agents/route.ts`) shows the owner "3 of 5 today" — which is
+ * a promise about what the scheduler will do in an hour's time. Those were two
+ * copies of the same three rules until M7, and two copies is two chances to
+ * disagree about a run that started at 00:30 in Singapore.
+ *
+ * It takes the runs rather than the store on purpose. The worker holds one
+ * agent and reads its runs; the roster already holds every run in the system and
+ * would otherwise make one store round trip per row to be told what it knows.
+ *
+ * It THROWS on a zone this platform's tz database cannot resolve, because the
+ * worker has no safe number to fall back on — see `dayFormatterFor`. A caller
+ * that is only displaying the count can catch that and report the count as
+ * unavailable; a caller that is about to authorise a run must not.
  */
-async function countRunsToday(
-  store: RunStore,
-  agentId: string,
-  timezone: string,
-  at: Date,
-): Promise<number> {
+export function countRunsToday(runs: RunState[], timezone: string, at: Date): number {
   const today = localDayKey(at, timezone);
   let count = 0;
 
-  for (const run of await store.listRuns({ agentId })) {
+  for (const run of runs) {
     const startedMs = Date.parse(run.startedAt);
     if (!Number.isFinite(startedMs)) {
       // An unreadable start instant counts AGAINST the cap rather than being
@@ -596,7 +611,11 @@ async function startGated(
   const at = nowFrom(deps);
   const timezone = agentTimezone(spec, deps.plan);
   const globalQuietHours: QuietHours | null = deps.plan.globalPolicy?.quietHours ?? null;
-  const runsToday = await countRunsToday(deps.executor.store, spec.id, timezone, at);
+  const runsToday = countRunsToday(
+    await deps.executor.store.listRuns({ agentId: spec.id }),
+    timezone,
+    at,
+  );
 
   const gate = resolveRunStart({
     at,

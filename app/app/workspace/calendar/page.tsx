@@ -1,229 +1,93 @@
-"use client";
 /**
- * /app/workspace/calendar — the Automation Calendar (spec §18.2, §20 "Workspace").
+ * /app/workspace/calendar — one URL, two Automation Calendars, and an explicit
+ * switch between them.
  *
- * July 2026 month view (static demo month), team filter chips, the 5-state
- * legend, and a day-timeline drawer whose event detail links back to the
- * Approval Inbox. Approving a linked item here updates the pill live —
- * approvals, calendar and activity share one store.
+ * THE DEFAULT IS THE SCRIPTED DEMO, AND NOTHING HERE CHANGES IT. Visiting this
+ * route with no query string renders exactly what it rendered before this file
+ * grew a switch — the July 2026 demo month, its team chips and its day drawer,
+ * now in `./demo-screen` with its behaviour untouched. ROLE_C_PLAN's integration
+ * checkpoints say the fixture path must keep working permanently: it is the
+ * fallback, the test harness, and what carries the demo if another lane slips.
+ *
+ * OPTING IN, both accepted, the query string winning either way:
+ *
+ *   /app/workspace/calendar?live=1     the live calendar, backed by the runtime
+ *   /app/workspace/calendar?live=0     the scripted demo, even where the
+ *                                      environment defaults to live
+ *   ORIANT_CALENDAR_LANE=live          make live the default for this deployment
+ *
+ * Anything the switch cannot read renders a refusal rather than falling back.
+ * Guessing is the one behaviour that is not available here: the scripted month is
+ * convincing, its dates are fixtures, and putting it in front of somebody who
+ * asked in writing for the live one would have them plan a week around a
+ * schedule that does not exist. The reasoning lives in `components/live/lane.ts`,
+ * shared with Approvals and the rest of the Operate surface.
+ *
+ * WHY THE ENVIRONMENT VARIABLE IS NOT `NEXT_PUBLIC_`. This page reads it on the
+ * server and passes down a resolved lane, so the value never needs to reach the
+ * browser; `.env.example` and `docs/RUNTIME_SETUP.md` §3 are emphatic that
+ * nothing runtime-shaped carries that prefix, because it is inlined into a bundle
+ * anyone can read and nobody can change.
+ *
+ * `force-dynamic` is not decoration: reading `searchParams` already makes this
+ * route dynamic, and stating it stops a production build from trying to
+ * prerender a screen whose whole content is a live read.
  */
-import { useEffect, useMemo, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import type { CalendarEvent } from "@/lib/mock/types";
-import { useDemoStore } from "@/lib/mock/store";
-import { DEMO_MONTH_LABEL, DEMO_TODAY } from "@/lib/mock/fixtures/ids";
-import { DUR, EASE } from "@/lib/mock/motion";
-import Drawer from "@/components/mock/ui/Drawer";
-import MonthCalendar from "@/components/mock/calendar/MonthCalendar";
-import {
-  STATE_META,
-  STATE_ORDER,
-  stateFill,
-} from "@/components/mock/calendar/stateMeta";
-import DayTimeline from "@/components/mock/calendar/DayTimeline";
-import styles from "@/components/mock/calendar/calendar.module.css";
+import Link from "next/link";
+import { CALENDAR_LANE_ENV, resolveCalendarLane } from "@/components/live/calendar/lane";
+import type { CalendarLane } from "@/components/live/calendar/lane";
+import LiveCalendarScreen from "@/components/live/calendar/LiveCalendarScreen";
+import DemoCalendarScreen from "./demo-screen";
 
-type TeamFilter = "all" | CalendarEvent["team"];
+export const dynamic = "force-dynamic";
 
-const TEAM_FILTERS: { id: TeamFilter; label: string }[] = [
-  { id: "all", label: "All teams" },
-  { id: "customer_care", label: "Customer Care" },
-  { id: "admin", label: "Admin" },
-  { id: "marketing", label: "Marketing" },
-  { id: "finance", label: "Finance" },
-];
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const lane = resolveCalendarLane({
+    live: params.live,
+    env: process.env[CALENDAR_LANE_ENV],
+  });
 
-const WEEKDAY_NAMES = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-const MONTH_NAMES: Record<string, string> = { "06": "June", "07": "July", "08": "August" };
-
-/** "2026-07-24" → "Friday 24 July" (parsed from the fixture string, never now()). */
-function formatDayLong(iso: string): string {
-  const weekday = WEEKDAY_NAMES[new Date(`${iso}T12:00:00`).getDay()];
-  return `${weekday} ${Number(iso.slice(8, 10))} ${MONTH_NAMES[iso.slice(5, 7)] ?? ""}`.trim();
+  if (lane.lane === "refused") return <LaneRefused lane={lane} />;
+  if (lane.lane === "live") return <LiveCalendarScreen />;
+  return <DemoCalendarScreen />;
 }
 
-export default function CalendarPage() {
-  const reduced = useReducedMotion();
-  const calendarEvents = useDemoStore((s) => s.workspace.calendarEvents);
-
-  const [team, setTeam] = useState<TeamFilter>("all");
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
-  const [compact, setCompact] = useState(false);
-
-  /* ≤768px: the month grid switches to compact mode (spec §21). */
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 768px)");
-    const apply = () => setCompact(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
-
-  const allEvents = useMemo(() => Object.values(calendarEvents), [calendarEvents]);
-
-  const teamCounts = useMemo(() => {
-    const counts: Record<TeamFilter, number> = {
-      all: allEvents.length,
-      customer_care: 0,
-      admin: 0,
-      marketing: 0,
-      finance: 0,
-    };
-    for (const ev of allEvents) counts[ev.team] += 1;
-    return counts;
-  }, [allEvents]);
-
-  const filtered = useMemo(
-    () => (team === "all" ? allEvents : allEvents.filter((ev) => ev.team === team)),
-    [allEvents, team],
-  );
-
-  const dayEvents = useMemo(
-    () => (selectedDate ? filtered.filter((ev) => ev.date === selectedDate) : []),
-    [filtered, selectedDate],
-  );
-
-  const openDay = (iso: string) => {
-    setSelectedDate(iso);
-    setExpandedEventId(null);
-  };
-
-  const openEvent = (id: string) => {
-    const ev = calendarEvents[id];
-    if (!ev) return;
-    setSelectedDate(ev.date);
-    setExpandedEventId(id);
-  };
-
-  const closeDrawer = () => {
-    setSelectedDate(null);
-    setExpandedEventId(null);
-  };
-
-  const entrance = (i: number) =>
-    reduced
-      ? {}
-      : {
-          initial: { opacity: 0, y: 12 },
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: DUR.card, ease: EASE, delay: i * 0.06 },
-        };
-
+/**
+ * The screen for a lane setting this build does not implement.
+ *
+ * It renders INSTEAD of a calendar rather than above one, because either
+ * available answer would be a guess about which screen was meant, and one of
+ * those guesses puts a fixture month where a real schedule was asked for. Both
+ * lanes are offered as links, so recovering costs one click and nobody has to
+ * know the spelling.
+ */
+function LaneRefused({ lane }: { lane: Extract<CalendarLane, { lane: "refused" }> }) {
   return (
-    <main className="oa-page">
-      <header className="oa-between" style={{ marginBottom: 4, alignItems: "flex-start" }}>
-        <div style={{ display: "grid", gap: 6 }}>
-          <p className="oa-eyebrow">Operate · Automation Calendar</p>
-          <h1 className="oa-h1">
-            Automation <span className="oa-serif">calendar</span>
-          </h1>
-          <p className="oa-lead">
-            Every scheduled run and held decision across your AI workforce, one month at a
-            glance.
-          </p>
+    <main className="oa-page oa-page--narrow">
+      <div className="oa-card oa-stack" role="alert">
+        <p className="oa-eyebrow">Operate · Automation calendar</p>
+        <h1 className="oa-h2">That is not a calendar this build has</h1>
+        <p className="oa-lead">
+          <code>{lane.setting}</code> was{" "}
+          <strong>{lane.value === "" ? "(blank)" : lane.value}</strong>, and this build accepts{" "}
+          {lane.accepted}. Nothing was chosen for you: the scripted calendar shows a fixed demo
+          month, and handing it to someone who asked for the live one would have them plan around
+          firings that are not scheduled.
+        </p>
+        <div className="oa-cluster">
+          <Link href="/app/workspace/calendar?live=1" className="oa-btn oa-btn--primary oa-btn--sm">
+            Open the live calendar
+          </Link>
+          <Link href="/app/workspace/calendar?live=0" className="oa-btn oa-btn--ghost oa-btn--sm">
+            Open the scripted demo
+          </Link>
         </div>
-
-        <div className={styles.monthNav}>
-          <button
-            type="button"
-            className="oa-btn oa-btn--ghost oa-btn--icon"
-            disabled
-            title="Demo month"
-            aria-label="Previous month (demo month only)"
-          >
-            <ChevronLeft size={15} aria-hidden />
-          </button>
-          <span className={styles.monthLabel}>{DEMO_MONTH_LABEL}</span>
-          <button
-            type="button"
-            className="oa-btn oa-btn--ghost oa-btn--icon"
-            disabled
-            title="Demo month"
-            aria-label="Next month (demo month only)"
-          >
-            <ChevronRight size={15} aria-hidden />
-          </button>
-          <button
-            type="button"
-            className="oa-btn oa-btn--ghost oa-btn--sm"
-            onClick={() => openDay(DEMO_TODAY)}
-          >
-            <CalendarDays size={14} aria-hidden />
-            Today
-          </button>
-        </div>
-      </header>
-
-      <motion.div className={styles.toolbar} {...entrance(1)}>
-        <div className={styles.teamChips} role="group" aria-label="Filter by team">
-          {TEAM_FILTERS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={`oa-chip ${team === t.id ? "oa-chip--selected" : ""}`}
-              aria-pressed={team === t.id}
-              onClick={() => setTeam(t.id)}
-            >
-              {t.label}
-              <span className={styles.chipCount}>{teamCounts[t.id]}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className={styles.legend} role="group" aria-label="Calendar event states">
-          {STATE_ORDER.map((state) => {
-            const meta = STATE_META[state];
-            return (
-              <span key={state} className={styles.legendItem} title={meta.treatment}>
-                <span className={styles.legendSwatch} style={stateFill(state)} aria-hidden>
-                  <meta.icon size={10} />
-                </span>
-                {meta.label}
-              </span>
-            );
-          })}
-        </div>
-      </motion.div>
-
-      <motion.section
-        className={`oa-card ${styles.calCard}`}
-        aria-label={`${DEMO_MONTH_LABEL} month view`}
-        {...entrance(2)}
-      >
-        <MonthCalendar
-          events={filtered}
-          selectedDate={selectedDate}
-          onSelectDate={openDay}
-          onSelectEvent={openEvent}
-          compact={compact}
-        />
-      </motion.section>
-
-      <Drawer
-        open={Boolean(selectedDate)}
-        onClose={closeDrawer}
-        wide
-        eyebrow={`Day timeline · ${DEMO_MONTH_LABEL}`}
-        title={selectedDate ? formatDayLong(selectedDate) : ""}
-      >
-        {selectedDate && (
-          <DayTimeline
-            events={dayEvents}
-            expandedId={expandedEventId}
-            onToggle={(id) => setExpandedEventId((cur) => (cur === id ? null : id))}
-          />
-        )}
-      </Drawer>
+      </div>
     </main>
   );
 }

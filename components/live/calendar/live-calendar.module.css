@@ -1,0 +1,930 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Live Automation Calendar — the runtime-backed screen's stylesheet.
+
+   The grid geometry deliberately MATCHES components/mock/calendar/calendar.module.css
+   — same cell height, same pill anatomy, same weekday strip — so the live
+   calendar reads as the same product as the scripted one rather than a near-miss
+   of it. It is restated here rather than imported because the two diverge in
+   ways a shared file would have to fork anyway: the live grid spans an arbitrary
+   range instead of a fixed month, its pills can be links, and its day view is an
+   ordered list rather than an 08:00–18:00 hour rail. That file also belongs to
+   the scripted lane and must not move.
+
+   Colours come exclusively from the --oa-* tokens in app/app/app.css, and state
+   fills are applied inline from ./state-meta.ts so the legend and the grid cannot
+   drift. Status is never carried by colour alone: every filled surface below sits
+   next to a word, and `projected` is additionally distinguished by a dashed
+   border it inherits from its inline fill.
+
+   M7 changed the grid's structure for accessibility, and the layout followed.
+   Weeks are now real rows (`role="row"`) rather than 42 children of one grid,
+   because a screen reader's "row 3, column 5" has to be true. `display: contents`
+   would have kept the old single-grid layout and is deliberately not used: it has
+   a history of dropping the element it is applied to out of the accessibility
+   tree, which is precisely the tree those roles exist to populate. Each row is
+   therefore its own seven-column grid with the same template, which lines the
+   columns up for the same reason a table does.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Available to everything below: text that exists for a screen reader and is not
+   drawn. Not `display: none`, which would remove it from the accessibility tree
+   as well, which is the one thing it must not do. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── Header and toolbar ────────────────────────────────────────────────── */
+
+.headSide {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Element selector, not `.oa-tag svg`: a CSS module would localise that class
+   name and the rule would never match the global tag primitive. */
+.headSide svg {
+  flex: none;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  flex-wrap: wrap;
+  margin: 20px 0 14px;
+}
+
+.monthNav,
+.viewNav,
+.viewToggle,
+.dayNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dayNav {
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.monthLabel {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.012em;
+  min-width: 132px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The change stream's own state ─────────────────────────────────────── */
+
+.stream,
+.streamState {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.stream {
+  margin: 10px 2px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--oa-muted);
+}
+
+.stream svg {
+  align-self: center;
+  flex: none;
+}
+
+/* Outside the live region on purpose — see StreamStatus's comment. */
+.streamRead {
+  min-width: 0;
+}
+
+/* The status as a WORD. The icon beside it differs per state too; neither the
+   icon nor a colour is ever the only thing saying whether this page is live. */
+.streamWord {
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+
+.streamDetail {
+  min-width: 0;
+}
+
+/* ── Legend ────────────────────────────────────────────────────────────── */
+
+.legendBlock {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  margin: 0 2px 14px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+}
+
+.legendDefs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px 20px;
+  margin: 4px 0 0;
+  width: 100%;
+}
+
+.legendDef {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg);
+}
+
+.legendDefTerm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 780;
+}
+
+.legendDefBody {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+}
+
+.legendGroup {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.legendHead {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+}
+
+.legendSource {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--oa-muted);
+}
+
+.legendItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--oa-muted-strong);
+  white-space: nowrap;
+}
+
+.legendSwatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+/* ── Month grid ────────────────────────────────────────────────────────── */
+
+.calCard {
+  padding: 14px;
+}
+
+/* How to drive the grid, said once, above it. Referenced by the grid's
+   `aria-describedby`, so it is announced on entry rather than discovered. */
+.gridHelp {
+  margin: 0 2px 8px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--oa-muted);
+}
+
+.grid {
+  display: grid;
+  gap: 1px;
+  background: var(--oa-border);
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  overflow: hidden;
+}
+
+.gridRow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+}
+
+.weekday {
+  background: var(--oa-bg-alt);
+  padding: 8px 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+  text-align: center;
+}
+
+.cell {
+  position: relative;
+  background: var(--oa-surface);
+  min-height: 134px;
+}
+
+.cellOut {
+  background: var(--oa-bg);
+}
+
+.cellSelected {
+  box-shadow: inset 0 0 0 2px var(--oa-blue);
+}
+
+/* The cell IS the control now — one focusable element per day, holding the
+   grid's roving tabindex. See MonthGrid's header for why the pills inside it are
+   not separately focusable. */
+.cellIn {
+  cursor: pointer;
+}
+
+/* Inset, because the cells share a 1px gap and an outset ring on one cell is
+   drawn underneath its neighbours. */
+.cellIn:focus-visible {
+  outline: 2px solid var(--oa-blue);
+  outline-offset: -3px;
+  border-radius: 0;
+  z-index: 2;
+}
+
+.dayNum {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 12.5px;
+  font-weight: 750;
+  color: var(--oa-muted-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.dayNumToday {
+  background: var(--oa-blue);
+  color: var(--oa-on-blue);
+  font-weight: 800;
+}
+
+.dayNumOut {
+  color: var(--oa-muted);
+  opacity: 0.55;
+}
+
+.todayTag {
+  position: absolute;
+  top: 13px;
+  left: 40px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--oa-blue-dark);
+}
+
+/* A day carrying something overdue says so in the cell, not only in its pills. */
+.cellFlag {
+  position: absolute;
+  top: 11px;
+  right: 8px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--oa-amber-ink);
+}
+
+/* Pills sit inside the cell, which is itself the control: a click anywhere that
+   is not a deep link opens the day. */
+.pills {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 3px;
+  margin: 36px 6px 8px;
+  min-width: 0;
+}
+
+.pill {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 4px 7px 5px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.18s var(--oa-ease), box-shadow 0.18s var(--oa-ease);
+}
+
+.pill:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--oa-shadow-card);
+}
+
+.pill:focus-visible {
+  outline-offset: 1px;
+}
+
+.pillHead {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.pillHead svg {
+  flex: none;
+}
+
+.pillTime {
+  flex: none;
+  font-size: 10px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.92;
+}
+
+.pillTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The state as a word, in every pill (see the module header). */
+.pillState {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.82;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 16px;
+}
+
+.more {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--oa-muted-strong);
+  padding: 2px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gridCompact .cell {
+  min-height: 84px;
+}
+
+.gridCompact .pills {
+  margin: 28px 4px 6px;
+  gap: 2px;
+}
+
+.gridCompact .dayNum {
+  top: 5px;
+  left: 5px;
+  min-width: 20px;
+  height: 20px;
+  font-size: 11px;
+}
+
+/* "Today" stays visible on a narrow screen rather than being dropped for space.
+   It used to be hidden in compact, which left the filled blue day number as the
+   only thing marking today — a status carried by colour alone, on the one cell
+   an owner most needs to find. */
+.gridCompact .todayTag {
+  top: 7px;
+  left: 29px;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+
+.gridCompact .cellFlag {
+  top: 7px;
+  font-size: 8px;
+}
+
+/* ── Day view ──────────────────────────────────────────────────────────── */
+
+.dayCard {
+  padding: 18px 20px 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.dayHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+}
+
+.dayList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.dayRow {
+  display: grid;
+  grid-template-columns: 64px 30px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+}
+
+/* Overdue: the border and the "Overdue" chip do the work together; the tint
+   alone is never the signal. */
+.dayRowPressing {
+  border-color: var(--oa-amber-border);
+  background: linear-gradient(0deg, var(--oa-soft-amber) 0%, var(--oa-surface) 62%);
+}
+
+.rowTime {
+  display: grid;
+  gap: 2px;
+}
+
+.rowTimeMain {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.rowTimeSub {
+  font-size: 10.5px;
+  color: var(--oa-muted);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.rowIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.rowMain {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.rowTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+
+.rowAgent {
+  margin: 0;
+  font-size: 12px;
+  color: var(--oa-muted-strong);
+  font-weight: 650;
+}
+
+.rowDetail {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+  overflow-wrap: anywhere;
+}
+
+.rowTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.rowSide {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 6px;
+  max-width: 210px;
+  text-align: right;
+}
+
+.stateChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--oa-r-chip);
+  padding: 3px 10px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.emptyDay {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 40px 16px;
+  text-align: center;
+  border: 1px dashed var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  color: var(--oa-muted-strong);
+  font-size: 13px;
+}
+
+/* ── Panels, notes and failures ────────────────────────────────────────── */
+
+.panel {
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.plainList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.plainRow {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg);
+  font-size: 12.5px;
+}
+
+.plainTitle {
+  font-weight: 750;
+}
+
+.factGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.fact {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg);
+}
+
+.factLabel {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+}
+
+.factValue {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.factNote {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--oa-muted);
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 14px 2px 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+}
+
+.note svg {
+  flex: none;
+  margin-top: 3px;
+}
+
+.errorBox {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--oa-red);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-soft-red);
+  color: var(--oa-red-ink);
+  font-size: 13px;
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+
+.errorTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.errorDetail {
+  margin: 0;
+  font-family: var(--oa-mono);
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.warnBox {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--oa-amber-border);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+  font-size: 13px;
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+
+.warnTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.warnBox code,
+.stateSteps code {
+  font-family: var(--oa-mono);
+  font-size: 12px;
+  background: var(--oa-surface);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+/* ── Blocked ───────────────────────────────────────────────────────────────
+   Deliberately not `.errorBox` and not `.stateBox`. Three different situations
+   that a reader must be able to tell apart at a glance and by their words:
+
+     .errorBox   something failed and may work on the next try — red, alert
+     .blockedBox nothing failed; a gate has not been passed, and no amount of
+                 refreshing changes that — amber, solid, with the way through
+     .stateBox   nothing is wrong and nothing is here — dashed, quiet
+
+   Blocked carries a solid border and an action, because it is the only one of
+   the three where there is something to do and somewhere to do it. */
+
+.blockedBox {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+  border: 1px solid var(--oa-amber-border);
+  border-left-width: 4px;
+  border-radius: var(--oa-r-card);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.blockedTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.blockedTitle svg {
+  flex: none;
+}
+
+.blockedActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stateBox {
+  display: grid;
+  gap: 10px;
+  padding: 30px 22px;
+  border: 1px dashed var(--oa-border);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-surface);
+  color: var(--oa-muted-strong);
+  font-size: 13.5px;
+  margin-bottom: 16px;
+}
+
+.stateTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--oa-ink);
+}
+
+.stateSteps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 7px;
+  line-height: 1.55;
+}
+
+/* Loading placeholder, shaped like the grid so the page does not jump. */
+.skeleton {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.skelLine {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--oa-bg-alt);
+  animation: calSkel 1.3s var(--oa-ease) infinite;
+}
+
+.skelGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.skelCell {
+  height: 68px;
+  border-radius: 8px;
+  background: var(--oa-bg-alt);
+  animation: calSkel 1.3s var(--oa-ease) infinite;
+}
+
+@keyframes calSkel {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* ── Responsive (spec §21: 1440 / 1024 / 768 / 390) ────────────────────── */
+
+@media (max-width: 1024px) {
+  .cell {
+    min-height: 118px;
+  }
+  .pillState {
+    padding-left: 0;
+  }
+  .dayRow {
+    grid-template-columns: 56px 28px minmax(0, 1fr);
+  }
+  .rowSide {
+    grid-column: 1 / -1;
+    justify-items: start;
+    text-align: left;
+    max-width: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .calCard {
+    padding: 8px;
+  }
+  .toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .legend {
+    gap: 10px 18px;
+  }
+  .dayCard {
+    padding: 14px;
+  }
+  .dayRow {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 430px) {
+  .weekday {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    padding: 6px 2px;
+  }
+  .monthLabel {
+    min-width: 0;
+  }
+  .legendItem {
+    font-size: 11px;
+  }
+  .dayRow {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+  .rowIcon {
+    display: none;
+  }
+  .dayNav {
+    gap: 6px;
+  }
+}

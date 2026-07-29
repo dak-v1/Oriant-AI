@@ -15,6 +15,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useDemoStore } from "@/lib/mock/store";
 import { useAutopilot } from "@/lib/mock/autopilot";
 import { guardRoute, atLeast } from "@/lib/mock/state-machine";
+import { demoJourneyGuardApplies, type LaneEnvDefaults } from "@/components/live/route-lane";
 import SideNav from "./SideNav";
 import TopBar from "./TopBar";
 import ProgressTracker from "./ProgressTracker";
@@ -25,7 +26,14 @@ import AutopilotController from "@/components/mock/autopilot/AutopilotController
 import { MessageSquareText } from "lucide-react";
 import styles from "./shell.module.css";
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({
+  children,
+  laneEnv = {},
+}: {
+  children: React.ReactNode;
+  /** Lane defaults read on the server; see components/live/route-lane.ts. */
+  laneEnv?: LaneEnvDefaults;
+}) {
   const [mounted, setMounted] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const journey = useDemoStore((s) => s.journey);
@@ -35,12 +43,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => setMounted(true), []);
 
-  /* Route guard: forward deep links redirect to the current step (spec §5). */
+  /* Route guard: forward deep links redirect to the current step (spec §5).
+     It applies to the SCRIPTED lane only. The gate exists so a scripted demo
+     cannot be deep-linked past its own narrative; a runtime-backed screen has no
+     narrative to skip, and applying it there bounced an owner whose workforce is
+     genuinely activated to onboarding because a demo they never ran left
+     `journey` at "not_started". A refused lane is outside it for the same
+     reason — see components/live/route-lane.ts.
+
+     The query is read from `window.location` rather than `useSearchParams`,
+     which would opt EVERY page under /app out of static prerendering (Next's
+     CSR bailout) to answer a question this effect only asks after mount. */
   useEffect(() => {
     if (!mounted) return;
+    const live = new URLSearchParams(window.location.search).getAll("live");
+    if (!demoJourneyGuardApplies(pathname, live.length > 1 ? live : live[0], laneEnv)) return;
     const redirect = guardRoute(pathname, journey);
     if (redirect && redirect !== pathname) router.replace(redirect);
-  }, [mounted, pathname, journey, router]);
+  }, [mounted, pathname, journey, router, laneEnv]);
 
   /* ⌘K / Ctrl+K opens the universal command palette (spec §19.1). */
   useEffect(() => {

@@ -28,7 +28,7 @@ existing screens. With no `.env.local` the runtime uses:
 | --- | --- | --- |
 | `Reasoner` | `FixtureReasoner` | `reason` steps return canned, deterministic results |
 | `IntegrationProvider` | `StubIntegrationProvider`, handing out `StubToolClient` | every read operation in `lib/plan/operations.ts` answers with shaped fake data; every write is logged and simulated, never performed |
-| `RunStore` | `InMemoryRunStore` | runs and approvals are lost on restart |
+| `RunStore` · `BuildStore` · `SchedulerStore` | the file-backed stores under `data/runtime/` | runs, approvals, packages, triggers and queued jobs survive a restart, with no database and no setup step. `ORIANT_RUNTIME_STORAGE=memory` opts out; see §2a |
 | `Clock` / `newId` | `FixedClock` + `createIdFactory(seed)` in sandbox and tests; `SystemClock` + unseeded `createIdFactory()` elsewhere | identical timestamps and ids across repeat runs **only with the seeded pair** — an ordinary dev-server run uses wall time and `crypto.randomUUID()` |
 
 This is not a degraded mode. It is the mode the sandbox verdict (M3) and the
@@ -86,6 +86,55 @@ never as `live`.
 
 ---
 
+## 2a. Where the runtime keeps what it learns
+
+The second switch `lib/runtime/session.ts` reads, and the reason §1 can promise
+zero configuration through M4 and beyond. Full decision record:
+[`STORAGE.md`](./STORAGE.md).
+
+```bash
+ORIANT_RUNTIME_STORAGE=      # blank or "file" (default) · "memory" · anything else THROWS
+ORIANT_RUNTIME_DATA_DIR=     # blank = <cwd>/data/runtime
+```
+
+| | `file` (default) | `memory` |
+| --- | --- | --- |
+| Where | one JSON file per record under `data/runtime/`, written atomically | a `Map` per store |
+| Survives a restart | yes — runs, events, approvals, decisions, packages, triggers, queued jobs, deployments, agent state | no |
+| Setup | none. Directories are created on first write, `data/` is already gitignored | none |
+| Use it for | everything | a throwaway experiment |
+
+**Durable is what you get for free, and that is the whole point.** M0 called
+storage the M4 blocker, and §3 used to carry the consequence in one sentence:
+without durability *"a paused run and its pending approval vanish on restart,
+which defeats the approval interrupt."* That sentence lives here now, and it
+describes `memory` rather than the default. It is not a hypothetical — an agent
+pauses mid-workflow, asks the owner a question, and waits, and
+`escalateAfterMins` on the fixture agents is four hours. A restart inside that
+window throws away the run, the approval, and the idempotency claim that stopped
+the trigger firing again.
+
+**An unrecognised value throws, unlike `ORIANT_RUNTIME_MODE`.** The asymmetry is
+deliberate and is spelled out in `session.ts`: for the reasoner the dangerous
+default is "does something", for storage it is "forgets something".
+`ORIANT_RUNTIME_STORAGE=postgres` is a thing somebody will type the day
+`STORAGE.md` §7 is taken up, and silently treating it as `file` would give them a
+green server that is not using the database they just configured.
+
+`ORIANT_RUNTIME_DATA_DIR` moves that directory. Relative values resolve against
+the working directory; absolute is what two processes started from different
+places need, or each gets a private copy of every run and neither sees the
+other's queue claims. The directory is not encrypted and not access-controlled —
+run context holds customer names, invoice amounts and draft email bodies — so
+keep it off synced folders (`STORAGE.md` §6).
+
+The tests and the sandbox do not come through here at all: `lib/runtime/verify/*`
+and `lib/runtime/sandbox/runner.ts` construct `InMemoryRunStore`, `FixedClock`
+and a seeded `createIdFactory()` explicitly, because determinism is an M3 exit
+criterion and a store that touches a disk is neither deterministic nor fast.
+
+---
+
 ## 3. Milestone → what becomes necessary
 
 | Milestone | Keys that become necessary | What degrades without them |
@@ -94,12 +143,20 @@ never as `live`.
 | **M1** Runtime core | none for fixture. `AIAND_*` **only** for `live` | in `live`, wiring throws `ReasonerConfigError` before any run starts. Fixture mode unaffected: the full M1 exit (send at \$95, pause at \$1,200, resume on approve, always-approve write-off, refused refund) passes with no keys |
 | **M2** Agent Factory | none. `DOUBLEWORD_*` optional | model-driven package generation unavailable. The deterministic local compiler still emits packages, and it is what the M2 equivalence test compares against |
 | **M3** Sandbox | none. `DAYTONA_*` buys **isolation only**, and only when a caller asks for it | you lose isolation, nothing else. Without it every scenario runs in this process against stubbed tools, which is sufficient for the verdict: no scenario can reach an external system. Determinism comes from the injected `Clock`, seeded `newId()` and stubbed tools — never from Daytona. See §3a: isolation is opt-in and the verify suite deliberately stays in process |
-| **M4** Scheduler + Activation | `DATABASE_URL` **required**. Tool credentials required *only* for live runs against real systems | without a database, a paused run and its pending approval vanish on restart, which defeats the approval interrupt. Without tool credentials, live `act` steps fail and the Activation checklist reports the integration as not connected; fixture activation still works end to end |
+| **M4** Scheduler + Activation | **none.** Durability is the default (§2a), not a key. Tool credentials required *only* for live runs against real systems | nothing, for fixture activation — it works end to end with no keys and survives a restart. Without tool credentials, live `act` steps fail and the Activation checklist reports the integration as not connected |
 | **M5** Workspace + Approvals | same set as M4 | with the stub client the whole loop still runs: run fires → pauses → approval appears → owner edits and approves → run resumes |
 | **M6** Calendar, Agents, Integrations | tool credentials, for real connection and expiry state | the Integrations screen shows stub connection states rather than real ones |
 | **M7** Hardening | the full live set, for a live rehearsal only | the end-to-end test still passes in fixture mode |
 
-Read that table as: **nothing before M4 is blocked by a missing key.**
+Read that table as: **no milestone is blocked by a missing key.** Every exit
+criterion in `ROLE_C_PLAN.md` is met in fixture mode with an empty `.env.local`,
+and `npm run verify` — all eight targets — reads nothing but its own fixtures.
+Keys buy live behaviour and isolation; they never buy correctness.
+
+Two things that become necessary are not keys at all. A deployment meant to fire
+its schedules unattended needs `ORIANT_POLLER=on`, or every firing waits for a
+POST to `/api/runtime/scheduler` (§3b). A deployment meant to show an owner their
+own workforce rather than the scripted demo needs the lane variables (§3c).
 
 ---
 
@@ -204,30 +261,172 @@ where it was earned is worse than no isolation at all. For the same reason
 
 ---
 
+## 3b. The scheduler poller (M4/M5, opt-in)
+
+Activation registers triggers and computes a `nextFireAt` for every cron. Something
+still has to turn the worker. There are two ways, and only one of them runs while
+nobody is looking:
+
+| | What turns the worker | When to use it |
+| --- | --- | --- |
+| `POST /api/runtime/scheduler` | one `runDueWork` pass per request | development, demos, `verify:m4` — anywhere you want the pass to be an event you caused |
+| `ORIANT_POLLER=on` | a background poller, one pass every interval | a deployment that is supposed to be live |
+
+```bash
+ORIANT_POLLER=on              # off is the default
+ORIANT_POLLER_INTERVAL_MS=    # blank = 30000; whole ms, minimum 1000
+```
+
+**Off is the default, and off is a real state rather than a broken one.** With the
+poller off, triggers register, agents read as `active`, `nextFireAt` is computed
+and correct — and no run ever starts by itself. That is what you want on a laptop:
+`npm run dev` should serve screens, not begin dispatching a workforce thirty
+seconds later against whatever is in `.env.local`. It is also the one failure that
+is silent in a deployment, because everything looks live. If the Friday sweep is
+not happening, this switch is the first thing to check.
+
+### Where it starts
+
+[`instrumentation.ts`](../instrumentation.ts) → `startPollerHost()`
+([`lib/runtime/schedule/poller-host.ts`](../lib/runtime/schedule/poller-host.ts))
+→ `startPoller` → `runDueWork`. Next calls `register()` once per server process,
+which is the only hook with the lifetime a daemon needs. Three things follow from
+that and are worth knowing before you turn it on:
+
+- **Node.js server runtime only.** The edge runtime has no filesystem and no
+  process to outlive a request, so nothing under `lib/runtime` can run there.
+- **Never during `next build`.** A poller started by a build would execute real
+  runs as a side effect of compiling the site.
+- **One per process, and it survives dev hot reload** — the handle is cached on
+  `globalThis` exactly as the runtime session is, so saving a file does not leave
+  a second poller behind.
+
+### What you will see
+
+The poller is quiet when there is nothing to do — an idle pass logs nothing, or a
+30s interval would write ~2,880 lines a day saying so. A pass that did work writes
+one header line plus one line per claimed job:
+
+```
+[oriant:poller] started at 2026-07-31T01:00:00.412Z — one pass every 30000ms, fixture mode, file storage (…/data/runtime). The first pass is one interval from now, not now.
+[oriant:poller] 2026-07-31T01:00:30.412Z — queued 1, claimed 1: 1 succeeded
+[oriant:poller]   finance-followup/payment-reminder-drafting succeeded — Run run_… is waiting on approval ap_…. The job is done — the run is under way and the decision is the owner's.
+```
+
+That last line is the M5 loop starting on its own: a job the poller claimed, a run
+nobody asked for, and a decision now waiting in the owner's inbox. Dead-lettered
+jobs, jobs left unsettled, failed passes and triggers that could not be advanced go
+to stderr instead.
+
+### The rules it follows
+
+- **It changes nothing about how a run behaves.** Same executor, same policy
+  engine, same approval interrupt. Quiet hours and `maxRunsPerDay` still gate the
+  start, and a refusal is still a `skipped` job rather than a failure.
+- **It obeys `ORIANT_RUNTIME_MODE`.** In fixture mode it drives stubs. In live
+  mode it is the thing that makes an agent act on a real customer system with no
+  human present — which is the whole reason the switch is opt-in.
+- **The first pass is one interval after boot, not at boot.** A restart does not
+  replay everything that came due while the process was down until the next tick.
+- **Anything it cannot read, it refuses.** `ORIANT_POLLER=treu` does not start a
+  poller and does not silently mean "off": the reason is printed on stderr with
+  the accepted values. The same applies to an unreadable interval and to a runtime
+  session that cannot be composed. A refusal never takes the server down with it —
+  a deployment losing its background scheduler is a smaller failure than a
+  deployment that will not boot.
+- **On SIGTERM/SIGINT it stops claiming immediately.** A pass already inside a run
+  is not awaited — waiting properly would mean waiting out the run — so the job it
+  claimed stays `running` in the queue, visible, rather than being lost.
+
+### If you run more than one server process
+
+Turn the poller on in **one** of them. A second is safe but pointless: the job
+claim is atomic (the file store takes a lock, so it holds across processes too)
+and a re-delivered firing is deduplicated by its idempotency key, so nothing
+double-fires — both processes simply poll the same schedule and advance the same
+triggers to reach the same queue.
+
+---
+
+## 3c. Which screen an Operate route renders (M5/M6, opt-in)
+
+Five routes under `/app/workspace` have two screens behind them: the **scripted
+demo** that has always been there, and a **live** one reading the real runtime
+through `/api/runtime/*`. The scripted lane is the default and stays supported
+permanently — `ROLE_C_PLAN.md` calls it the fallback that carries the demo if
+another lane slips.
+
+| Route | Variable | Live screen |
+| --- | --- | --- |
+| `/app/workspace` | `ORIANT_WORKSPACE_LANE` | tiles, approvals preview, today's schedule |
+| `/app/workspace/approvals` | `ORIANT_APPROVALS_LANE` | the inbox and review drawer |
+| `/app/workspace/calendar` | `ORIANT_CALENDAR_LANE` | runs, approvals and registered triggers |
+| `/app/workspace/agents` | `ORIANT_AGENTS_LANE` | the roster, pause and resume |
+| `/app/workspace/integrations` | `ORIANT_INTEGRATIONS_LANE` | connections and what depends on them |
+
+```bash
+ORIANT_WORKSPACE_LANE=       # blank or "demo" (default) · "live" · anything else is REFUSED
+```
+
+**You do not need any of them to see a live screen.** `?live=1` opts one page
+over, and `?live=0` forces the demo back even where the variable says live — so a
+deployment that has switched over can still open the scripted screen for a
+rehearsal. The query parameter wins in both directions. The variables exist for
+the other case: a deployment where the live screen is what the sidenav should
+lead to, without a query string on every link.
+
+**Nothing is inferred, and an unreadable value is refused.** "Show the live
+screen if the API returns anything" is the obvious design and it is wrong twice
+over — a demo would become a live surface the moment somebody activated a plan,
+and a live screen would revert to a scripted one exactly when the runtime went
+quiet, which is when an owner most needs to be told nothing is there. Likewise
+`?live=yes` renders a refusal naming the setting, the value and the accepted
+forms rather than falling back to the demo: the scripted screens are convincing
+and their controls change nothing. The rule lives once in
+[`components/live/lane.ts`](../components/live/lane.ts).
+
+These are not secrets — they name a screen — but they still carry no
+`NEXT_PUBLIC_` prefix. The server layout resolves them and passes the lane names
+to the client shell as props ([`route-lane.ts`](../components/live/route-lane.ts)),
+so the set of values that can reach a browser stays enumerated in one place.
+
+---
+
 ## 4. Where each credential comes from
 
 | Provider | Variables | What it powers | Obtain from |
 | --- | --- | --- | --- |
 | **AI&** | `AIAND_API_KEY`, `AIAND_BASE_URL`, `AIAND_MODEL` | every `reason` step: choosing which invoices to chase, drafting the reminder, judging a thread | AI& console. Base URL and model id are org-specific — copy both, do not guess |
 | **Doubleword** | `DOUBLEWORD_API_KEY`, `DOUBLEWORD_BASE_URL`, `DOUBLEWORD_MODEL` | optional model-driven agent-package generation | Doubleword console |
-| **Daytona** | `DAYTONA_API_KEY`, `DAYTONA_API_URL`, `DAYTONA_TARGET` | opt-in sandbox isolation for M3 (§3a), plus the legacy `/demo` lane's own validation (`lib/server/providers/daytona.ts` → `ValidateScreen`) | app.daytona.io → Keys; the key needs sandbox **create and delete** permission. URL defaults to `https://app.daytona.io/api`. `DAYTONA_TARGET` overrides the organisation's default region |
+| **Daytona** | `DAYTONA_API_KEY`, `DAYTONA_API_URL`, `DAYTONA_TARGET` | opt-in sandbox isolation for M3 (§3a). **Nothing else** — the legacy `/demo` validator reads the key only to say that it cannot use it (see the note below) | app.daytona.io → Keys; the key needs sandbox **create and delete** permission. URL defaults to `https://app.daytona.io/api`. `DAYTONA_TARGET` overrides the organisation's default region |
 | **Google** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` | Gmail (read threads, create drafts, send), Calendar (list events, create/update bookings), Drive (read files) | Google Cloud console → Credentials → OAuth 2.0 client (Web application), with the Gmail/Calendar/Drive APIs enabled |
 | **HubSpot** | `HUBSPOT_ACCESS_TOKEN` | contacts, deals, invoices, notes, write-offs, and the refund operation the Finance agent forbids | HubSpot → Settings → Integrations → Private Apps |
 | **WhatsApp Business** | `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN` | read and send customer messages | Meta for Developers → WhatsApp → API Setup; use a system-user token, not a temporary one |
 | **QuickBooks** | `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET` | invoices and payments (read-only in the current vocabulary) | Intuit developer portal → Keys & credentials. Sandbox keys differ from production |
 | **Slack** | `SLACK_BOT_TOKEN` | internal channel messages | api.slack.com/apps → OAuth & Permissions → bot token (`xoxb-`) |
 | **Mailchimp** | `MAILCHIMP_API_KEY`, `MAILCHIMP_SERVER_PREFIX` | campaign drafts | Mailchimp → Account → Extras → API keys. The prefix is your dashboard subdomain, e.g. `us14` |
-| **Database** | `DATABASE_URL` | durable runs, events, approvals, packages, deployments, schedules | your own Postgres. Keep it separate from any demo data |
+| **Database** | `DATABASE_URL` | **nothing today.** The decided Postgres path (`STORAGE.md` §7), named here so it is not reinvented. Durable storage is already the default and needs no service — §2a | your own Postgres, when the migration is taken up. Keep it separate from any demo data |
 
 `NOSANA_*` belongs to YJ's discovery/voice lane and is not read by the runtime.
 Setting it changes no runtime behaviour.
 
-> **Daytona has two adapters, and only one of them works.** The runtime's
-> (`lib/runtime/sandbox/remote/daytona.ts`) goes through `@daytonaio/sdk`. The
-> legacy `/demo` one hand-rolls `POST /api/toolbox/{id}/process/execute`, which
-> now **404s**: the toolbox moved behind `https://proxy.app.daytona.io/toolbox`,
-> and that proxy rejects an organisation API key with 401. Do not copy the legacy
-> adapter's transport — it will authenticate and then fail at the first command.
+> **Daytona had two adapters, and only one of them ever worked.** The runtime's
+> (`lib/runtime/sandbox/remote/daytona.ts`) goes through `@daytonaio/sdk` and is
+> the one to use. The legacy `/demo` one hand-rolled
+> `POST /api/toolbox/{id}/process/execute`, which **404s**: the toolbox moved
+> behind `https://proxy.app.daytona.io/toolbox`, and that proxy rejects an
+> organisation API key. Do not copy that transport — it authenticates at sandbox
+> creation and then fails at the first command.
+>
+> As of M7 the legacy adapter **no longer attempts it.** It runs its checks in
+> process, labels them `fixture` (its type no longer has a `"live"` to return),
+> and when `DAYTONA_API_KEY` is set it adds a warning saying this was not a
+> sandbox run and pointing here. Before that change it returned `mode: "live"`
+> on the failure path — for work that had happened nowhere at all — and reported
+> all four security checks as failed, so on any machine configured for M3
+> isolation the scripted demo could not get past its own validate step. Giving
+> `/demo` real isolation means calling the runtime's client; that is a piece of
+> work, not a patch, and it is listed in §7.
 
 ### The tool credentials are Role D's, not ours
 
@@ -265,7 +464,8 @@ invoked at all — no key enables it.
 
 ## 5. Security
 
-- **Server-side only.** Every variable in `.env.example` is read on the server.
+- **Server-side only.** Every variable in `.env.example` is read on the server or
+  not at all — `DATABASE_URL` is currently the second kind, and §4 says so.
 - **Never use a `NEXT_PUBLIC_` prefix on any of them.** Next.js inlines
   `NEXT_PUBLIC_*` values into the client bundle, which would publish the secret
   to every visitor. If a value is needed in the browser, it is the wrong value.
@@ -284,8 +484,10 @@ invoked at all — no key enables it.
 ## 6. Quick answers
 
 **"I have no keys at all. What can I do?"**
-All of M0-M3, including the complete approval interrupt and the sandbox
-verdict. Just `npm run dev`.
+All of it — every milestone's exit criterion, including the complete approval
+interrupt, the sandbox verdict, activation, the scheduler and all five live
+Operate screens. Just `npm run dev`, or `npm run verify` for the headless proof.
+Keys buy live behaviour, not correctness.
 
 **"I set `ORIANT_RUNTIME_MODE=live` and it failed before the run started."**
 Expected. `new AiAndReasoner()` throws `ReasonerConfigError` at construction,
@@ -311,6 +513,33 @@ Check first that the two sides are configured alike — the remote runner has no
 Factory package store, so the local comparison must also run `runScenario`
 without one, or the results will disagree on `packageSource` alone.
 
+**"I activated the plan, the trigger says it is due, and nothing ever runs."**
+Almost certainly `ORIANT_POLLER`. Off is the default, and off means no process
+turns the worker — see §3b. Confirm it by driving one pass by hand:
+`curl -X POST localhost:3000/api/runtime/scheduler`. If the run appears then, the
+scheduler is fine and nothing was waking it.
+
 **"My approvals disappeared after a restart."**
-Expected without `DATABASE_URL` — the in-memory store is the default. Fine
-through M3, must be fixed before M4.
+Not expected, and not `DATABASE_URL` — nothing reads that variable. Durable file
+storage is the default (§2a), so check `ORIANT_RUNTIME_STORAGE`: `memory` throws
+everything away on exit. If it is unset or `file`, check that
+`ORIANT_RUNTIME_DATA_DIR` (or the working directory, if it is unset) is the same
+one the previous process wrote to — `data/runtime/approvals/` is a directory of
+plain JSON you can open and count.
+
+**"I opened `/app/workspace` and it is the scripted demo, not my runtime."**
+By design — the demo is the default on all five Operate routes. Add `?live=1`, or
+set that route's lane variable for the whole deployment. See §3c.
+
+---
+
+## 7. Known upgrade tasks
+
+Not bugs, and not blocking anything today. Recorded here so they are found by
+somebody reading this page rather than by a red CI run.
+
+| What | Why it matters | Scope |
+| --- | --- | --- |
+| **`npm run lint` calls `next lint`, which is deprecated** and is removed in Next 16. It prints a deprecation notice on every run today and still works | The upgrade to Next 16 turns a notice into a failure, and it will land on whoever is doing an unrelated dependency bump | Migrate to the ESLint CLI: `npx @next/codemod@canary next-lint-to-eslint-cli .`, which writes an `eslint.config.mjs` and rewrites the script. Do it as its own change, with `npm run lint` output compared before and after — not folded into a feature branch |
+| **The `/demo` lane has no sandbox isolation** (§4). Its validator runs the checks in process and says so | The `/demo` narrative claims packages are proven in an isolated sandbox; today only the M3 runtime path can make that true | Call `lib/runtime/sandbox/remote/` from the `/demo` validator instead of reviving the dead transport. It is a real piece of work — the `/demo` bundle shape is not a `Scenario` — and it must keep the no-key path working unchanged |
+| **`/api/runtime/*` is unauthenticated**, exactly as M4, M5 and M6 left it | The connections and roster routes report which tools a business has connected and what its agents may do with them | Must be gated before any deployment. Named in `ROLE_C_PLAN.md` under M5 and M6 |

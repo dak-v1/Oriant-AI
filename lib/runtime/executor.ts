@@ -37,6 +37,28 @@
  * below — nothing may write over a terminal status, so a step loop holding a
  * stale copy of the run can no longer resurrect it at the next boundary.
  *
+ * A RESUMED RUN ANNOUNCES ITSELF, because nothing else can see it finish. A run
+ * the scheduler started ends inside a worker pass, and that pass is what fans
+ * out to whatever was chained behind it. A run that PAUSED settles its job
+ * immediately and finishes much later, inside resumeRun, which no pass ever
+ * observes — and on the BrightPath plan that is the ordinary path rather than
+ * the edge case, because the Friday sweep pauses on its first over-limit
+ * invoice. So `ExecutorOptions.onRunResumed` is called once per resume that
+ * actually did work, whatever the outcome.
+ *
+ * It is a CALLBACK, not a call into lib/runtime/schedule, and the reason is
+ * structural rather than stylistic: the scheduler already imports this module,
+ * so importing it back would close a cycle — and this module has no business
+ * knowing what a dependency trigger is in the first place. What the executor
+ * owes is the fact ("this resume settled, here is the outcome"); deciding what
+ * that means belongs to whoever wired it up. lib/runtime/approvals.ts supplies
+ * the wiring the Approvals inbox uses.
+ *
+ * Deliberately NOT emitted from finish(), which would also fire for runs the
+ * worker started — the worker fans those out itself, and a second fan-out would
+ * double-count its summary. Narrowing the notice to the resume path makes that
+ * overlap impossible rather than merely unlikely.
+ *
  * THE METRIC TRUST BOUNDARY is the honest weak point of this design, so it is
  * written down here rather than glossed. policy.ts decides whether an act may
  * proceed by evaluating `PolicyLimit` against `ToolInvocation.metrics`, and
@@ -145,6 +167,20 @@ export interface ExecutorOptions extends ExecutorDeps {
   stepTimeoutMs?: number;
   /** plan.globalPolicy — needed for org-wide denies and the quiet window. */
   globalPolicy?: { quietHours: QuietHours | null; forbidden: string[] };
+  /**
+   * Called once, after a resume that actually drove the run, with whatever the
+   * run settled as — completed, refused, failed, or paused again at a second
+   * approval. See the module header for why this exists as a callback and why it
+   * is confined to the resume path.
+   *
+   * Optional, and its absence changes nothing about the run: a caller that does
+   * not care (the sandbox, the M1 checks) supplies nothing. It may throw; the
+   * throw is caught and reported on `RunOutcome.followUpError` rather than
+   * turning a settled, correct run into a failure, because by the time this is
+   * called the run is already persisted and terminal and there is nowhere left
+   * to record a failure against it.
+   */
+  onRunResumed?(outcome: RunOutcome): Promise<void>;
 }
 
 const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -210,6 +246,15 @@ export interface RunOutcome {
   status: RunStatus;
   /** Set when the run paused; the approval the owner must decide. */
   approvalId: string | null;
+  /**
+   * Set when `ExecutorOptions.onRunResumed` threw. The run itself is settled and
+   * correct; only the caller's follow-on work failed — queuing the dependent
+   * workflows, in practice. Reported here for the same reason the worker records
+   * a failed fan-out on its job outcome rather than on the run: losing the
+   * dependents is worth saying out loud, and pretending the run went wrong is
+   * not the way to say it.
+   */
+  followUpError?: string;
 }
 
 /* ═══════════════════════════ Entry points ═══════════════════════════ */
@@ -353,8 +398,33 @@ async function resumeOnce(
     const fresh = await deps.store.getRun(runId);
     // Never report the stale local copy: it still says "awaiting_approval" and
     // would tell the loser the opposite of what happened.
+    // No announcement either: this call drove nothing, and the resume that did
+    // has already made — or will make — the one notice this run gets.
     return fresh ? outcomeOf(fresh) : outcomeOf(state);
   }
+
+  // Past the claim this call owns the resume, so it also owns the notice that
+  // the run settled. Splitting the rest out is what makes that exactly one
+  // expression to wrap, rather than five returns each remembering to announce.
+  const outcome = await applyDecision(state, bundle, workflow, step, request, decision, deps);
+  return announceResume(outcome, deps);
+}
+
+/**
+ * Everything a claimed resume does: verify the plan has not drifted under the
+ * approval, record the decision, replay or refuse, and carry the workflow on.
+ */
+async function applyDecision(
+  state: RunState,
+  bundle: AgentBundle,
+  workflow: CompiledWorkflow,
+  step: StepSpec | undefined,
+  request: ApprovalRequest,
+  decision: ApprovalDecision,
+  deps: ExecutorOptions,
+): Promise<RunOutcome> {
+  const runId = state.runId;
+  const approvalId = request.approvalId;
 
   // The cursor is an INDEX, and the approval froze a step ID. If the plan was
   // re-approved while this sat in the inbox, the index can now point at a
@@ -410,7 +480,7 @@ async function resumeOnce(
   if (!isCheckpoint(request.invocation)) {
     const invocation: ToolInvocation = {
       ...request.invocation,
-      args: { ...request.invocation.args, ...(decision.editedArgs ?? {}) },
+      args: resolvedApprovalArgs(request, decision),
     };
 
     // Defence in depth: the plan may have changed while the run was paused.
@@ -440,6 +510,50 @@ async function resumeOnce(
   if (clobbered) return outcomeOf(clobbered);
 
   return drive(state, bundle, workflow, deps);
+}
+
+/**
+ * The arguments a decided approval actually executes with: the frozen
+ * invocation's args, with the owner's edits laid over them.
+ *
+ * One line, exported, and used by the replay above rather than restated at the
+ * call site — because lib/runtime/approvals.ts derives the owner's
+ * `ApprovalVersion` from this same expression. A version describing a different
+ * merge than the one that ran would be an audit trail of something that never
+ * happened, and two copies of a spread is exactly the kind of duplication that
+ * drifts without anyone noticing.
+ */
+export function resolvedApprovalArgs(
+  request: ApprovalRequest,
+  decision: ApprovalDecision,
+): Record<string, unknown> {
+  return { ...request.invocation.args, ...(decision.editedArgs ?? {}) };
+}
+
+/**
+ * Tell the caller its resume settled, if it asked to be told.
+ *
+ * The callback's failure is caught and carried on the outcome rather than
+ * thrown. By this point the run is terminal and persisted, and persist() refuses
+ * to write over a terminal status — so there is genuinely nowhere else to put
+ * it, and letting it escape would report a completed run to the owner as a 409.
+ */
+async function announceResume(
+  outcome: RunOutcome,
+  deps: ExecutorOptions,
+): Promise<RunOutcome> {
+  const notify = deps.onRunResumed;
+  if (!notify) return outcome;
+
+  try {
+    await notify(outcome);
+    return outcome;
+  } catch (err) {
+    return {
+      ...outcome,
+      followUpError: err instanceof Error ? err.message : String(err),
+    };
+  }
 }
 
 /**

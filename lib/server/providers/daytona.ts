@@ -1,29 +1,64 @@
 /**
- * Daytona adapter — isolated sandbox validation (blueprint §20.5, §16).
+ * Daytona adapter — package validation for the legacy `/demo` lane
+ * (blueprint §20.5, §16). One call per generated agent from
+ * `app/api/validate/route.ts`; `ValidateScreen` renders what comes back.
  *
- * DeploymentRunner: creates a sandbox, writes the generated artifact bundle
- * into it, runs the static validation script inside the sandbox, collects
- * results and destroys the sandbox. Provider-specific REST stays behind this
- * adapter; no Daytona object ever reaches the browser.
+ * THIS ADAPTER HAS NO LIVE PATH ANY MORE, AND SAYS SO RATHER THAN PRETENDING.
+ * It used to create a sandbox and run the checks INSIDE it over
+ * `POST /api/toolbox/{id}/process/execute`. That endpoint is gone: the toolbox
+ * moved behind `https://proxy.app.daytona.io/toolbox`, and that proxy rejects an
+ * organisation API key — so the call authenticated at sandbox creation and then
+ * 404'd at the first command. Checked against the live API rather than inferred;
+ * `RUNTIME_SETUP.md` §4 carries the same warning.
  *
- * Live when DAYTONA_API_KEY is set (DAYTONA_API_URL defaults to Daytona cloud).
- * The mock MVP validates honestly in fixture mode by running the same checks
- * locally — labeled "fixture" so no one mistakes it for a sandbox run.
+ * Both branches of that attempt were dishonest, in opposite directions. The
+ * success branch claimed `mode: "live"` for a response it could never receive.
+ * The failure branch ALSO claimed `mode: "live"` — for work that had happened
+ * nowhere at all — and reported all four security checks as failed, so on any
+ * machine configured for M3 isolation the scripted demo could not get past its
+ * own validate step — and it created and deleted a real sandbox per agent on the
+ * way to that failure.
+ *
+ * So the attempt is gone and the label is `fixture` in every case, which is what
+ * `fixture` has always meant here: these checks ran in this process. The type
+ * says so too — there is no `"live"` left for this function to return.
+ *
+ * REPAIRING THE TRANSPORT IS NOT THE FIX, AND IS DELIBERATELY NOT DONE HERE.
+ * `lib/runtime/sandbox/remote/` (M3) already executes inside a Daytona sandbox
+ * through `@daytonaio/sdk`, comes back byte-identical to the same work run
+ * locally, fails closed rather than mislabelling a local result, and is provable
+ * with `npm run daytona:check`. Two hand-rolled clients for one provider is how
+ * this one rotted unnoticed; a second one would rot the same way. Giving the
+ * `/demo` lane real isolation means calling the runtime's client, and that is a
+ * piece of work rather than a patch.
+ *
+ * A CONFIGURED KEY STILL EARNS A WORD. `DAYTONA_API_KEY` being set means somebody
+ * is expecting isolation, and quietly running local checks under a green provider
+ * dot is the exact failure this file is being repaired for — so the result then
+ * carries a warning naming what did not happen and where the working
+ * implementation is. With no key, nothing about this lane changes.
  */
 import type { ArtifactBundle } from "../../contracts";
-import { daytonaLive, providerEnv } from "./env";
+import { daytonaLive } from "./env";
 
 export interface SandboxValidation {
-  mode: "live" | "fixture";
+  /**
+   * Where the checks ran. `fixture` and nothing else: this process. Narrowed
+   * from `ProviderMode` on purpose — the value is rendered on the manifest card
+   * and written into the provider trace, and a union carrying a `"live"` this
+   * adapter cannot earn is how the old lie was expressible in the first place.
+   */
+  mode: "fixture";
   sandboxId: string;
   ok: boolean;
   tests: { passed: number; failed: number };
   securityChecks: Record<string, "passed" | "failed">;
   warnings: string[];
+  /** Why this was not a sandbox run. Surfaced as the provider trace's detail. */
   error?: string;
 }
 
-/* ── the validation logic itself (runs in Daytona live, locally in fixture) ── */
+/* ── the validation logic itself ──────────────────────────────────────────── */
 
 // Word boundaries + realistic token lengths so agent slugs like
 // "front-desk-assistant" ("…sk-assistant") never false-positive.
@@ -65,100 +100,46 @@ export function staticChecks(bundle: ArtifactBundle): {
   };
 }
 
-/* ── live sandbox run ────────────────────────────────────────────────────── */
+/* ── what an owner is told when a key is configured ──────────────────────── */
 
-async function daytonaFetch(path: string, init?: RequestInit) {
-  const env = providerEnv().daytona;
-  const res = await fetch(`${env.apiUrl}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${env.key}`,
-      ...(init?.headers ?? {}),
-    },
-    signal: AbortSignal.timeout(60_000),
-  });
-  if (!res.ok) throw new Error(`Daytona ${path} → ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  return res.json();
-}
+/** Short enough for the manifest card, which joins every warning with " · ". */
+const NOT_ISOLATED_WARNING =
+  "Not a sandbox run — this adapter's Daytona transport is dead (toolbox execute → 404). " +
+  "The checks ran on this server.";
+
+/** The longer version, for the provider trace where a reviewer is reading. */
+const NOT_ISOLATED_DETAIL =
+  "DAYTONA_API_KEY is set, but this /demo adapter no longer has a working live path: the " +
+  "toolbox moved behind proxy.app.daytona.io and rejects an organisation key, so the " +
+  "process/execute call it used returns 404. The validation below therefore ran in this " +
+  "process, not inside a sandbox, and is labelled fixture for that reason. The working " +
+  "isolation client is lib/runtime/sandbox/remote/ (M3, @daytonaio/sdk) — prove it with " +
+  "`npm run daytona:check`, and see docs/RUNTIME_SETUP.md §3a.";
 
 export async function validateInSandbox(bundle: ArtifactBundle): Promise<SandboxValidation> {
   const local = staticChecks(bundle);
   const ok = Object.values(local.securityChecks).every((v) => v === "passed");
 
-  if (!daytonaLive()) {
-    return {
-      mode: "fixture",
-      sandboxId: `local_${bundle.agentId}`,
-      ok, ...local,
-    };
-  }
+  /* `sandboxId` says where this happened, and it happened here — so it is
+     `local_…` whether or not a key is configured. The manifest card prints this
+     id, and a sandbox-shaped id for work that never left the process would undo
+     everything above.
 
-  let sandboxId = "";
-  try {
-    // 1. create an isolated sandbox
-    const sb = (await daytonaFetch("/sandbox", {
-      method: "POST",
-      body: JSON.stringify({ language: "javascript", labels: { app: "margo", agent: bundle.agentId } }),
-    })) as { id?: string };
-    sandboxId = sb.id ?? "";
-    if (!sandboxId) throw new Error("Daytona did not return a sandbox id");
+     `async` with nothing to await, deliberately: the signature is the seam a
+     future call into lib/runtime/sandbox/remote/ would arrive through, and
+     narrowing it to a synchronous return would make that a caller change too. */
+  const result: SandboxValidation = {
+    mode: "fixture",
+    sandboxId: `local_${bundle.agentId}`,
+    ok,
+    ...local,
+  };
 
-    // 2. upload only the approved files and run the validation INSIDE the
-    //    sandbox — the manifest reports what the sandbox measured, not a
-    //    locally computed result wearing a "live" label.
-    const payload = Buffer.from(JSON.stringify(bundle)).toString("base64");
-    const script = [
-      `const b=JSON.parse(Buffer.from(process.env.BUNDLE,'base64').toString());`,
-      `const fs=require('fs'),path=require('path');fs.mkdirSync('pkg',{recursive:true});`,
-      `for(const f of b.files){fs.mkdirSync(path.dirname('pkg/'+f.path),{recursive:true});fs.writeFileSync('pkg/'+f.path,f.content);}`,
-      `const req=['agent.yaml','workflow.yaml','prompt.md','tools.yaml','permissions.yaml','test-cases.yaml','required-integrations.json','README.md'];`,
-      `const got=b.files.map(f=>f.path);const missing=req.filter(p=>!got.includes(p));`,
-      `const secretRe=/(\\bsk-[A-Za-z0-9]{16,}|api[_-]?key\\s*[:=]\\s*['\\"][^'\\"]{8,}|\\bAKIA[0-9A-Z]{16}\\b|-----BEGIN (RSA |EC )?PRIVATE KEY)/i;`,
-      `const secretHit=b.files.some(f=>secretRe.test(f.content));`,
-      `const read=p=>{try{return fs.readFileSync('pkg/'+p,'utf8')}catch{return ''}};`,
-      `const perms=/forbidden:/.test(read('permissions.yaml'));const tools=/tools:/.test(read('tools.yaml'));`,
-      `const cases=(read('test-cases.yaml').match(/- +name:/g)||[]).length;`,
-      `console.log('__MARGO__'+JSON.stringify({missing,secretHit,perms,tools,cases}));`,
-    ].join("");
-    const run = (await daytonaFetch(`/toolbox/${sandboxId}/process/execute`, {
-      method: "POST",
-      body: JSON.stringify({ command: `node -e "${script.replace(/"/g, '\\"')}"`, env: { BUNDLE: payload } }),
-    })) as { exitCode?: number; result?: string };
-    if (run.exitCode !== 0) throw new Error(`sandbox execution failed: ${(run.result ?? "no output").slice(0, 200)}`);
+  if (!daytonaLive()) return result;
 
-    const marker = (run.result ?? "").split("__MARGO__")[1];
-    const parsed = JSON.parse((marker ?? "").trim()) as {
-      missing: string[]; secretHit: boolean; perms: boolean; tools: boolean; cases: number;
-    };
-    const checks: Record<string, "passed" | "failed"> = {
-      schema: parsed.missing.length === 0 ? "passed" : "failed",
-      secret_scan: parsed.secretHit ? "failed" : "passed",
-      tool_allowlist: parsed.tools ? "passed" : "failed",
-      permission_policy: parsed.perms ? "passed" : "failed",
-    };
-    const failed = Object.values(checks).filter((v) => v === "failed").length;
-    const warnings = [...(parsed.missing.length ? [`Missing artifacts: ${parsed.missing.join(", ")}`] : [])];
-    if (parsed.secretHit) warnings.push("A file matched a secret pattern — credentials must be referenced by name only.");
-    return {
-      mode: "live",
-      sandboxId,
-      ok: failed === 0,
-      tests: { passed: failed === 0 ? Math.max(parsed.cases, 1) : Math.max(parsed.cases - failed, 0), failed },
-      securityChecks: checks,
-      warnings,
-    };
-  } catch (err) {
-    return {
-      mode: "live", sandboxId: sandboxId || "unavailable", ok: false,
-      tests: { passed: 0, failed: 1 },
-      securityChecks: { schema: "failed", secret_scan: "failed", tool_allowlist: "failed", permission_policy: "failed" },
-      warnings: ["Daytona sandbox run failed — see error."],
-      error: String(err),
-    };
-  } finally {
-    if (sandboxId) {
-      daytonaFetch(`/sandbox/${sandboxId}`, { method: "DELETE" }).catch(() => {});
-    }
-  }
+  return {
+    ...result,
+    warnings: [...result.warnings, NOT_ISOLATED_WARNING],
+    error: NOT_ISOLATED_DETAIL,
+  };
 }
