@@ -44,10 +44,26 @@ cp .env.example .env.local   # then fill in the keys you have
 | *(none — browser)* | **Margo's own voice**: she reads her questions aloud via the Web Speech API. Toggle it with the "Her voice" control on the call. No key required. | — |
 | **Doubleword** | Async generation of each agent's package (prompt, YAML, policies, tests, docs) | `DOUBLEWORD_API_KEY`, `DOUBLEWORD_BASE_URL`, `DOUBLEWORD_MODEL` |
 | **Daytona** | Isolated sandbox validation of every generated package before activation | `DAYTONA_API_KEY`, `DAYTONA_API_URL` |
+| **Supabase** | Role A onboarding persistence, organization capture, audit/system logs, blueprint versions and Role B handoff mirroring | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
 
 Providers are independent — configure any subset. Missing ones stay in fixture
 mode and every screen/badge/provider-trace entry says so (the blueprint's
 "mock honesty" rule).
+
+## Role A onboarding persistence
+
+Role A now includes a server-side onboarding engine for:
+
+- shared Type/Talk onboarding sessions;
+- organization shape, employee count and approval-owner capture;
+- transcript-linked voice answers;
+- Business Blueprint generation and Human Approval Gate 1;
+- Role B handoff records;
+- audit and system-event mirroring to Supabase.
+
+Without Supabase env vars, onboarding still works against the local file-backed
+store. When Supabase is configured, the onboarding session is mirrored into the
+tables defined in `supabase/migrations/20260728_role_a_onboarding.sql`.
 
 ## The journey
 

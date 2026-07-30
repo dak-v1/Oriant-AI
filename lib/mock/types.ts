@@ -29,11 +29,37 @@ export type JourneyState =
 /* ═══════════════════════════ Onboarding ═══════════════════════════ */
 
 export type AutomationMode = "assist" | "operate" | "unsure";
+export type OnboardingChannel = "typed" | "voice";
+export type ApprovalPreference =
+  | "owner_all"
+  | "department_leads"
+  | "mixed"
+  | "recommend";
+export type OnboardingOwnership = "owner_only" | "invite_contributors";
+export type WorkflowBuilder = "self" | "invite";
+export type BuilderAccess = "workflows_only" | "account_manager";
+export type AutomationScope = "start_small" | "focus_area" | "whole_business";
+export type OrganizationShape =
+  | "solo"
+  | "owner_with_team"
+  | "multi_role_team"
+  | "manager_led";
+
+export interface DepartmentApproval {
+  department: string;
+  processOwner: string;
+  email: string;
+  approver: string;
+  setupDelegate: string;
+  discoveryStatus: "owner_pending" | "invited" | "completed";
+}
 
 export interface ToolChip {
   id: string;
   name: string;
   category: ToolCategory;
+  iconSlug?: string;
+  iconColor?: string;
 }
 
 export type ToolCategory =
@@ -71,10 +97,25 @@ export interface CustomTool {
 }
 
 export interface OnboardingState {
+  channel: OnboardingChannel;
+  backendSessionId: string | null;
   mode: AutomationMode | null;
   usedDemoCompany: boolean;
   /** Owner's opening answer (voice sim or typed). */
   intro: string;
+  organizationShape: OrganizationShape;
+  approvalPreference: ApprovalPreference | null;
+  onboardingOwnership: OnboardingOwnership | null;
+  workflowBuilder: WorkflowBuilder | null;
+  builderAccess: BuilderAccess | null;
+  automationScope: AutomationScope | null;
+  businessArea: string;
+  repetitiveTask: string;
+  currentWorkflow: string;
+  employeeCount: string;
+  approvalOwner: string;
+  employeeEmails: string[];
+  departmentApprovals: DepartmentApproval[];
   selectedToolIds: string[];
   /** Owner-added tools outside the catalog ("Custom" badge). */
   customTools: CustomTool[];
@@ -82,6 +123,11 @@ export interface OnboardingState {
   capturedSections: string[];
   consentAccepted: boolean;
   completed: boolean;
+  blueprintVersion: number | null;
+  blueprintStatus: "idle" | "draft" | "approved";
+  handoffId: string | null;
+  syncStatus: "idle" | "saving" | "saved" | "error";
+  syncError: string | null;
 }
 
 /* ═══════════════════════════ Lean Canvas ═══════════════════════════ */
@@ -163,6 +209,8 @@ export interface DiscoveryQuestion {
   factIds: string[];
   /** Knowledge sections that pulse when confirmed. */
   sections: KnowledgeSection[];
+  helperText?: string;
+  examples?: string[];
 }
 
 export type DiscoveryMode = "voice" | "text" | "cards" | "upload" | "invite";

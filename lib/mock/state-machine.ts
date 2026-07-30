@@ -136,7 +136,6 @@ export const NAV_SECTIONS: NavSection[] = [
     min: "not_started",
     children: [
       { label: "Onboarding", route: "/app/onboarding", min: "not_started" },
-      { label: "Lean Canvas", route: "/app/onboarding/lean-canvas", min: "onboarding" },
       { label: "Interview", route: "/app/discovery", min: "discovery" },
       { label: "Company report", route: "/app/discovery/report", min: "report_review" },
     ],

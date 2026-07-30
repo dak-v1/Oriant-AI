@@ -1,200 +1,244 @@
 "use client";
-/**
- * SummaryStep — onboarding step 4 (spec §7.2, improvement spec §5).
- *
- * Shows ONLY the capture areas that already have content (positive wording,
- * "Captured" status, Edit affordances that jump back to the owning step),
- * followed by exactly one muted "Oriant will ask about this next" line.
- * The full structured checklist, including missing information, belongs to
- * the Company Report. The permissions & consent card stays.
- */
 import { motion, useReducedMotion } from "framer-motion";
-import { Check, Pencil, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, FileCheck2, Pencil, ShieldCheck } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
-import {
-  DEMO_COMPANY,
-  ONBOARDING_SECTIONS,
-  TOOL_CATALOG,
-} from "@/lib/mock/fixtures/demo-company";
+import { DEMO_COMPANY, TOOL_CATALOG } from "@/lib/mock/fixtures/demo-company";
 import { fadeUp } from "@/lib/mock/motion";
+import type { AutomationScope } from "@/lib/mock/types";
 import styles from "./onboarding.module.css";
 
-/** Which onboarding step edits each section (others are Discovery's job). */
-const SECTION_STEP: Partial<Record<string, number>> = {
-  "automation-preference": 0,
-  company: 1,
-  tools: 2,
+const STEP_MAP = {
+  setup: 0,
+  business: 1,
+  workflow: 3,
+} as const;
+
+const SCOPE_LABELS: Record<AutomationScope, string> = {
+  start_small: "Start with one task",
+  focus_area: "Improve one business area",
+  whole_business: "Analyse the whole business",
 };
 
-const MODE_LABELS: Record<string, string> = {
-  assist: "Assist: AI works with your current team",
-  operate: "Operate: AI runs eligible workflows within limits",
-  unsure: "Not sure yet: Oriant will recommend a level after Discovery",
-};
-
-const TOOL_NAME = new Map(TOOL_CATALOG.map((t) => [t.id, t.name]));
+const TOOL_NAME = new Map(TOOL_CATALOG.map((tool) => [tool.id, tool.name]));
 
 function clip(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
 }
 
+function firstRecommendation(scope: AutomationScope | null, area: string, task: string): string {
+  if (!task.trim()) return "Oriant will recommend the safest useful first step once the task is clear.";
+  if (scope === "whole_business") {
+    return `Start by mapping how ${task.toLowerCase()} works inside ${area || "the business"}, then recommend the first low-risk milestone before expanding further.`;
+  }
+  if (scope === "focus_area") {
+    return `Start inside ${area || "the chosen area"} by standardising ${task.toLowerCase()} and keeping the first workflow behind a human approval step.`;
+  }
+  return `Start small by removing the most repetitive step inside ${task.toLowerCase()} and proving value quickly.`;
+}
+
 export default function SummaryStep({
+  channel,
+  organizationShape,
+  automationScope,
+  businessArea,
+  repetitiveTask,
+  currentWorkflow,
+  employeeCount,
+  approvalOwner,
+  employeeEmails,
+  departmentApprovals,
+  syncStatus,
+  blueprintVersion,
+  blueprintStatus,
   consentChecked,
   onConsentChange,
   onEditStep,
 }: {
+  channel: "typed" | "voice";
+  organizationShape: "solo" | "owner_with_team" | "multi_role_team" | "manager_led";
+  automationScope: AutomationScope | null;
+  businessArea: string;
+  repetitiveTask: string;
+  currentWorkflow: string;
+  employeeCount: string;
+  approvalOwner: string;
+  employeeEmails: string[];
+  departmentApprovals: unknown[];
+  syncStatus: "idle" | "saving" | "saved" | "error";
+  blueprintVersion: number | null;
+  blueprintStatus: "idle" | "draft" | "approved";
   consentChecked: boolean;
   onConsentChange: (checked: boolean) => void;
   onEditStep: (step: number) => void;
 }) {
-  const onboarding = useDemoStore((s) => s.onboarding);
+  const onboarding = useDemoStore((state) => state.onboarding);
   const reduced = useReducedMotion();
+  void approvalOwner;
+  void employeeEmails;
+  void departmentApprovals;
 
   const toolNames = [
     ...onboarding.selectedToolIds
       .map((id) => TOOL_NAME.get(id))
-      .filter((n): n is string => Boolean(n)),
-    ...onboarding.customTools.map((t) => t.name),
+      .filter((name): name is string => Boolean(name)),
+    ...onboarding.customTools.map((tool) => tool.name),
   ];
 
-  const snippetFor = (sectionId: string): string | null => {
-    switch (sectionId) {
-      case "company":
-        return onboarding.intro.trim()
-          ? `“${clip(onboarding.intro.trim(), 110)}”`
-          : null;
-      case "automation-preference":
-        return onboarding.mode ? MODE_LABELS[onboarding.mode] : null;
-      case "tools":
-        return toolNames.length
-          ? `${toolNames.length} selected: ${toolNames.slice(0, 3).join(", ")}${
-              toolNames.length > 3 ? " and more" : ""
-            }`
-          : null;
-      case "team":
-        return onboarding.usedDemoCompany ? DEMO_COMPANY.teams.join(" · ") : null;
-      case "goals":
-        return onboarding.usedDemoCompany ? DEMO_COMPANY.primaryGoal : null;
-      case "consent":
-        return onboarding.consentAccepted
-          ? "You confirmed what Oriant may read, draft and never automate."
-          : null;
-      default:
-        return null;
-    }
-  };
+  const confidence = Math.min(
+    95,
+    35
+      + (automationScope ? 15 : 0)
+      + (onboarding.intro.trim() ? 16 : 0)
+      + (businessArea.trim() ? 10 : 0)
+      + (repetitiveTask.trim() ? 12 : 0)
+      + (currentWorkflow.trim() ? 12 : 0)
+      + Math.min(toolNames.length * 3, 9),
+  );
 
-  const capturedSections = ONBOARDING_SECTIONS.filter((sec) =>
-    onboarding.capturedSections.includes(sec.id),
-  );
-  const nextSection = ONBOARDING_SECTIONS.find(
-    (sec) => !onboarding.capturedSections.includes(sec.id),
-  );
+  const briefSections: Array<{
+    id: keyof typeof STEP_MAP;
+    title: string;
+    body: string;
+  }> = [
+    {
+      id: "setup",
+      title: "Automation approach",
+      body: automationScope
+        ? `${SCOPE_LABELS[automationScope]} · ${organizationShape.replaceAll("_", " ")}`
+        : "Not captured yet",
+    },
+    {
+      id: "business",
+      title: "Business snapshot",
+      body: onboarding.intro.trim()
+        ? `“${clip(onboarding.intro.trim(), 110)}”`
+        : "Not captured yet",
+    },
+    {
+      id: "workflow",
+      title: "Workflow focus",
+      body: repetitiveTask.trim()
+        ? `${businessArea || "Selected area"} · ${repetitiveTask}`
+        : "Not captured yet",
+    },
+  ];
 
   return (
     <div style={{ display: "grid", gap: 22 }}>
       <div style={{ display: "grid", gap: 6 }}>
-        <h2 className="oa-h3">Here&rsquo;s what Oriant has so far</h2>
+        <h2 className="oa-h3">Your first automation brief</h2>
         <p className="oa-sub">
-          Nothing here is final. Edit anything now, and Discovery fills in the
-          rest through a short conversation.
+          This review should feel like a clear business brief: what area needs help, what task is repetitive, how it works today, and what Oriant should do first.
+        </p>
+        <p className="oa-sub" style={{ margin: 0 }}>
+          {channel === "voice" ? "Voice" : "Typed"} is your current onboarding method.
+          {syncStatus === "saving" ? " Saving to the shared onboarding session…" : ""}
+          {syncStatus === "saved" ? " Saved to the shared onboarding session." : ""}
+          {syncStatus === "error" ? " Save failed locally. Refresh before continuing." : ""}
         </p>
       </div>
 
-      {capturedSections.length === 0 && (
-        <p className="oa-sub" style={{ fontStyle: "italic" }}>
-          Nothing captured yet. Go back a step or load the demo company to see
-          this summary fill in.
-        </p>
-      )}
+      <div className={styles.progressPanel}>
+        <div className={styles.progressMetric}>
+          <span className="oa-micro">Discovery confidence</span>
+          <strong>{confidence}%</strong>
+          <span className="oa-sub">Strong enough to draft the first automation recommendation.</span>
+        </div>
+        <div className={styles.progressMetric}>
+          <span className="oa-micro">Recommended first direction</span>
+          <strong>{automationScope ? SCOPE_LABELS[automationScope] : "Choose an approach first"}</strong>
+          <span className="oa-sub">{firstRecommendation(automationScope, businessArea, repetitiveTask)}</span>
+        </div>
+      </div>
 
       <ul className={styles.checkList}>
-        {capturedSections.map((sec, i) => {
-          const snippet = snippetFor(sec.id);
-          const stepIdx = SECTION_STEP[sec.id];
-          return (
-            <motion.li
-              key={sec.id}
-              className={styles.checkRow}
-              variants={fadeUp}
-              initial={reduced ? false : "hidden"}
-              animate="show"
-              custom={i}
-            >
-              <span className={styles.checkIconDone} aria-hidden>
-                <Check size={13} />
-              </span>
-              <div>
-                <div className={styles.checkTitleRow}>
-                  <strong style={{ fontSize: 14.5 }}>{sec.title}</strong>
-                  <span className="oa-status oa-status--completed">Captured</span>
-                </div>
-                <p className="oa-sub">{snippet ?? sec.blurb}</p>
+        {briefSections.map((section, index) => (
+          <motion.li
+            key={section.id}
+            className={styles.checkRow}
+            variants={fadeUp}
+            initial={reduced ? false : "hidden"}
+            animate="show"
+            custom={index}
+          >
+            <span className={styles.checkIconDone} aria-hidden>
+              <Check size={13} />
+            </span>
+            <div>
+              <div className={styles.checkTitleRow}>
+                <strong style={{ fontSize: 14.5 }}>{section.title}</strong>
+                <span className="oa-status oa-status--completed">Captured</span>
               </div>
-              {stepIdx !== undefined && (
-                <button
-                  type="button"
-                  className="oa-btn oa-btn--ghost oa-btn--sm"
-                  onClick={() => onEditStep(stepIdx)}
-                >
-                  <Pencil size={12} aria-hidden />
-                  Edit
-                </button>
-              )}
-              {stepIdx === undefined && sec.id !== "consent" && (
-                <span className="oa-sim-note">From demo company</span>
-              )}
-            </motion.li>
-          );
-        })}
+              <p className="oa-sub">{section.body}</p>
+            </div>
+            <button
+              type="button"
+              className="oa-btn oa-btn--ghost oa-btn--sm"
+              onClick={() => onEditStep(STEP_MAP[section.id])}
+            >
+              <Pencil size={12} aria-hidden />
+              Edit
+            </button>
+          </motion.li>
+        ))}
       </ul>
 
-      <p className={styles.railNext}>
-        {nextSection ? (
-          <>
-            Oriant will ask about this next:{" "}
-            {nextSection.title.toLowerCase() === "goals"
-              ? "your goals"
-              : nextSection.title.toLowerCase()}
-            .
-          </>
-        ) : (
-          <>All areas captured. Discovery goes deeper on each one next.</>
+      <div className={styles.blueprintCard}>
+        <div style={{ display: "grid", gap: 4 }}>
+          <h3 className="oa-h3">How the task works today</h3>
+          <p className="oa-sub" style={{ margin: 0 }}>
+            Oriant should understand the current process before drafting automation.
+          </p>
+        </div>
+        <p className="oa-sub" style={{ margin: 0 }}>
+          {currentWorkflow.trim()
+            ? currentWorkflow
+            : "Add a short workflow description in the previous step so Oriant can propose a more precise starting point."}
+        </p>
+        {toolNames.length > 0 && (
+          <div className={styles.railChips}>
+            {toolNames.map((name) => (
+              <span key={name} className="oa-chip">
+                {name}
+              </span>
+            ))}
+          </div>
         )}
-      </p>
+      </div>
+
+      <div className={styles.blueprintCard}>
+        <div style={{ display: "grid", gap: 4 }}>
+          <h3 className="oa-h3">What Oriant should help with first</h3>
+          <p className="oa-sub" style={{ margin: 0 }}>
+            Recommendation: keep the first automation small, safe and clearly reviewable.
+          </p>
+        </div>
+        <p className="oa-sub" style={{ margin: 0 }}>
+          {firstRecommendation(automationScope, businessArea, repetitiveTask)}
+        </p>
+      </div>
 
       <div className={styles.consentCard}>
         <div style={{ display: "grid", gap: 4 }}>
           <h3 className="oa-h3">Permissions and consent</h3>
-          <p className="oa-sub">Plain language: how Oriant treats your information.</p>
+          <p className="oa-sub">Plain language: what Oriant may read, draft and never automate.</p>
         </div>
         <ul className={styles.consentLines}>
           <li>
             <ShieldCheck size={15} aria-hidden />
-            <span>
-              Oriant reads only from tools you connect later, with scopes you
-              approve. Today&rsquo;s selections connect nothing.
-            </span>
+            <span>Oriant reads only from tools you connect later, with scopes you approve.</span>
           </li>
           <li>
             <ShieldCheck size={15} aria-hidden />
-            <span>
-              Drafts, replies and campaigns are always shown to you for review
-              before anything is sent.
-            </span>
+            <span>Drafts and recommendations stay reviewable before anything customer-facing is sent.</span>
           </li>
           <li>
             <ShieldCheck size={15} aria-hidden />
-            <span>
-              These always wait for your approval:{" "}
-              {DEMO_COMPANY.alwaysApprove.join(", ").toLowerCase()}.
-            </span>
+            <span>These always wait for human approval: {DEMO_COMPANY.alwaysApprove.join(", ").toLowerCase()}.</span>
           </li>
           <li>
             <ShieldCheck size={15} aria-hidden />
-            <span>
-              Never automated: {DEMO_COMPANY.neverAutomate.join(", ").toLowerCase()}.
-            </span>
+            <span>Never automated: {DEMO_COMPANY.neverAutomate.join(", ").toLowerCase()}.</span>
           </li>
         </ul>
         <label className={styles.consentCheck}>
@@ -204,10 +248,46 @@ export default function SummaryStep({
             onChange={(e) => onConsentChange(e.target.checked)}
           />
           <span>
-            I understand what Oriant may read and draft, and what always needs
-            my approval.
+            I understand what Oriant may read and draft, and what always needs my approval.
           </span>
         </label>
+      </div>
+
+      <div className={styles.blueprintCard}>
+        <div style={{ display: "grid", gap: 4 }}>
+          <h3 className="oa-h3">What happens after this</h3>
+          <p className="oa-sub" style={{ margin: 0 }}>
+            Once you continue, Oriant moves into the interview to understand the workflow in more detail before drafting the business blueprint.
+          </p>
+        </div>
+        <div className={styles.blueprintTimeline}>
+          <div className={styles.blueprintTimelineRow}>
+            <span className={styles.blueprintStepNum}>1</span>
+            <div className={styles.blueprintTimelineBody}>
+              <strong>Interview the workflow</strong>
+              <span className="oa-sub">Oriant asks tailored follow-up questions and captures the real process.</span>
+            </div>
+          </div>
+          <div className={styles.blueprintTimelineRow}>
+            <span className={styles.blueprintStepNum}>2</span>
+            <div className={styles.blueprintTimelineBody}>
+              <strong>Draft the business blueprint</strong>
+              <span className="oa-sub">You review the summary after the interview, not during setup.</span>
+            </div>
+          </div>
+        </div>
+        {(blueprintStatus !== "idle" || blueprintVersion) && (
+          <div className={styles.blueprintMeta}>
+            <span className="oa-sub">
+              Internal status: <strong>{blueprintStatus}</strong>
+              {blueprintVersion ? ` · version ${blueprintVersion}` : ""}
+            </span>
+          </div>
+        )}
+        <div className={styles.blueprintInlineNote}>
+          <FileCheck2 size={15} aria-hidden />
+          <span>The next visible milestone for the owner is the business blueprint review after the interview.</span>
+        </div>
       </div>
     </div>
   );

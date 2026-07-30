@@ -15,6 +15,8 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import type {
+  ApprovalPreference,
+  BuilderAccess,
   AgentConfig,
   AgentDesignAnswers,
   AgentWorkflowDef,
@@ -23,13 +25,21 @@ import type {
   CalendarEventState,
   CompanyReportState,
   CustomTool,
+  DepartmentApproval,
   DemoState,
+  DiscoveryState,
   DiscoveryMode,
   IntegrationRuntime,
   IntegrationStatus,
   JourneyState,
   LeanCanvasBlockId,
   NlCommandFixture,
+  OnboardingChannel,
+  OnboardingOwnership,
+  OnboardingState,
+  OrganizationShape,
+  AutomationScope,
+  WorkflowBuilder,
   PlanAgent,
   ReportFactState,
   ReportSectionId,
@@ -102,14 +112,34 @@ function initialState(): DemoState {
   return {
     journey: "not_started",
     onboarding: {
+      channel: "typed",
+      backendSessionId: null,
       mode: null,
       usedDemoCompany: false,
       intro: "",
+      organizationShape: "solo",
+      approvalPreference: null,
+      onboardingOwnership: null,
+      workflowBuilder: null,
+      builderAccess: null,
+      automationScope: null,
+      businessArea: "",
+      repetitiveTask: "",
+      currentWorkflow: "",
+      employeeCount: "",
+      approvalOwner: "",
+      employeeEmails: [],
+      departmentApprovals: [],
       selectedToolIds: [],
       customTools: [],
       capturedSections: [],
       consentAccepted: false,
       completed: false,
+      blueprintVersion: null,
+      blueprintStatus: "idle",
+      handoffId: null,
+      syncStatus: "idle",
+      syncError: null,
     },
     leanCanvas: { source: null, values: {}, completed: false },
     discovery: {
@@ -171,6 +201,55 @@ function calendarStateFor(status: ApprovalItem["status"]): CalendarEventState {
 
 let activitySeq = 100;
 
+function normalizeOnboardingArrays(payload: Partial<OnboardingState>): Partial<OnboardingState> {
+  return {
+    ...payload,
+    ...(payload.intro !== undefined
+      ? { intro: typeof payload.intro === "string" ? payload.intro : "" }
+      : {}),
+    ...(payload.employeeCount !== undefined
+      ? { employeeCount: typeof payload.employeeCount === "string" ? payload.employeeCount : "" }
+      : {}),
+    ...(payload.approvalOwner !== undefined
+      ? { approvalOwner: typeof payload.approvalOwner === "string" ? payload.approvalOwner : "" }
+      : {}),
+    ...(payload.approvalPreference !== undefined
+      ? { approvalPreference: payload.approvalPreference ?? null }
+      : {}),
+    ...(payload.onboardingOwnership !== undefined
+      ? { onboardingOwnership: payload.onboardingOwnership ?? null }
+      : {}),
+    ...(payload.workflowBuilder !== undefined
+      ? { workflowBuilder: payload.workflowBuilder ?? null }
+      : {}),
+    ...(payload.builderAccess !== undefined
+      ? { builderAccess: payload.builderAccess ?? null }
+      : {}),
+    ...(payload.automationScope !== undefined
+      ? { automationScope: payload.automationScope ?? null }
+      : {}),
+    ...(payload.businessArea !== undefined
+      ? { businessArea: typeof payload.businessArea === "string" ? payload.businessArea : "" }
+      : {}),
+    ...(payload.repetitiveTask !== undefined
+      ? { repetitiveTask: typeof payload.repetitiveTask === "string" ? payload.repetitiveTask : "" }
+      : {}),
+    ...(payload.currentWorkflow !== undefined
+      ? { currentWorkflow: typeof payload.currentWorkflow === "string" ? payload.currentWorkflow : "" }
+      : {}),
+    ...(payload.employeeEmails !== undefined
+      ? { employeeEmails: Array.isArray(payload.employeeEmails) ? payload.employeeEmails : [] }
+      : {}),
+    ...(payload.departmentApprovals !== undefined
+      ? {
+          departmentApprovals: Array.isArray(payload.departmentApprovals)
+            ? payload.departmentApprovals
+            : [],
+        }
+      : {}),
+  };
+}
+
 /* ═══════════════════════ store ═══════════════════════ */
 
 export interface DemoActions {
@@ -187,8 +266,25 @@ export interface DemoActions {
 
   /* onboarding */
   beginJourney: () => void;
+  syncOnboardingFromServer: (payload: Partial<OnboardingState>) => void;
+  setBackendSession: (sessionId: string) => void;
+  setOnboardingSync: (status: OnboardingState["syncStatus"], error?: string | null) => void;
+  setChannel: (channel: OnboardingChannel) => void;
   setMode: (m: AutomationMode) => void;
   setIntro: (text: string) => void;
+  setOrganizationShape: (shape: OrganizationShape) => void;
+  setApprovalPreference: (preference: ApprovalPreference) => void;
+  setOnboardingOwnership: (ownership: OnboardingOwnership) => void;
+  setWorkflowBuilder: (builder: WorkflowBuilder) => void;
+  setBuilderAccess: (access: BuilderAccess | null) => void;
+  setAutomationScope: (scope: AutomationScope) => void;
+  setBusinessArea: (area: string) => void;
+  setRepetitiveTask: (task: string) => void;
+  setCurrentWorkflow: (workflow: string) => void;
+  setEmployeeCount: (count: string) => void;
+  setApprovalOwner: (name: string) => void;
+  setEmployeeEmails: (emails: string[]) => void;
+  setDepartmentApprovals: (items: DepartmentApproval[]) => void;
   useDemoCompany: () => void;
   toggleTool: (toolId: string) => void;
   addCustomTool: (tool: Omit<CustomTool, "id">) => void;
@@ -205,6 +301,8 @@ export interface DemoActions {
 
   /* discovery */
   setDiscoveryMode: (m: DiscoveryMode) => void;
+  syncDiscoveryFromServer: (payload: Partial<DiscoveryState>) => void;
+  replaceDiscoveryAnswers: (answers: Record<string, string>, completed?: boolean) => void;
   confirmAnswer: (questionId: string, text: string) => void;
   addFacts: (ids: string[]) => void;
   simulateUploadMore: () => void;
@@ -306,14 +404,59 @@ export const useDemoStore = create<DemoStore>()(
 
         if (done("onboarding")) {
           s.onboarding = {
+            channel: "voice",
+            backendSessionId: null,
             mode: "assist",
             usedDemoCompany: true,
+            organizationShape: "multi_role_team",
+            approvalPreference: "mixed",
+            onboardingOwnership: "invite_contributors",
+            workflowBuilder: "invite",
+            builderAccess: "account_manager",
+            automationScope: "focus_area",
+            businessArea: "Operations",
+            repetitiveTask: "Rescheduling customer appointments over the phone",
+            currentWorkflow: "Messages come in through Gmail and WhatsApp, the coordinator checks the calendar manually, then calls customers one by one to shift appointments and update the spreadsheet.",
+            employeeCount: String(DEMO_COMPANY.teamSize),
+            approvalOwner: "Sarah Tan",
+            employeeEmails: ["marcus@brightpath.sg", "jolene@brightpath.sg"],
+            departmentApprovals: [
+              {
+                department: "Finance",
+                processOwner: "Marcus Lim",
+                email: "marcus@brightpath.sg",
+                approver: "marcus@brightpath.sg",
+                setupDelegate: "marcus@brightpath.sg",
+                discoveryStatus: "completed",
+              },
+              {
+                department: "Operations",
+                processOwner: "Sarah Tan",
+                email: "sarah@brightpath.sg",
+                approver: "Sarah Tan",
+                setupDelegate: "Sarah Tan",
+                discoveryStatus: "completed",
+              },
+              {
+                department: "Marketing",
+                processOwner: "Jolene Ng",
+                email: "jolene@brightpath.sg",
+                approver: "jolene@brightpath.sg",
+                setupDelegate: "jolene@brightpath.sg",
+                discoveryStatus: "invited",
+              },
+            ],
             customTools: [],
             intro: DEMO_INTRO_ANSWER,
             selectedToolIds: [...DEMO_COMPANY.painPoints.slice(0, 0), "gmail", "google-calendar", "hubspot", "whatsapp-business", "quickbooks", "google-drive", "slack"],
             capturedSections: ["company", "team", "goals", "automation-preference", "tools", "business-info", "consent"],
             consentAccepted: true,
             completed: true,
+            blueprintVersion: 1,
+            blueprintStatus: "approved",
+            handoffId: "handoff_demo",
+            syncStatus: "idle",
+            syncError: null,
           };
         }
         if (done("discovery")) {
@@ -402,10 +545,46 @@ export const useDemoStore = create<DemoStore>()(
       beginJourney: () => {
         if (get().journey === "not_started") set({ journey: "onboarding" });
       },
+      syncOnboardingFromServer: (payload) =>
+        set((st) => ({
+          onboarding: { ...st.onboarding, ...normalizeOnboardingArrays(payload) },
+        })),
+      setBackendSession: (backendSessionId) =>
+        set((st) => ({ onboarding: { ...st.onboarding, backendSessionId } })),
+      setOnboardingSync: (syncStatus, syncError = null) =>
+        set((st) => ({ onboarding: { ...st.onboarding, syncStatus, syncError } })),
+      setChannel: (channel) =>
+        set((st) => ({ onboarding: { ...st.onboarding, channel } })),
       setMode: (mode) =>
         set((st) => ({ onboarding: { ...st.onboarding, mode } })),
       setIntro: (intro) =>
         set((st) => ({ onboarding: { ...st.onboarding, intro } })),
+      setOrganizationShape: (organizationShape) =>
+        set((st) => ({ onboarding: { ...st.onboarding, organizationShape } })),
+      setApprovalPreference: (approvalPreference) =>
+        set((st) => ({ onboarding: { ...st.onboarding, approvalPreference } })),
+      setOnboardingOwnership: (onboardingOwnership) =>
+        set((st) => ({ onboarding: { ...st.onboarding, onboardingOwnership } })),
+      setWorkflowBuilder: (workflowBuilder) =>
+        set((st) => ({ onboarding: { ...st.onboarding, workflowBuilder } })),
+      setBuilderAccess: (builderAccess) =>
+        set((st) => ({ onboarding: { ...st.onboarding, builderAccess } })),
+      setAutomationScope: (automationScope) =>
+        set((st) => ({ onboarding: { ...st.onboarding, automationScope } })),
+      setBusinessArea: (businessArea) =>
+        set((st) => ({ onboarding: { ...st.onboarding, businessArea } })),
+      setRepetitiveTask: (repetitiveTask) =>
+        set((st) => ({ onboarding: { ...st.onboarding, repetitiveTask } })),
+      setCurrentWorkflow: (currentWorkflow) =>
+        set((st) => ({ onboarding: { ...st.onboarding, currentWorkflow } })),
+      setEmployeeCount: (employeeCount) =>
+        set((st) => ({ onboarding: { ...st.onboarding, employeeCount } })),
+      setApprovalOwner: (approvalOwner) =>
+        set((st) => ({ onboarding: { ...st.onboarding, approvalOwner: approvalOwner ?? "" } })),
+      setEmployeeEmails: (employeeEmails) =>
+        set((st) => ({ onboarding: { ...st.onboarding, employeeEmails } })),
+      setDepartmentApprovals: (departmentApprovals) =>
+        set((st) => ({ onboarding: { ...st.onboarding, departmentApprovals } })),
       useDemoCompany: () =>
         set((st) => ({
           journey: st.journey === "not_started" ? "onboarding" : st.journey,
@@ -413,6 +592,44 @@ export const useDemoStore = create<DemoStore>()(
             ...st.onboarding,
             usedDemoCompany: true,
             intro: st.onboarding.intro || DEMO_INTRO_ANSWER,
+            organizationShape: "multi_role_team",
+            approvalPreference: "mixed",
+            onboardingOwnership: "invite_contributors",
+            workflowBuilder: "invite",
+            builderAccess: "account_manager",
+            automationScope: "focus_area",
+            businessArea: "Operations",
+            repetitiveTask: "Rescheduling customer appointments over the phone",
+            currentWorkflow: "Messages come in through Gmail and WhatsApp, the coordinator checks the calendar manually, then calls customers one by one to shift appointments and update the spreadsheet.",
+            employeeCount: String(DEMO_COMPANY.teamSize),
+            approvalOwner: "Sarah Tan",
+            employeeEmails: ["marcus@brightpath.sg", "jolene@brightpath.sg"],
+            departmentApprovals: [
+              {
+                department: "Finance",
+                processOwner: "Marcus Lim",
+                email: "marcus@brightpath.sg",
+                approver: "marcus@brightpath.sg",
+                setupDelegate: "marcus@brightpath.sg",
+                discoveryStatus: "completed",
+              },
+              {
+                department: "Operations",
+                processOwner: "Sarah Tan",
+                email: "sarah@brightpath.sg",
+                approver: "Sarah Tan",
+                setupDelegate: "Sarah Tan",
+                discoveryStatus: "completed",
+              },
+              {
+                department: "Marketing",
+                processOwner: "Jolene Ng",
+                email: "jolene@brightpath.sg",
+                approver: "jolene@brightpath.sg",
+                setupDelegate: "jolene@brightpath.sg",
+                discoveryStatus: "invited",
+              },
+            ],
             selectedToolIds: [
               "gmail",
               "google-calendar",
@@ -464,7 +681,10 @@ export const useDemoStore = create<DemoStore>()(
       acceptConsent: () =>
         set((st) => ({ onboarding: { ...st.onboarding, consentAccepted: true } })),
       completeOnboarding: () =>
-        set((st) => ({ onboarding: { ...st.onboarding, completed: true } })),
+        set((st) => ({
+          journey: atLeast(st.journey, "discovery") ? st.journey : "discovery",
+          onboarding: { ...st.onboarding, completed: true },
+        })),
 
       /* ── lean canvas ── */
       setCanvasSource: (source) =>
@@ -490,6 +710,40 @@ export const useDemoStore = create<DemoStore>()(
       /* ── discovery ── */
       setDiscoveryMode: (mode) =>
         set((st) => ({ discovery: { ...st.discovery, mode } })),
+      syncDiscoveryFromServer: (payload) =>
+        set((st) => {
+          const answers = payload.answers ? { ...st.discovery.answers, ...payload.answers } : st.discovery.answers;
+          const answeredCount = Object.keys(answers).length;
+          return {
+            discovery: {
+              ...st.discovery,
+              ...payload,
+              answers,
+              currentIndex: Math.max(st.discovery.currentIndex, answeredCount),
+              completed: payload.completed ?? st.discovery.completed ?? false,
+            },
+          };
+        }),
+      replaceDiscoveryAnswers: (answers, completed) =>
+        set((st) => {
+          const factIds = Array.from(
+            new Set(
+              Object.keys(answers).flatMap((questionId) => {
+                const q = DISCOVERY_QUESTIONS.find((item) => item.id === questionId);
+                return q?.factIds ?? [];
+              }),
+            ),
+          );
+          return {
+            discovery: {
+              ...st.discovery,
+              answers,
+              factIds,
+              currentIndex: Math.max(0, Object.keys(answers).length),
+              completed: completed ?? Object.keys(answers).length >= DISCOVERY_QUESTIONS.length,
+            },
+          };
+        }),
       confirmAnswer: (questionId, text) =>
         set((st) => {
           const q = DISCOVERY_QUESTIONS.find((x) => x.id === questionId);
@@ -1190,14 +1444,30 @@ export const useDemoStore = create<DemoStore>()(
     }),
     {
       name: "oriant-demo-v1",
-      version: 2, // v2: onboarding.customTools + report.facts (older snapshots reset)
+      version: 3, // v3: normalize collaborative onboarding fields in persisted state
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => {
         const { _hydrated, planPast, planFuture, ...rest } = s as DemoStore & Record<string, unknown>;
         void _hydrated;
         return { ...rest, planPast, planFuture } as Partial<DemoStore>;
       },
-      migrate: () => ({ ...initialState(), planPast: [], planFuture: [] }) as Partial<DemoStore>,
+      migrate: (persisted) => {
+        if (!persisted || typeof persisted !== "object") {
+          return { ...initialState(), planPast: [], planFuture: [] } as Partial<DemoStore>;
+        }
+        const state = persisted as Partial<DemoStore>;
+        return {
+          ...initialState(),
+          ...state,
+          onboarding: {
+            ...initialState().onboarding,
+            ...(state.onboarding ?? {}),
+            ...normalizeOnboardingArrays((state.onboarding ?? {}) as Partial<OnboardingState>),
+          },
+          planPast: Array.isArray(state.planPast) ? state.planPast : [],
+          planFuture: Array.isArray(state.planFuture) ? state.planFuture : [],
+        } as Partial<DemoStore>;
+      },
       onRehydrateStorage: () => (state) => {
         if (state) (state as DemoStore)._hydrated = true;
       },

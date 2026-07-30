@@ -13,50 +13,89 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check, Keyboard, Mic, Pencil, RotateCcw, Square } from "lucide-react";
-import { mockVoiceService } from "@/lib/mock/services";
 import { DUR, EASE } from "@/lib/mock/motion";
 import Waveform from "./Waveform";
+import { useBrowserSpeechCapture } from "./useBrowserSpeechCapture";
 
 type Stage = "idle" | "listening" | "revealing" | "editable" | "typing";
 
 export default function VoiceAnswer({
   answer,
+  initialText = "",
   onConfirm,
   confirmLabel = "Confirm answer",
   placeholder = "Or type your answer instead…",
   autoFocusMic = false,
+  variant = "default",
+  startMode = "idle",
 }: {
   /** The hardcoded transcript revealed by the simulated voice capture. */
   answer: string;
+  initialText?: string;
   onConfirm: (finalText: string) => void;
   confirmLabel?: string;
   placeholder?: string;
   autoFocusMic?: boolean;
+  variant?: "default" | "embedded";
+  startMode?: Stage;
 }) {
-  const [stage, setStage] = useState<Stage>("idle");
-  const [words, setWords] = useState<string[]>([]);
-  const [text, setText] = useState("");
+  const [stage, setStage] = useState<Stage>(startMode);
+  const [text, setText] = useState(initialText);
   const [elapsed, setElapsed] = useState(0);
-  const cancelRef = useRef<(() => void) | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reduced = useReducedMotion();
+  const {
+    supported,
+    liveTranscriptSupported,
+    listening,
+    processing,
+    transcript,
+    error,
+    start: startVoice,
+    stop: stopVoice,
+    reset: resetVoice,
+  } = useBrowserSpeechCapture({});
 
   /* Reset whenever the question (answer fixture) changes. */
   useEffect(() => {
-    cancelRef.current?.();
     stopTimer();
-    setStage("idle");
-    setWords([]);
-    setText("");
+    resetVoice();
+    setStage(startMode);
+    setText(initialText);
     setElapsed(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answer]);
+  }, [answer, initialText, startMode]);
 
   useEffect(() => () => {
-    cancelRef.current?.();
     stopTimer();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if ((stage === "listening" || stage === "revealing") && transcript.trim()) {
+      setStage("revealing");
+    }
+  }, [stage, transcript]);
+
+  useEffect(() => {
+    if ((stage === "listening" || stage === "revealing") && transcript !== text) {
+      setText(transcript);
+    }
+  }, [stage, text, transcript]);
+
+  useEffect(() => {
+    if (!listening && !processing && (stage === "listening" || stage === "revealing")) {
+      stopTimer();
+      if (transcript.trim()) {
+        setText(transcript.trim());
+        setStage("editable");
+      } else if (error) {
+        setStage("typing");
+      } else {
+        setStage("idle");
+      }
+    }
+  }, [error, listening, processing, stage, transcript]);
 
   const stopTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -64,172 +103,205 @@ export default function VoiceAnswer({
   };
 
   const start = () => {
-    setStage("listening");
-    setWords([]);
-    setElapsed(0);
-    timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-
-    const handle = mockVoiceService.startAnswer(
-      answer,
-      (e) => {
-        if (e.type === "word") {
-          setStage("revealing");
-          setWords((prev) => [...prev, e.word]);
-        } else if (e.type === "done") {
-          stopTimer();
-          setText(answer);
-          setStage("editable");
-        }
-      },
-      { instant: Boolean(reduced) },
-    );
-    cancelRef.current = handle.cancel;
-    if (reduced) {
-      stopTimer();
-      setText(answer);
-      setStage("editable");
+    if (!supported) {
+      setStage("typing");
+      return;
     }
+    setStage("listening");
+    setElapsed(0);
+    resetVoice();
+    const started = startVoice();
+    if (!started) {
+      setStage("typing");
+      return;
+    }
+    timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
   };
 
   const stopEarly = () => {
-    cancelRef.current?.();
+    stopVoice();
     stopTimer();
-    setText(words.length ? words.join(" ") : answer);
-    setStage("editable");
   };
 
   const mm = String(Math.floor(elapsed / 60)).padStart(1, "0");
   const ss = String(elapsed % 60).padStart(2, "0");
+  const embedded = variant === "embedded";
+  const primaryBtnClass = embedded ? "oa-btn oa-btn--soft" : "oa-btn oa-btn--primary oa-btn--lg";
+  const secondaryBtnClass = embedded ? "oa-btn oa-btn--ghost oa-btn--sm" : "oa-btn oa-btn--ghost oa-btn--sm";
+  const showComposer = stage !== "idle" || Boolean(text.trim()) || Boolean(error);
+  const isVoiceActive = stage === "listening" || stage === "revealing";
+  const isEditable = stage === "editable" || stage === "typing";
 
   return (
-    <div style={{ display: "grid", gap: 14 }}>
-      <AnimatePresence mode="wait" initial={false}>
-        {stage === "idle" && (
-          <motion.div
-            key="idle"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            style={{ display: "grid", gap: 12, justifyItems: "center", padding: "10px 0" }}
-          >
+    <div
+      style={{
+        display: "grid",
+        gap: 14,
+        padding: embedded ? "16px" : 0,
+        border: embedded ? "1px solid var(--oa-border)" : undefined,
+        borderRadius: embedded ? "18px" : undefined,
+        background: embedded ? "var(--oa-bg-alt)" : undefined,
+      }}
+    >
+      <div
+        style={{
+          display: "grid",
+          gap: 12,
+          justifyItems: embedded ? "stretch" : "center",
+          padding: embedded ? 0 : "10px 0",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            justifyContent: embedded ? "flex-start" : "center",
+            alignItems: "center",
+            width: "100%",
+          }}
+        >
+          {isVoiceActive ? (
             <button
               type="button"
-              className="oa-btn oa-btn--primary oa-btn--lg"
+              className={primaryBtnClass}
+              onClick={stopEarly}
+              style={embedded ? { minHeight: 44, paddingInline: 16, borderRadius: 14 } : undefined}
+            >
+              <Square size={14} aria-hidden />
+              Stop speaking
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={primaryBtnClass}
               onClick={start}
               autoFocus={autoFocusMic}
+              disabled={!supported}
+              style={embedded ? { minHeight: 44, paddingInline: 16, borderRadius: 14 } : undefined}
             >
               <Mic size={17} aria-hidden />
               Start speaking
             </button>
+          )}
+          <button
+            type="button"
+            className={secondaryBtnClass}
+            onClick={() => {
+              if (!showComposer) setText("");
+              setStage("typing");
+            }}
+            style={embedded ? { minHeight: 44, paddingInline: 16, borderRadius: 14 } : undefined}
+          >
+            <Keyboard size={13} aria-hidden />
+            Prefer to type
+          </button>
+          {stage === "editable" && (
             <button
               type="button"
               className="oa-btn oa-btn--ghost oa-btn--sm"
-              onClick={() => {
-                setText("");
-                setStage("typing");
+              onClick={start}
+              style={embedded ? { minHeight: 44, paddingInline: 16, borderRadius: 14 } : undefined}
+            >
+              <RotateCcw size={12} aria-hidden />
+              Re-record
+            </button>
+          )}
+        </div>
+
+        <p
+          className="oa-sub"
+          style={{
+            textAlign: embedded ? "left" : "center",
+            maxWidth: embedded ? "none" : 420,
+            margin: 0,
+            width: "100%",
+          }}
+        >
+          {supported
+            ? liveTranscriptSupported
+              ? "Your browser will ask for microphone access, then transcribe your answer live."
+              : "Your browser can record your answer here, then transcribe it after you stop speaking."
+            : "Live voice capture is unavailable here, but you can still type your answer."}
+        </p>
+
+        <AnimatePresence initial={false}>
+          {showComposer ? (
+            <motion.div
+              key="composer"
+              initial={reduced ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: DUR.card, ease: EASE }}
+              style={{
+                display: "grid",
+                gap: 10,
+                width: "100%",
               }}
             >
-              <Keyboard size={13} aria-hidden />
-              Prefer to type? Answer with text
-            </button>
-            <p className="oa-sub" style={{ textAlign: "center", maxWidth: 420 }}>
-              Simulated voice capture; this demo never accesses your microphone.
-            </p>
-          </motion.div>
-        )}
-
-        {(stage === "listening" || stage === "revealing") && (
-          <motion.div
-            key="listening"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: DUR.card, ease: EASE }}
-            className="oa-card oa-card--flat"
-            style={{ padding: "18px 20px", display: "grid", gap: 14 }}
-          >
-            <div className="oa-between">
-              <span
-                className="oa-status oa-status--active"
-                style={{ animation: reduced ? undefined : "oa-pulse-soft 1.4s ease-in-out infinite" }}
-              >
-                {stage === "listening" ? "Listening" : "Transcribing"}
-              </span>
-              <span className="oa-micro" aria-live="off">
-                {mm}:{ss}
-              </span>
-            </div>
-            <Waveform active={stage === "listening"} height={40} bars={21} />
-            <p aria-live="polite" style={{ margin: 0, fontSize: 15.5, lineHeight: 1.6, minHeight: 26 }}>
-              {words.map((w, i) => (
-                <motion.span
-                  key={`${i}-${w}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.18 }}
-                >
-                  {w}{" "}
-                </motion.span>
-              ))}
-              {stage === "listening" && (
-                <span className="oa-sub" style={{ fontStyle: "italic" }}>
-                  Speak naturally. Oriant is listening…
+              <div className="oa-between">
+                <span className="oa-micro">
+                  {isVoiceActive ? (
+                    <>
+                      <Mic size={11} aria-hidden style={{ verticalAlign: -1, marginRight: 5 }} />
+                      Listening {processing ? "and transcribing" : "live"}
+                    </>
+                  ) : (
+                    <>
+                      <Pencil size={11} aria-hidden style={{ verticalAlign: -1, marginRight: 5 }} />
+                      {isEditable ? "Review and edit before saving" : "Type your answer"}
+                    </>
+                  )}
                 </span>
-              )}
-            </p>
-            <div>
-              <button type="button" className="oa-btn oa-btn--ghost oa-btn--sm" onClick={stopEarly}>
-                <Square size={12} aria-hidden />
-                Stop
-              </button>
-            </div>
-          </motion.div>
-        )}
+                {isVoiceActive ? (
+                  <span className="oa-micro" aria-live="off">
+                    {mm}:{ss}
+                  </span>
+                ) : null}
+              </div>
 
-        {(stage === "editable" || stage === "typing") && (
-          <motion.div
-            key="edit"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: DUR.card, ease: EASE }}
-            style={{ display: "grid", gap: 10 }}
-          >
-            <div className="oa-between">
-              <span className="oa-micro">
-                <Pencil size={11} aria-hidden style={{ verticalAlign: -1, marginRight: 5 }} />
-                {stage === "typing" ? "Type your answer" : "Review and edit before saving"}
-              </span>
-              {stage === "editable" && (
-                <button type="button" className="oa-btn oa-btn--ghost oa-btn--sm" onClick={start}>
-                  <RotateCcw size={12} aria-hidden />
-                  Re-record
+              {isVoiceActive ? <Waveform active={stage === "listening"} height={40} bars={21} /> : null}
+
+              <textarea
+                className="oa-textarea"
+                value={text}
+                placeholder={isVoiceActive ? "Start speaking and your words will appear here…" : placeholder}
+                onChange={(e) => setText(e.target.value)}
+                rows={isVoiceActive ? 4 : 3}
+                aria-label={isVoiceActive ? "Live transcript" : "Your answer"}
+              />
+
+              <p className="oa-sub" aria-live="polite" style={{ margin: 0 }}>
+                {isVoiceActive
+                  ? transcript.trim()
+                    ? "Oriant is transcribing as you speak. You can also correct the text here before saving."
+                    : processing
+                      ? "Processing your recording now…"
+                      : liveTranscriptSupported
+                        ? "Speak naturally. Your transcript will appear here as capture comes in."
+                        : "Speak naturally. In this browser, the words will appear after you stop speaking and transcription finishes."
+                  : stage === "typing"
+                    ? "You can type your answer directly here."
+                    : "Review the transcript, make any edits you want, then save it."}
+              </p>
+
+              <div className="oa-cluster" style={{ justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  className="oa-btn oa-btn--primary"
+                  disabled={!text.trim() || isVoiceActive}
+                  onClick={() => onConfirm(text.trim())}
+                >
+                  <Check size={15} aria-hidden />
+                  {confirmLabel}
                 </button>
-              )}
-            </div>
-            <textarea
-              className="oa-textarea"
-              value={text}
-              placeholder={placeholder}
-              onChange={(e) => setText(e.target.value)}
-              rows={3}
-              aria-label="Your answer"
-            />
-            <div className="oa-cluster" style={{ justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                className="oa-btn oa-btn--primary"
-                disabled={!text.trim()}
-                onClick={() => onConfirm(text.trim())}
-              >
-                <Check size={15} aria-hidden />
-                {confirmLabel}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </div>
+
+              {error ? <p className="oa-sub" style={{ color: "var(--oa-red-ink)", margin: 0 }}>{error}</p> : null}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

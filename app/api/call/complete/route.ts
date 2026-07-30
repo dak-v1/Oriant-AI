@@ -2,6 +2,11 @@ import type { NextRequest } from "next/server";
 import { mutate } from "@/lib/server/api";
 import { generateReport } from "@/lib/server/discovery";
 import { GateError, audit } from "@/lib/server/orchestrator";
+import {
+  hydrateDiscoveryFromSupabase,
+  hydrateOnboardingFromSupabase,
+  mirrorOnboardingToSupabase,
+} from "@/lib/server/onboarding-supabase";
 import { nowIso } from "@/lib/server/store";
 
 /**
@@ -16,6 +21,9 @@ export async function POST(req: NextRequest) {
     canvasUploaded?: boolean;
   };
   return mutate(async (db) => {
+    await hydrateOnboardingFromSupabase(db);
+    await hydrateDiscoveryFromSupabase(db);
+
     if (db.report?.status === "approved") {
       // an approved brief is the locked source of truth — replaying the call
       // must not silently replace it (§4.3); edit it on the report screen
@@ -28,5 +36,6 @@ export async function POST(req: NextRequest) {
     db.call.completedAt = nowIso();
     audit(db, "call.completed", "Kickoff call", `${Object.keys(db.call.answers).length} answers`);
     await generateReport(db);
+    await mirrorOnboardingToSupabase(db);
   });
 }

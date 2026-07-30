@@ -1,3 +1,5 @@
+import type { RoleAHandoffEnvelope } from "./role-a-to-role-b-contract";
+
 /**
  * Shared data contracts — the objects that keep every phase versioned,
  * asynchronous and independently testable (blueprint §21).
@@ -27,6 +29,171 @@ export interface AuditEvent {
   action: string;
   subject: string;
   detail?: string;
+}
+
+export interface SystemEvent {
+  id: string;
+  at: string;
+  scope: "onboarding" | "voice" | "storage" | "integration" | "handoff";
+  event: string;
+  status: "info" | "completed" | "failed";
+  detail?: string;
+  sessionId?: string;
+  questionId?: string;
+}
+
+export type OnboardingChannel = "typed" | "voice";
+export type ApprovalPreference =
+  | "owner_all"
+  | "department_leads"
+  | "mixed"
+  | "recommend";
+export type OnboardingOwnership = "owner_only" | "invite_contributors";
+export type WorkflowBuilder = "self" | "invite";
+export type BuilderAccess = "workflows_only" | "account_manager";
+export type AutomationScope = "start_small" | "focus_area" | "whole_business";
+export type OnboardingStatus =
+  | "not_started"
+  | "in_progress"
+  | "awaiting_voice"
+  | "voice_in_progress"
+  | "review_pending"
+  | "approved"
+  | "handed_off";
+export type OrganizationShape =
+  | "solo"
+  | "owner_with_team"
+  | "multi_role_team"
+  | "manager_led";
+export type AnswerSource = "typed" | "voice" | "transcript_review" | "system_extract";
+
+export interface DepartmentApproval {
+  department: string;
+  processOwner: string;
+  email: string;
+  approver: string;
+  setupDelegate: string;
+  discoveryStatus: "owner_pending" | "invited" | "completed";
+}
+
+export interface OnboardingQuestionDefinition {
+  id: string;
+  schemaVersion: string;
+  section:
+    | "company"
+    | "organization"
+    | "team"
+    | "goals"
+    | "automation_preferences"
+    | "systems"
+    | "lean_canvas"
+    | "language_consent";
+  fieldPath: string;
+  typedLabel: string;
+  voicePrompt: string;
+  helpText?: string;
+  required: boolean;
+  answerType:
+    | "short_text"
+    | "long_text"
+    | "number"
+    | "single_select"
+    | "multi_select"
+    | "boolean"
+    | "structured_list";
+  options?: Array<{ value: string; label: string }>;
+}
+
+export interface OnboardingAnswer {
+  questionId: string;
+  fieldPath: string;
+  value: string | string[] | boolean | number | DepartmentApproval[];
+  source: AnswerSource;
+  confirmed: boolean;
+  confidence: number;
+  updatedAt: string;
+}
+
+export interface VoiceTurn {
+  id: string;
+  questionId: string;
+  transcript: string;
+  confirmedAnswer?: string;
+  status: "captured" | "confirmed";
+  createdAt: string;
+}
+
+export interface VoiceSession {
+  id: string;
+  provider: "elevenlabs" | "nosana" | "fixture";
+  language: string;
+  startedAt: string;
+  lastTurnAt: string;
+  turns: VoiceTurn[];
+}
+
+export interface BusinessBlueprint {
+  companySummary: string;
+  automationMode?: string;
+  organization: {
+    shape: OrganizationShape;
+    employeeCount?: number;
+    approvalOwner?: string;
+    approvalPreference?: ApprovalPreference;
+    onboardingOwnership?: OnboardingOwnership;
+    employeeEmails: string[];
+    departmentApprovals: DepartmentApproval[];
+  };
+  tools: string[];
+  language: string;
+  consentAccepted: boolean;
+}
+
+export interface BusinessBlueprintVersion {
+  version: number;
+  status: "draft" | "approved";
+  createdAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  blueprint: BusinessBlueprint;
+}
+
+export interface RoleBHandoff {
+  id: string;
+  idempotencyKey: string;
+  occurredAt: string;
+  blueprintVersion: number;
+  status: "pending" | "ready";
+  createdAt: string;
+  payload: RoleAHandoffEnvelope;
+}
+
+export interface OnboardingSession {
+  id: string;
+  schemaVersion: string;
+  status: OnboardingStatus;
+  preferredChannel: OnboardingChannel;
+  currentStep: "welcome" | "intro" | "focus" | "tools" | "review";
+  progress: number;
+  organization: {
+    shape: OrganizationShape;
+    employeeCount?: number;
+    approvalOwner?: string;
+    approvalPreference?: ApprovalPreference;
+    onboardingOwnership?: OnboardingOwnership;
+    employeeEmails: string[];
+    departmentApprovals: DepartmentApproval[];
+  };
+  answers: Record<string, OnboardingAnswer>;
+  selectedToolIds: string[];
+  consentAccepted: boolean;
+  transcriptReviewRequired: boolean;
+  startedAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  voice?: VoiceSession;
+  blueprint?: BusinessBlueprintVersion;
+  handoff?: RoleBHandoff;
 }
 
 /* ── Phase 1 — the company brief ─────────────────────────────────────────── */
@@ -205,6 +372,11 @@ export type Phase =
 export interface Db {
   org: { name: string; owner: string; initials: string };
   phase: Phase;
+  onboarding: {
+    activeSessionId: string | null;
+    sessions: Record<string, OnboardingSession>;
+    questions: OnboardingQuestionDefinition[];
+  };
   call: {
     answers: Record<string, string>;
     goals: Record<string, boolean>;
@@ -224,6 +396,7 @@ export interface Db {
   events: FeedEvent[];
   calendar: { month: string; marks: CalendarMark[] };
   audit: AuditEvent[];
+  systemEvents: SystemEvent[];
   providerRuns: ProviderRun[];
 }
 

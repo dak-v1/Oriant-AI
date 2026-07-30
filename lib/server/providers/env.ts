@@ -9,6 +9,7 @@ export interface ProviderEnv {
   nosana: { key?: string; whisperUrl?: string };
   doubleword: { key?: string; baseUrl?: string; model: string };
   daytona: { key?: string; apiUrl: string };
+  supabase: { url?: string; anonKey?: string; serviceRoleKey?: string };
 }
 
 export function providerEnv(): ProviderEnv {
@@ -31,6 +32,11 @@ export function providerEnv(): ProviderEnv {
       key: process.env.DAYTONA_API_KEY || undefined,
       apiUrl: (process.env.DAYTONA_API_URL || "https://app.daytona.io/api").replace(/\/$/, ""),
     },
+    supabase: {
+      url: process.env.NEXT_PUBLIC_SUPABASE_URL || undefined,
+      anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || undefined,
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || undefined,
+    },
   };
 }
 
@@ -38,11 +44,12 @@ export function aiandLive() { const e = providerEnv().aiand; return !!(e.key && 
 export function nosanaLive() { const e = providerEnv().nosana; return !!e.whisperUrl; }
 export function doublewordLive() { const e = providerEnv().doubleword; return !!(e.key && e.baseUrl && e.model); }
 export function daytonaLive() { const e = providerEnv().daytona; return !!e.key; }
+export function supabaseLive() { const e = providerEnv().supabase; return !!(e.url && (e.serviceRoleKey || e.anonKey)); }
 
 /** Safe summary for the UI — booleans only, never key material. */
 export function providerStatus() {
   return {
     aiand: aiandLive(), nosana: nosanaLive(),
-    doubleword: doublewordLive(), daytona: daytonaLive(),
+    doubleword: doublewordLive(), daytona: daytonaLive(), supabase: supabaseLive(),
   };
 }

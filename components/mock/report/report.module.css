@@ -171,7 +171,28 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
+}
+
+.sectionToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.sectionToggleIcon {
+  flex: none;
+  color: var(--oa-muted);
+}
+
+.sectionContent {
+  display: grid;
+  gap: 0;
+  padding-top: 6px;
 }
 .secNum {
   font-family: var(--oa-mono);
@@ -212,6 +233,36 @@
   max-width: 68ch;
 }
 .bullets li::marker { color: var(--oa-blue); }
+
+.handoffBox {
+  margin-top: 8px;
+  border: 1px solid var(--oa-border);
+  border-radius: 16px;
+  background: var(--oa-bg-alt);
+  overflow: hidden;
+}
+
+.handoffToggle {
+  cursor: pointer;
+  padding: 14px 16px;
+  font-size: 13.5px;
+  font-weight: 750;
+  color: var(--oa-ink);
+  list-style: none;
+}
+
+.handoffToggle::-webkit-details-marker {
+  display: none;
+}
+
+.handoffPre {
+  margin: 0;
+  padding: 0 16px 16px;
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--oa-ink);
+}
 
 .rejectedBody p, .rejectedBody li {
   color: var(--oa-muted);

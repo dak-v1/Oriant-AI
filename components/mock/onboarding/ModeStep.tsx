@@ -1,115 +1,297 @@
 "use client";
-/**
- * ModeStep — onboarding step 1 (spec §7.1, improvement spec §6): choose how
- * Oriant should work (Assist / Operate / Not sure yet) plus the "Use demo
- * company" shortcut that pre-fills the BrightPath fixture.
- *
- * The three cards are built on .oa-selectable + .oa-radio: equal height,
- * radio indicator always visible, selection changes outline + tint only
- * (zero layout shift). Continue lives below the group in OnboardingFlow and
- * stays disabled until a mode is chosen.
- */
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Building2, Check, Compass, Users, Zap } from "lucide-react";
-import type { AutomationMode } from "@/lib/mock/types";
-import {
-  DEMO_COMPANY,
-  TOOL_CATALOG,
-} from "@/lib/mock/fixtures/demo-company";
+import { ArrowRightCircle, Building2, Check, SearchCode, Send, ShieldCheck, Users } from "lucide-react";
+import type {
+  AutomationScope,
+  BuilderAccess,
+  OrganizationShape,
+  WorkflowBuilder,
+} from "@/lib/mock/types";
+import { DEMO_COMPANY, TOOL_CATALOG } from "@/lib/mock/fixtures/demo-company";
 import { DUR, EASE } from "@/lib/mock/motion";
 import styles from "./onboarding.module.css";
 
-/** Spec §6 — plain-language mode explanations. */
-const MODES: {
-  id: AutomationMode;
+const TEAM_OPTIONS: Array<{
+  id: OrganizationShape;
   title: string;
   body: string;
-  recommendedFor: string | null;
-  icon: typeof Users;
-}[] = [
+  icon: typeof Building2;
+}> = [
   {
-    id: "assist",
-    title: "Assist",
-    body: "AI prepares, recommends and handles routine work with your current employees. Important actions stay reviewable.",
-    recommendedFor: "teams adding AI support for the first time.",
+    id: "solo",
+    title: "Just me",
+    body: "Keep the setup tight and move quickly.",
+    icon: Building2,
+  },
+  {
+    id: "owner_with_team",
+    title: "Me and my team",
+    body: "Start with the right people involved when needed.",
     icon: Users,
-  },
-  {
-    id: "operate",
-    title: "Operate",
-    body: "AI handles more eligible workflows automatically within explicit limits and approval rules.",
-    recommendedFor: "stable, repetitive processes with clear rules.",
-    icon: Zap,
-  },
-  {
-    id: "unsure",
-    title: "Not sure yet",
-    body: "Oriant recommends an automation level after Discovery and explains why.",
-    recommendedFor: null,
-    icon: Compass,
   },
 ];
 
-const TOOL_NAME = new Map(TOOL_CATALOG.map((t) => [t.id, t.name]));
+const BUILDER_OPTIONS: Array<{
+  id: WorkflowBuilder;
+  title: string;
+  body: string;
+}> = [
+  {
+    id: "self",
+    title: "I'll build it myself",
+    body: "You stay hands-on for the first setup.",
+  },
+  {
+    id: "invite",
+    title: "I want someone else to build it",
+    body: "Invite a teammate or operator to handle setup.",
+  },
+];
+
+const ACCESS_OPTIONS: Array<{
+  id: BuilderAccess;
+  title: string;
+  body: string;
+  icon: typeof ShieldCheck;
+}> = [
+  {
+    id: "workflows_only",
+    title: "Build workflows only",
+    body: "They can set up workflows, but not billing or users.",
+    icon: ShieldCheck,
+  },
+  {
+    id: "account_manager",
+    title: "Build workflows + manage the account",
+    body: "They can manage workflows, billing, users, and settings.",
+    icon: ShieldCheck,
+  },
+];
+
+const SCOPE_OPTIONS: Array<{
+  id: AutomationScope;
+  title: string;
+  body: string;
+  support: string;
+  icon: typeof ArrowRightCircle;
+}> = [
+  {
+    id: "start_small",
+    title: "Start with one task",
+    body: "Pick one repetitive task and prove value quickly.",
+    support: "Best for a fast first win.",
+    icon: ArrowRightCircle,
+  },
+  {
+    id: "focus_area",
+    title: "Improve one business area",
+    body: "Focus on one area like ops, sales, or finance.",
+    support: "Best if you know where the pressure is.",
+    icon: SearchCode,
+  },
+  {
+    id: "whole_business",
+    title: "Analyse the whole business",
+    body: "Review multiple areas and build a broader plan.",
+    support: "Best for analysing the whole business and finding what to automate first.",
+    icon: Users,
+  },
+];
+
+const TOOL_NAME = new Map(TOOL_CATALOG.map((tool) => [tool.id, tool.name]));
 
 export default function ModeStep({
-  mode,
+  organizationShape,
+  workflowBuilder,
+  builderAccess,
+  automationScope,
   usedDemo,
   selectedToolIds,
-  onSelectMode,
+  onOrganizationShapeChange,
+  onWorkflowBuilderChange,
+  onBuilderAccessChange,
+  onAutomationScopeChange,
   onUseDemo,
 }: {
-  mode: AutomationMode | null;
+  organizationShape: OrganizationShape;
+  workflowBuilder: WorkflowBuilder | null;
+  builderAccess: BuilderAccess | null;
+  automationScope: AutomationScope | null;
   usedDemo: boolean;
   selectedToolIds: string[];
-  onSelectMode: (m: AutomationMode) => void;
+  onOrganizationShapeChange: (shape: OrganizationShape) => void;
+  onWorkflowBuilderChange: (builder: WorkflowBuilder) => void;
+  onBuilderAccessChange: (access: BuilderAccess) => void;
+  onAutomationScopeChange: (scope: AutomationScope) => void;
   onUseDemo: () => void;
 }) {
   const reduced = useReducedMotion();
   const toolNames = selectedToolIds
     .map((id) => TOOL_NAME.get(id))
-    .filter((n): n is string => Boolean(n));
+    .filter((name): name is string => Boolean(name));
 
   return (
-    <div style={{ display: "grid", gap: 22 }}>
+    <div style={{ display: "grid", gap: 24 }}>
       <div style={{ display: "grid", gap: 6 }}>
-        <h2 className="oa-h3">How should Oriant work with your team?</h2>
+        <h2 className="oa-h3">Set up your discovery</h2>
         <p className="oa-sub">
-          This sets the starting point. You can change it any time, and every
-          important action keeps a human in charge.
+          A few quick choices first, then we&apos;ll narrow into the workflow you want to improve.
         </p>
       </div>
 
-      <div className={styles.modeGrid} role="group" aria-label="Automation mode">
-        {MODES.map((m) => {
-          const Icon = m.icon;
-          const selected = mode === m.id;
-          return (
-            <button
-              key={m.id}
-              type="button"
-              className={`oa-selectable ${styles.modeCard} ${
-                selected ? "oa-selectable--selected" : ""
-              }`}
-              aria-pressed={selected}
-              onClick={() => onSelectMode(m.id)}
-            >
-              <span className="oa-radio" aria-hidden />
-              <span className={styles.modeBody}>
-                <span className={styles.modeIcon}>
-                  <Icon size={17} aria-hidden />
-                </span>
-                <span className={styles.modeTitle}>{m.title}</span>
-                <span className="oa-sub">{m.body}</span>
-                {m.recommendedFor && (
-                  <span className={styles.modeRec}>
-                    Recommended for {m.recommendedFor}
+      <div className={styles.setupPanel}>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gap: 4 }}>
+            <label className="oa-label">Is it just you, or are you setting this up with a team?</label>
+          </div>
+          <div className={styles.setupGridTwo}>
+            {TEAM_OPTIONS.map((option) => {
+              const Icon = option.icon;
+              const selected = option.id === "solo" ? organizationShape === "solo" : organizationShape !== "solo";
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`oa-selectable ${styles.setupCard} ${selected ? "oa-selectable--selected" : ""}`}
+                  aria-pressed={selected}
+                  onClick={() => onOrganizationShapeChange(option.id)}
+                >
+                  <span className={styles.modeBody}>
+                    <span className={styles.modeTop}>
+                      <span className={styles.modeIcon}>
+                        <Icon size={17} aria-hidden />
+                      </span>
+                      <span className="oa-radio" aria-hidden />
+                    </span>
+                    <span className={styles.modeText}>
+                      <span className={styles.modeTitle}>{option.title}</span>
+                      <span className="oa-sub">{option.body}</span>
+                    </span>
                   </span>
-                )}
-              </span>
-            </button>
-          );
-        })}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gap: 4 }}>
+            <label className="oa-label">Who&apos;s going to build your first workflow?</label>
+          </div>
+          <div className={styles.setupGridTwo}>
+            {BUILDER_OPTIONS.map((option) => {
+              const selected = workflowBuilder === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`oa-selectable ${styles.setupCard} ${selected ? "oa-selectable--selected" : ""}`}
+                  aria-pressed={selected}
+                  onClick={() => onWorkflowBuilderChange(option.id)}
+                >
+                  <span className={styles.modeBody}>
+                    <span className={styles.modeTop}>
+                      <span className={styles.modeMiniLabel}>Workflow owner</span>
+                      <span className="oa-radio" aria-hidden />
+                    </span>
+                    <span className={styles.modeText}>
+                      <span className={styles.modeTitle}>{option.title}</span>
+                      <span className="oa-sub">{option.body}</span>
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <AnimatePresence initial={false}>
+          {workflowBuilder === "invite" && (
+            <motion.div
+              key="builder-access"
+              initial={reduced ? { opacity: 0 } : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: DUR.card, ease: EASE }}
+              className={styles.setupInfoCard}
+            >
+              <div style={{ display: "grid", gap: 4 }}>
+                <label className="oa-label">What should they be able to do?</label>
+              </div>
+              <div className={styles.setupGridTwo}>
+                {ACCESS_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  const selected = builderAccess === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={`oa-selectable ${styles.setupCard} ${selected ? "oa-selectable--selected" : ""}`}
+                      aria-pressed={selected}
+                      onClick={() => onBuilderAccessChange(option.id)}
+                    >
+                      <span className={styles.modeBody}>
+                        <span className={styles.modeTop}>
+                          <span className={styles.modeIcon}>
+                            <Icon size={17} aria-hidden />
+                          </span>
+                          <span className="oa-radio" aria-hidden />
+                        </span>
+                        <span className={styles.modeText}>
+                          <span className={styles.modeTitle}>{option.title}</span>
+                          <span className="oa-sub">{option.body}</span>
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className={styles.setupPanel}>
+        <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gap: 4 }}>
+            <label className="oa-label">How do you want to start?</label>
+            <p className="oa-sub" style={{ margin: 0 }}>
+              This controls how focused the onboarding stays.
+            </p>
+          </div>
+          <div className={styles.setupGrid}>
+            {SCOPE_OPTIONS.map((option) => {
+              const Icon = option.icon;
+              const selected = automationScope === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`oa-selectable ${styles.setupCard} ${selected ? "oa-selectable--selected" : ""}`}
+                  aria-pressed={selected}
+                  onClick={() => onAutomationScopeChange(option.id)}
+                >
+                  <span className={styles.modeBody}>
+                    <span className={styles.modeTop}>
+                      <span className={styles.modeIcon}>
+                        <Icon size={17} aria-hidden />
+                      </span>
+                      <span className="oa-radio" aria-hidden />
+                    </span>
+                    <span className={styles.modeText}>
+                      <span className={styles.modeTitle}>{option.title}</span>
+                      <span className="oa-sub">{option.body}</span>
+                    </span>
+                    <span className={styles.modeRec}>{option.support}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <span className="oa-sim-note">
+            You can always start small and expand later.
+          </span>
+        </div>
       </div>
 
       <div className={styles.demoPanel} data-demo-label>
@@ -118,7 +300,7 @@ export default function ModeStep({
           <h3 className="oa-h3">Try it with a ready-made company</h3>
           <p className="oa-sub">
             {DEMO_COMPANY.name}: {DEMO_COMPANY.teamSize} people in{" "}
-            {DEMO_COMPANY.location}, {DEMO_COMPANY.industry.toLowerCase()}.
+            {DEMO_COMPANY.location}, already scoped around one workflow.
           </p>
         </div>
         <button
@@ -127,7 +309,7 @@ export default function ModeStep({
           onClick={onUseDemo}
           disabled={usedDemo}
         >
-          {usedDemo ? <Check size={15} aria-hidden /> : <Building2 size={15} aria-hidden />}
+          {usedDemo ? <Check size={15} aria-hidden /> : <Send size={15} aria-hidden />}
           {usedDemo ? "Demo company loaded" : "Use demo company"}
         </button>
       </div>
@@ -145,27 +327,18 @@ export default function ModeStep({
             <ul className={styles.demoList} aria-live="polite">
               <li>
                 <Check size={14} aria-hidden />
-                <span>
-                  Company profile filled: {DEMO_COMPANY.name},{" "}
-                  {DEMO_COMPANY.teamSize} people, {DEMO_COMPANY.location},{" "}
-                  {DEMO_COMPANY.monthlyVolume}.
-                </span>
+                <span>Automation scope is set to improving one business area first.</span>
               </li>
               <li>
                 <Check size={14} aria-hidden />
-                <span>Opening answer drafted. Review or re-record it in the next step.</span>
+                <span>The business introduction, biggest time drain, and current workflow are drafted in the next steps.</span>
               </li>
               <li>
                 <Check size={14} aria-hidden />
                 <span>
-                  {toolNames.length} tools selected:{" "}
-                  {toolNames.slice(0, 3).join(", ")}
+                  {toolNames.length} tools selected: {toolNames.slice(0, 3).join(", ")}
                   {toolNames.length > 3 ? " and more" : ""}.
                 </span>
-              </li>
-              <li>
-                <Check size={14} aria-hidden />
-                <span>Automation mode set to Assist. Change it above if you prefer.</span>
               </li>
             </ul>
             <span className="oa-sim-note">
