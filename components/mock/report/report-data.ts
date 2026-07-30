@@ -99,6 +99,10 @@ function orderedWorkflowSteps(currentWorkflow: string, stepsAnswer: string) {
   return split.length > 0 ? split : [];
 }
 
+function shouldIncludeApprovalOwner(onboarding: OnboardingState) {
+  return onboarding.organizationShape !== "solo" && onboarding.workflowBuilder === "invite";
+}
+
 export function buildInternalHandoffJson(
   onboarding: OnboardingState,
   discovery: DiscoveryState,
@@ -130,6 +134,8 @@ export function buildInternalHandoffJson(
       : "",
   ].filter(Boolean);
   const workflowSteps = orderedWorkflowSteps(onboarding.currentWorkflow, stepsAnswer);
+  const includeApprovalOwner = shouldIncludeApprovalOwner(onboarding);
+  const approvalOwnerValue = includeApprovalOwner ? onboarding.approvalOwner || null : undefined;
 
   return {
     handoff_type: "discovery_findings",
@@ -149,7 +155,7 @@ export function buildInternalHandoffJson(
         selected_tools: onboarding.selectedToolIds,
         custom_tools: onboarding.customTools,
         employee_emails: onboarding.employeeEmails,
-        approval_owner: onboarding.approvalOwner || null,
+        ...(includeApprovalOwner ? { approval_owner: approvalOwnerValue } : {}),
       },
       interview: {
         answered_count: Object.keys(discovery.answers).length,
@@ -182,7 +188,7 @@ export function buildInternalHandoffJson(
         outputs: successAnswer ? [successAnswer] : [],
         handoffs: handoffAnswer ? [handoffAnswer] : [],
         tools,
-        approval_owner: onboarding.approvalOwner || null,
+        ...(includeApprovalOwner ? { approval_owner: approvalOwnerValue } : {}),
         human_only_decisions: decisionsAnswer ? [decisionsAnswer] : [],
         success_outcomes: successAnswer ? [successAnswer] : [],
       },
@@ -201,7 +207,7 @@ export function buildInternalHandoffJson(
       outputs: successAnswer ? [successAnswer] : [],
       approval_points: decisionsAnswer ? [decisionsAnswer] : [],
       failure_points: missingInformation,
-      escalation_path: onboarding.approvalOwner ? [onboarding.approvalOwner] : [],
+      escalation_path: includeApprovalOwner && onboarding.approvalOwner ? [onboarding.approvalOwner] : [],
       frequency: null,
     },
   };
