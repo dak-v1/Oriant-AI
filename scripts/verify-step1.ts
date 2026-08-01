@@ -11,7 +11,7 @@ import {
   getApprovedCompanyReport,
 } from "../lib/server/planner/db";
 
-const SESSION_ID = "5b4abc67-50b9-427a-9980-f3a14a5c4696";
+const SESSION_ID = "6648850b-a9d7-42ca-928a-613e71e37a41";
 
 async function main() {
   const summary: Record<string, unknown> = {};

@@ -11,7 +11,7 @@
  * nothing here imports from either.
  */
 
-import type { CompanyReport } from "../../contracts";
+import type { CompanyReport, DepartmentApproval } from "../../contracts";
 
 // ── agent_templates ────────────────────────────────────────────────────────
 
@@ -144,27 +144,135 @@ export interface OnboardingSessionRow {
 }
 
 /**
+ * A single entry in raw_inputs.onboarding.answers, as built by
+ * onboardingAnswerPayload() in lib/server/discovery-handoff.ts.
+ */
+export interface DiscoveryHandoffAnswerEntry {
+  field_path: string;
+  value: unknown;
+  source: string;
+  confirmed: boolean;
+  confidence: number;
+  updated_at: string;
+}
+
+/**
+ * Exact shape produced by buildDiscoveryHandoff() in
+ * lib/server/discovery-handoff.ts — confirmed by reading that function
+ * directly (not from a secondhand description). This is what's written
+ * unchanged into role_b_handoffs.payload by mirrorDiscoveryHandoffToSupabase()
+ * (lib/server/onboarding-supabase.ts).
+ *
+ * There is deliberately no top-level `workflow` key — that field only
+ * appears on ad-hoc/manually-seeded rows and is not part of the real output.
+ *
+ * NOTE: this is a compile-time contract, not a runtime validator. Legacy
+ * rows (written before this shape existed) or manually-seeded test rows may
+ * not actually conform — code reading `payload` should still narrow/guard
+ * defensively (see getCanonicalToolIds in db.ts).
+ */
+export interface DiscoveryHandoffPayload {
+  handoff_type: "discovery_findings";
+  generated_at: string;
+  raw_inputs: {
+    company_name: string;
+    onboarding: {
+      session_id: string | null;
+      answers: Record<string, DiscoveryHandoffAnswerEntry>;
+      intro: string | null;
+      organization_shape: string | null;
+      employee_count: number | string | null;
+      workflow_builder: unknown;
+      builder_access: unknown;
+      approval_preference: string | null;
+      onboarding_ownership: string | null;
+      automation_scope: unknown;
+      automation_mode: unknown;
+      business_area: string | null;
+      repetitive_task: string | null;
+      current_workflow: string | null;
+      /**
+       * Always present as an array (possibly empty) — built from the
+       * selected_tools + custom_tools onboarding answers combined, NOT the
+       * raw selected_tools answer alone. The exact same array is reused for
+       * structured_findings.workflow_summary.tools below, so the two are
+       * always identical to each other.
+       */
+      selected_tools: string[];
+      employee_emails: string[];
+      department_approvals: DepartmentApproval[];
+      /** Present only when organization.shape !== "solo". */
+      approval_owner?: string | null;
+    };
+    interview: {
+      answered_count: number;
+      completed: boolean;
+      answers: Record<string, string>;
+      clarification_answers: Record<string, string>;
+      clarification_questions: unknown[];
+      clarification_completed_at: string | null;
+    };
+    voice: { provider: string; language: string; turns: unknown[] } | null;
+    report_meta: {
+      version: number | null;
+      status: string;
+      server_report: CompanyReport | null;
+    };
+  };
+  structured_findings: {
+    business_context: {
+      company_name: string;
+      company_intro: string | null;
+      organization_shape: string | null;
+      employee_count: number | null;
+      focus_area: string | null;
+    };
+    workflow_summary: {
+      workflow_name: string | null;
+      current_workflow_summary: string | null;
+      trigger: string | null;
+      ordered_steps: string[];
+      inputs: string[];
+      outputs: string[];
+      handoffs: string[];
+      /** Same array as raw_inputs.onboarding.selected_tools — see note there. */
+      tools: string[];
+      human_only_decisions: string[];
+    };
+    missing_information: string[];
+    clarification_answers: Record<string, string>;
+    confidence: number;
+  };
+}
+
+/**
  * DB row for role_b_handoffs. Column names are snake_case (unlike
  * lib/contracts.ts's RoleBHandoff, which is the camelCase in-memory shape
- * used by the file store). `payload` is typed `unknown` rather than reusing
- * RoleAHandoffEnvelope: the real createRoleBHandoff() pipeline produces a
- * RoleAHandoffEnvelope-shaped payload, but rows can also be seeded (or
- * produced by other paths) with a different ad-hoc shape — e.g. the
- * "internal handoff json" format (`handoff_type`, `raw_inputs`,
- * `structured_findings`, `workflow`) used by
- * components/mock/report/report-data.ts. Callers must narrow/validate
- * before trusting a specific shape.
+ * used by the file store).
+ *
+ * `report_version` is the real, currently-used version column — confirmed
+ * via the live write path (mirrorDiscoveryHandoffToSupabase in
+ * lib/server/onboarding-supabase.ts), which sets `report_version:
+ * db.report.version` and explicitly `blueprint_version: null` on every new
+ * insert. `blueprint_version` is legacy: kept nullable on the table for
+ * pre-existing rows, but no longer populated.
  */
 export interface RoleBHandoffRow {
   id: string;
   external_id: string;
   session_id: string;
-  blueprint_version: number;
+  handoff_type: string;
+  report_version?: number | null;
+  /** Legacy column — deliberately null on every current insert. See doc comment above. */
+  blueprint_version?: number | null;
   idempotency_key: string;
   occurred_at: string;
   status: string;
-  payload: unknown;
+  payload: DiscoveryHandoffPayload;
+  payload_hash?: string | null;
+  consumed_at?: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 /**

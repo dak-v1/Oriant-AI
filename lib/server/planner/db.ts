@@ -136,6 +136,29 @@ export async function getApprovedCompanyReport(
   return rows[0] ?? null;
 }
 
+/**
+ * Reads the canonical tool-id list off a role_b_handoffs payload. In the
+ * real buildDiscoveryHandoff() output (lib/server/discovery-handoff.ts),
+ * structured_findings.workflow_summary.tools and
+ * raw_inputs.onboarding.selected_tools are the exact same array — but since
+ * `payload` is a jsonb blob that may also hold legacy or manually-seeded
+ * rows, this reads defensively rather than trusting the type alone.
+ */
+export function getCanonicalToolIds(payload: unknown): string[] {
+  const p = payload as {
+    structured_findings?: { workflow_summary?: { tools?: unknown } };
+    raw_inputs?: { onboarding?: { selected_tools?: unknown } };
+  } | null | undefined;
+
+  const fromStructured = p?.structured_findings?.workflow_summary?.tools;
+  if (Array.isArray(fromStructured)) return fromStructured;
+
+  const fromRaw = p?.raw_inputs?.onboarding?.selected_tools;
+  if (Array.isArray(fromRaw)) return fromRaw;
+
+  return [];
+}
+
 // ── basic CRUD stubs for the 6 new tables ───────────────────────────────────
 
 export const agentTemplates = {
