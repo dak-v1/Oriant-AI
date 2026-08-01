@@ -11,7 +11,7 @@ import { nowIso } from "@/lib/server/store";
 
 /**
  * The kickoff call finished — persist the owner's confirmed answers and run
- * Discovery to draft the CompanyReport (AI& live, or the labeled fixture).
+ * Discovery to draft the CompanyReport from the live AI& provider.
  */
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as {

@@ -215,9 +215,13 @@ export default function DiscoveryWorkspace() {
           canvasUploaded: false,
         }),
       });
-      if (!response.ok) throw new Error("Supabase could not save the company report.");
-    } catch {
-      setLoadError("Supabase could not save the company report. Check your connection and try again.");
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error || "The live Discovery Agent could not compile the company report.");
+      }
+    } catch (error) {
+      setCompiling(false);
+      setLoadError(error instanceof Error ? error.message : "The live Discovery Agent could not compile the company report.");
       return;
     }
 

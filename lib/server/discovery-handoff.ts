@@ -47,24 +47,25 @@ export function buildDiscoveryHandoff(db: Db) {
   const onboarding = session?.answers ?? {};
   const interviewAnswers = db.call.answers;
   const clarificationAnswers = db.call.clarificationAnswers ?? {};
-  const mergedAnswers = { ...interviewAnswers, ...clarificationAnswers };
   const intro = textValue(answerValue(session, "company_intro"));
   const businessArea = textValue(answerValue(session, "business_area"));
   const repetitiveTask = textValue(answerValue(session, "repetitive_task"));
   const currentWorkflow = textValue(answerValue(session, "current_workflow"));
-  const steps = firstDiscoveryAnswer(mergedAnswers, ["steps"]);
-  const trigger = firstDiscoveryAnswer(mergedAnswers, ["trigger"]);
-  const inputs = firstDiscoveryAnswer(mergedAnswers, ["input", "document", "data_inputs"]);
-  const outputs = firstDiscoveryAnswer(mergedAnswers, ["success", "outcome"]);
-  const handoffs = firstDiscoveryAnswer(mergedAnswers, ["handoff"]);
-  const decisions = firstDiscoveryAnswer(mergedAnswers, ["decision", "human"]);
+  // Clarification answers explain or correct the interview; they should not
+  // be mistaken for workflow fields just because an id contains a keyword.
+  const steps = firstDiscoveryAnswer(interviewAnswers, ["steps"]);
+  const trigger = firstDiscoveryAnswer(interviewAnswers, ["trigger"]);
+  const inputs = firstDiscoveryAnswer(interviewAnswers, ["input", "document", "data_inputs"]);
+  const outputs = firstDiscoveryAnswer(interviewAnswers, ["success", "outcome"]);
+  const handoffs = firstDiscoveryAnswer(interviewAnswers, ["handoff"]);
+  const decisions = firstDiscoveryAnswer(interviewAnswers, ["decision", "human"]);
   const missingInformation = [
     !businessArea && "Business area is missing.",
     !repetitiveTask && "Repetitive task is missing.",
     !currentWorkflow && "Current workflow summary is missing.",
     !trigger && "Workflow trigger is still missing.",
     !steps && "Ordered workflow steps are still incomplete.",
-    !inputs && "Workflow inputs or required documents are still missing.",
+    !inputs && "The information needed to run this workflow is still missing.",
     !decisions && "Human approval boundaries are still missing.",
   ].filter((item): item is string => Boolean(item));
   const tools = [

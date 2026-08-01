@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion, type Variants } from "framer-motion";
-import { ArrowRight, Check, ChevronLeft } from "lucide-react";
+import { ArrowRight, Check, ChevronLeft, LoaderCircle } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
 import { useApCommand } from "@/lib/mock/autopilot";
 import { AP } from "@/components/mock/autopilot/script";
@@ -92,6 +92,7 @@ export default function OnboardingFlow() {
     useDemoStore.getState().onboarding.completed ? 4 : 0,
   );
   const [dir, setDir] = useState(1);
+  const [transitioningToInterview, setTransitioningToInterview] = useState(false);
 
   /* Consent checkbox mirrors the store but stays locally toggleable. */
   const [consentChecked, setConsentChecked] = useState(false);
@@ -442,6 +443,7 @@ export default function OnboardingFlow() {
   };
 
   const onContinue = () => {
+    if (transitioningToInterview) return;
     if (
       step === 2 &&
       (onboarding.selectedToolIds.length > 0 || onboarding.customTools.length > 0)
@@ -455,6 +457,11 @@ export default function OnboardingFlow() {
     if (!consentChecked) {
       onConsentChange(true);
     }
+    setTransitioningToInterview(true);
+    // Persist the final onboarding checkpoint before the interview route is
+    // guarded by the shell. The save remains non-blocking so the loading UI
+    // can appear immediately while Supabase finishes syncing.
+    void persistPatch({ currentStep: "review", consentAccepted: true });
     completeOnboarding();
     setJourney("discovery");
     toast({
@@ -462,7 +469,8 @@ export default function OnboardingFlow() {
       detail: "Next: the process interview, where Oriant goes deeper into how the workflow runs.",
       tone: "ok",
     });
-    router.replace("/app/discovery");
+    // Let the status overlay paint before the next route begins loading.
+    window.setTimeout(() => router.push("/app/discovery"), 100);
   };
 
   const variants = stepVariants(Boolean(reduced));
@@ -613,10 +621,10 @@ export default function OnboardingFlow() {
                 type="button"
                 className="oa-btn oa-btn--primary"
                 onClick={onContinue}
-                disabled={continueDisabled}
+                disabled={continueDisabled || transitioningToInterview}
               >
-                {step === 3 ? "Continue to Interview" : "Continue"}
-                <ArrowRight size={15} aria-hidden />
+                {transitioningToInterview ? "Preparing interview…" : step === 4 ? "Continue to Interview" : "Continue"}
+                {transitioningToInterview ? <LoaderCircle size={15} className="oa-spin" aria-hidden /> : <ArrowRight size={15} aria-hidden />}
               </button>
             )}
           </div>
@@ -624,6 +632,17 @@ export default function OnboardingFlow() {
 
         <CaptureRail />
       </div>
+      {transitioningToInterview && (
+        <div className={styles.transitionOverlay} role="status" aria-live="polite">
+          <div className={`oa-card ${styles.transitionCard}`}>
+            <LoaderCircle size={22} className="oa-spin" aria-hidden />
+            <div>
+              <strong>Collating your responses</strong>
+              <p>Oriant is passing your onboarding answers to the Discovery Agent.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

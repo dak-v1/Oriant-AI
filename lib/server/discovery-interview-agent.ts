@@ -112,7 +112,7 @@ function fixtureQuestions(session: OnboardingSession): DiscoveryInterviewQuestio
   if (tools.length > 0) {
     questions.splice(3, 0, {
       id: "workflow_data_inputs",
-      question: `What information or documents are needed each time ${task} happens?`,
+      question: `What information is needed each time ${task} happens?`,
       reason: "The inputs show what Oriant must read, check, or prepare before acting.",
       helperText: `Since ${area} already uses ${tools.slice(0, 3).join(", ")}${tools.length > 3 ? " and others" : ""}, tell Oriant what it needs from those tools each time.`,
       examples: ["Customer name and address", "Booking date", "Invoice amount", "Job notes or photos"],

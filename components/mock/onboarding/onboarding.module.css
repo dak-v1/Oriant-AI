@@ -1682,6 +1682,38 @@
   margin-top: 14px;
 }
 
+.transitionOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--oa-ink) 18%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.transitionCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(460px, 100%);
+  padding: 22px 24px;
+  color: var(--oa-blue-dark);
+}
+
+.transitionCard strong {
+  display: block;
+  color: var(--oa-ink);
+  font-size: 17px;
+}
+
+.transitionCard p {
+  margin: 4px 0 0;
+  color: var(--oa-ink3);
+  font-size: 14px;
+}
+
 /* ── Responsive (spec §21: 1440 / 1024 / 768 / 390) ── */
 
 @media (max-width: 1023px) {

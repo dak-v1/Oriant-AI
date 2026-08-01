@@ -1,8 +1,10 @@
 import { mutate } from "@/lib/server/api";
+import { buildDiscoveryHandoff } from "@/lib/server/discovery-handoff";
 import { approveReport } from "@/lib/server/orchestrator";
 import {
   hydrateDiscoveryFromSupabase,
   hydrateOnboardingFromSupabase,
+  mirrorDiscoveryHandoffToSupabase,
   mirrorOnboardingToSupabase,
 } from "@/lib/server/onboarding-supabase";
 
@@ -13,5 +15,6 @@ export async function POST() {
     await hydrateDiscoveryFromSupabase(db);
     approveReport(db);
     await mirrorOnboardingToSupabase(db);
+    await mirrorDiscoveryHandoffToSupabase(db, buildDiscoveryHandoff(db));
   });
 }

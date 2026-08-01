@@ -117,13 +117,44 @@ create table if not exists role_b_handoffs (
   id uuid primary key default gen_random_uuid(),
   external_id text not null unique,
   session_id uuid not null references onboarding_sessions(id) on delete cascade,
-  blueprint_version integer not null,
+  handoff_type text not null default 'discovery_findings',
+  report_version integer,
+  blueprint_version integer,
   idempotency_key text not null,
   occurred_at timestamptz not null,
-  status text not null,
+  status text not null default 'ready'
+    check (status in ('ready', 'consumed', 'failed')),
   payload jsonb not null,
-  created_at timestamptz not null
+  payload_hash text,
+  consumed_at timestamptz,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  unique (session_id, handoff_type, report_version)
 );
+
+-- Upgrade the original Role A handoff table in-place on deployed databases.
+alter table role_b_handoffs add column if not exists handoff_type text;
+alter table role_b_handoffs add column if not exists report_version integer;
+alter table role_b_handoffs add column if not exists payload_hash text;
+alter table role_b_handoffs add column if not exists consumed_at timestamptz;
+alter table role_b_handoffs add column if not exists updated_at timestamptz;
+alter table role_b_handoffs alter column blueprint_version drop not null;
+alter table role_b_handoffs alter column handoff_type set default 'discovery_findings';
+alter table role_b_handoffs alter column updated_at set default timezone('utc', now());
+update role_b_handoffs
+set handoff_type = coalesce(handoff_type, 'legacy_blueprint'),
+    updated_at = coalesce(updated_at, created_at)
+where handoff_type is null or updated_at is null;
+alter table role_b_handoffs alter column handoff_type set not null;
+alter table role_b_handoffs alter column updated_at set not null;
+
+-- The original prototype used Overtone Coffee. Preserve its rows while
+-- moving the active demo organization to the current BrightPath identity.
+update organizations
+set name = 'BrightPath Home Services',
+    external_key = 'mock:brightpath home services:nadia o.',
+    updated_at = timezone('utc', now())
+where external_key = 'mock:overtone coffee:nadia o.';
 
 create table if not exists audit_logs (
   id uuid primary key default gen_random_uuid(),
@@ -205,6 +236,9 @@ create index if not exists idx_company_reports_session
 
 create index if not exists idx_role_b_handoffs_session
   on role_b_handoffs (session_id);
+
+create index if not exists idx_role_b_handoffs_ready
+  on role_b_handoffs (status, handoff_type, created_at desc);
 
 create index if not exists idx_audit_logs_session
   on audit_logs (session_id, created_at desc);
