@@ -1,15 +1,9 @@
 /**
- * File-backed store. `data/db.json` is the single source of truth the
- * Orchestration Controller reads and writes. No ORM, no external DB —
- * the mock MVP persists across restarts and is trivially inspectable.
+ * Runtime working store. Supabase is the only persistence authority; this
+ * object is discarded whenever the server restarts and is hydrated per route.
  */
-import { promises as fs } from "fs";
-import path from "path";
 import type { Db, OnboardingQuestionDefinition } from "../contracts";
 import { FIXTURE_CALENDAR, ORG } from "../fixtures";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DATA_DIR, "db.json");
 
 const ONBOARDING_QUESTIONS: OnboardingQuestionDefinition[] = [
   {
@@ -211,7 +205,7 @@ function freshDb(): Db {
       sessions: {},
       questions: ONBOARDING_QUESTIONS,
     },
-    call: { answers: {}, goals: {}, systems: {}, canvasUploaded: false },
+    call: { answers: {}, goals: {}, systems: {}, canvasUploaded: false, clarificationAnswers: {} },
     report: null,
     plan: null,
     planHistory: [],
@@ -232,20 +226,12 @@ function freshDb(): Db {
 const g = globalThis as unknown as { __margoDb?: Db; __margoLock?: Promise<unknown> };
 
 export async function loadDb(): Promise<Db> {
-  if (g.__margoDb) return g.__margoDb;
-  try {
-    const raw = await fs.readFile(DB_PATH, "utf-8");
-    g.__margoDb = JSON.parse(raw) as Db;
-  } catch {
-    g.__margoDb = freshDb();
-  }
+  if (!g.__margoDb) g.__margoDb = freshDb();
   return g.__margoDb!;
 }
 
 export async function saveDb(db: Db): Promise<void> {
   g.__margoDb = db;
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
 }
 
 export async function resetDb(): Promise<Db> {

@@ -9,10 +9,22 @@ import type {
   VoiceSession,
   VoiceTurn,
 } from "../contracts";
-import { getSupabaseAdmin, supabaseLive } from "./supabase";
+import { assertSupabaseConfigured, getSupabaseAdmin, supabaseLive } from "./supabase";
 
 function orgExternalKey(db: Db): string {
   return `mock:${db.org.name}:${db.org.owner}`.toLowerCase();
+}
+
+function approvalOwnerForOrganization(session: OnboardingSession | null, ownerName: string) {
+  if (!session) return null;
+
+  const isSolo = session.organization.shape === "solo";
+  const workflowBuilder = session.answers.setup_builder?.value;
+  const isInviteFlow = workflowBuilder === "invite";
+  const approvalOwner = session.organization.approvalOwner?.trim();
+
+  if (isSolo || !isInviteFlow || !approvalOwner) return null;
+  return approvalOwner;
 }
 
 async function ensureOrganization(db: Db) {
@@ -20,19 +32,20 @@ async function ensureOrganization(db: Db) {
   if (!supabase) return null;
 
   const externalKey = orgExternalKey(db);
+  const activeSession = db.onboarding.activeSessionId
+    ? db.onboarding.sessions[db.onboarding.activeSessionId] ?? null
+    : null;
   const upsert = await supabase
     .from("organizations")
     .upsert({
       external_key: externalKey,
       name: db.org.name,
-      approval_owner: db.onboarding.activeSessionId
-        ? db.onboarding.sessions[db.onboarding.activeSessionId]?.organization.approvalOwner ?? db.org.owner
-        : db.org.owner,
-      shape: db.onboarding.activeSessionId
-        ? db.onboarding.sessions[db.onboarding.activeSessionId]?.organization.shape ?? "solo"
+      approval_owner: approvalOwnerForOrganization(activeSession, db.org.owner),
+      shape: activeSession
+        ? activeSession.organization.shape ?? "solo"
         : "solo",
-      employee_count: db.onboarding.activeSessionId
-        ? db.onboarding.sessions[db.onboarding.activeSessionId]?.organization.employeeCount ?? null
+      employee_count: activeSession
+        ? activeSession.organization.employeeCount ?? null
         : null,
     }, { onConflict: "external_key" })
     .select("id")
@@ -117,7 +130,7 @@ async function resolveSessionRecord(db: Db): Promise<{ orgId: string; sessionId:
 }
 
 export async function mirrorOnboardingToSupabase(db: Db): Promise<"live" | "fixture"> {
-  if (!supabaseLive()) return "fixture";
+  assertSupabaseConfigured();
   const supabase = getSupabaseAdmin();
   const activeId = db.onboarding.activeSessionId;
   const session = activeId ? db.onboarding.sessions[activeId] : null;
@@ -207,15 +220,18 @@ export async function mirrorOnboardingToSupabase(db: Db): Promise<"live" | "fixt
     if (handoffResult.error) throw handoffResult.error;
   }
 
-  const discoverySessionResult = await supabase
-    .from("discovery_sessions")
-    .upsert({
-      session_id: sessionId,
-      goals: db.call.goals,
-      systems: db.call.systems,
-      canvas_uploaded: db.call.canvasUploaded,
-      completed_at: db.call.completedAt ?? null,
-      updated_at: session.updatedAt,
+    const discoverySessionResult = await supabase
+      .from("discovery_sessions")
+      .upsert({
+        session_id: sessionId,
+        goals: db.call.goals,
+        systems: db.call.systems,
+        canvas_uploaded: db.call.canvasUploaded,
+        completed_at: db.call.completedAt ?? null,
+        clarification_questions: db.call.clarificationQuestions ?? [],
+        clarification_answers: db.call.clarificationAnswers ?? {},
+        clarification_completed_at: db.call.clarificationCompletedAt ?? null,
+        updated_at: session.updatedAt,
     }, { onConflict: "session_id" });
   if (discoverySessionResult.error) throw discoverySessionResult.error;
 
@@ -327,10 +343,7 @@ function parseAnswerRow(row: {
 }
 
 export async function hydrateOnboardingFromSupabase(db: Db): Promise<"live" | "fixture"> {
-  if (!supabaseLive()) return "fixture";
-  if (db.onboarding.activeSessionId && db.onboarding.sessions[db.onboarding.activeSessionId]) {
-    return "fixture";
-  }
+  assertSupabaseConfigured();
 
   const supabase = getSupabaseAdmin();
   if (!supabase) return "fixture";
@@ -494,7 +507,7 @@ export async function hydrateOnboardingFromSupabase(db: Db): Promise<"live" | "f
 }
 
 export async function hydrateDiscoveryFromSupabase(db: Db): Promise<"live" | "fixture"> {
-  if (!supabaseLive()) return "fixture";
+  assertSupabaseConfigured();
 
   const supabase = getSupabaseAdmin();
   if (!supabase) return "fixture";
@@ -533,6 +546,9 @@ export async function hydrateDiscoveryFromSupabase(db: Db): Promise<"live" | "fi
     systems: (discoverySessionRow.data?.systems as Record<string, boolean> | null) ?? {},
     canvasUploaded: (discoverySessionRow.data?.canvas_uploaded as boolean | null) ?? false,
     completedAt: (discoverySessionRow.data?.completed_at as string | null) ?? undefined,
+    clarificationQuestions: (discoverySessionRow.data?.clarification_questions as Db["call"]["clarificationQuestions"] | null) ?? [],
+    clarificationAnswers: (discoverySessionRow.data?.clarification_answers as Record<string, string> | null) ?? {},
+    clarificationCompletedAt: (discoverySessionRow.data?.clarification_completed_at as string | null) ?? undefined,
   };
 
   if (reportRow.data?.report) {

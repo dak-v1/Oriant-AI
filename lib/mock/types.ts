@@ -2,7 +2,7 @@
  * lib/mock/types.ts — shared contracts for the Oriant.ai hardcoded product mock.
  *
  * Single source of truth for every fixture, service, store slice and screen
- * (spec §23). Everything here must stay JSON-serialisable and localStorage-safe:
+ * (spec §23). Everything here must stay JSON-serialisable for server responses:
  * no Dates, no functions, no class instances — ISO strings and plain unions only.
  */
 
@@ -221,6 +221,8 @@ export interface DiscoveryState {
   currentIndex: number;
   /** questionId → confirmed answer text (possibly owner-edited). */
   answers: Record<string, string>;
+  clarificationAnswers?: Record<string, string>;
+  clarificationQuestions?: Array<{ id: string; question: string }>;
   /** ids of facts added so far (accumulates via confirmations + uploads). */
   factIds: string[];
   /** Simulated SOP upload done (adds bonus facts). */

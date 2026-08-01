@@ -1,9 +1,9 @@
 /**
  * lib/mock/store.ts — the central typed demo store (spec §2, §5, §23).
  *
- * One zustand store holds the whole journey and persists to localStorage so
- * refresh never destroys progress; Reset Demo clears it and cancels all
- * in-flight mock timers. Screens call actions; mock services drive the
+ * One zustand store holds the current UI snapshot. Authoritative onboarding,
+ * discovery, and report data is loaded from the server/Supabase; Reset Demo
+ * clears the in-memory view and cancels all in-flight mock timers. Screens call actions; mock services drive the
  * time-based updates via the screens (services stay UI-agnostic).
  *
  * Everything in DemoState is JSON-serialisable. Transient UI state (open
@@ -12,7 +12,6 @@
 "use client";
 
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import type {
   ApprovalPreference,
@@ -146,6 +145,8 @@ function initialState(): DemoState {
       mode: "voice",
       currentIndex: 0,
       answers: {},
+      clarificationAnswers: {},
+      clarificationQuestions: [],
       factIds: [],
       uploadedMore: false,
       invitedEmployee: false,
@@ -381,9 +382,7 @@ export interface DemoActions {
 
 export type DemoStore = DemoState & DemoActions;
 
-export const useDemoStore = create<DemoStore>()(
-  persist(
-    (set, get) => ({
+export const useDemoStore = create<DemoStore>()((set, get) => ({
       ...initialState(),
       _hydrated: false,
       planPast: [],
@@ -408,7 +407,7 @@ export const useDemoStore = create<DemoStore>()(
             backendSessionId: null,
             mode: "assist",
             usedDemoCompany: true,
-            organizationShape: "multi_role_team",
+            organizationShape: "owner_with_team",
             approvalPreference: "mixed",
             onboardingOwnership: "invite_contributors",
             workflowBuilder: "invite",
@@ -592,7 +591,7 @@ export const useDemoStore = create<DemoStore>()(
             ...st.onboarding,
             usedDemoCompany: true,
             intro: st.onboarding.intro || DEMO_INTRO_ANSWER,
-            organizationShape: "multi_role_team",
+            organizationShape: "owner_with_team",
             approvalPreference: "mixed",
             onboardingOwnership: "invite_contributors",
             workflowBuilder: "invite",
@@ -1441,39 +1440,7 @@ export const useDemoStore = create<DemoStore>()(
 
       markNotificationsRead: () =>
         set((st) => ({ workspace: { ...st.workspace, unreadNotifications: [] } })),
-    }),
-    {
-      name: "oriant-demo-v1",
-      version: 3, // v3: normalize collaborative onboarding fields in persisted state
-      storage: createJSONStorage(() => localStorage),
-      partialize: (s) => {
-        const { _hydrated, planPast, planFuture, ...rest } = s as DemoStore & Record<string, unknown>;
-        void _hydrated;
-        return { ...rest, planPast, planFuture } as Partial<DemoStore>;
-      },
-      migrate: (persisted) => {
-        if (!persisted || typeof persisted !== "object") {
-          return { ...initialState(), planPast: [], planFuture: [] } as Partial<DemoStore>;
-        }
-        const state = persisted as Partial<DemoStore>;
-        return {
-          ...initialState(),
-          ...state,
-          onboarding: {
-            ...initialState().onboarding,
-            ...(state.onboarding ?? {}),
-            ...normalizeOnboardingArrays((state.onboarding ?? {}) as Partial<OnboardingState>),
-          },
-          planPast: Array.isArray(state.planPast) ? state.planPast : [],
-          planFuture: Array.isArray(state.planFuture) ? state.planFuture : [],
-        } as Partial<DemoStore>;
-      },
-      onRehydrateStorage: () => (state) => {
-        if (state) (state as DemoStore)._hydrated = true;
-      },
-    },
-  ),
-);
+}));
 
 /** Selector: plan cost totals (illustrative). useShallow caches the derived
  *  object so the snapshot stays referentially stable between renders. */

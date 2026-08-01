@@ -1,8 +1,7 @@
 "use client";
 /**
- * CompileOverlay — the "Compile company report" moment: the four discovery
- * analysis stages play over ~6s (spec §22) as a staged checklist, then the
- * journey advances to report review. Skippable, honest about being simulated,
+ * CompileOverlay — the Company Report compilation moment. It only appears
+ * after Discovery Review has completed.
  * instant under reduced motion.
  */
 import { useEffect, useRef, useState } from "react";
@@ -97,7 +96,7 @@ export default function CompileOverlay({ onFinished }: { onFinished: () => void 
           <div style={{ display: "grid", gap: 2 }}>
             <h2 className="oa-h3">Compiling your company report</h2>
             <p className="oa-sub">
-              Everything you confirmed becomes an editable report you approve before planning.
+              Oriant is turning the confirmed discovery findings into an editable report for your approval.
             </p>
           </div>
         </div>
@@ -142,7 +141,7 @@ export default function CompileOverlay({ onFinished }: { onFinished: () => void 
         </div>
 
         <div className="oa-between">
-          <span className="oa-sim-note">Simulated analysis. A prepared demo report is assembled.</span>
+          <span className="oa-sim-note">Preparing your editable company report.</span>
           <button type="button" className="oa-btn oa-btn--ghost oa-btn--sm" onClick={skip} autoFocus>
             Skip animation
           </button>
