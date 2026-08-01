@@ -19,7 +19,8 @@
 - [x] Step 5: Workflow Refinement Chat
 - [x] Step 6: Cost Estimator
   Note: "Verified via Postman against plan f5f51ce7...: backfilled 3 agents' runtime_model, GET cost-estimate returned volumeSource='facts' (real 650/mo from seeded report), correct per-agent costs (deepseek-v4-flash agents ~$1.30-1.95/mo, glm-5.2 custom agent ~$13.52/mo — ~10x higher, matches rate table). generate.ts fixed to set runtime_model at creation time going forward. Composio fees intentionally excluded (composioFeeUsd: null) pending Step 7."
-- [ ] Step 7: Integrations Backend
+- [x] Step 7: Integrations Backend (Composio-routed tools)
+  Note: "Verified end-to-end by hand: connected Slack for real via the browser OAuth flow (entered workspace name, waited for connection) — status correctly stayed 'pending' until real consent completed, then flipped to 'connected'. authConfigs.create works zero-config for all 4 Composio tools. Org overview correctly filters required-tools by active (non-archived) agents in real drifted state. Google-native (gmail/calendar/drive) and manual-key tools deferred to a follow-up pass, not built this step."
 - [ ] Step 8: Handoff to Person C
 - [ ] Step 9: Frontend Rewiring
 

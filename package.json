@@ -10,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@composio/core": "^0.14.1",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.9",
     "framer-motion": "^12.42.2",

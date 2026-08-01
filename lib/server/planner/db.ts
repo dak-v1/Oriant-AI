@@ -183,6 +183,10 @@ export const workforcePlans = {
     pgGet<WorkforcePlanRow>(
       `workforce_plans?role_b_handoff_id=eq.${roleBHandoffId}&select=*&order=version.desc`
     ),
+  listByOrganization: (organizationId: string) =>
+    pgGet<WorkforcePlanRow>(
+      `workforce_plans?organization_id=eq.${organizationId}&select=*&order=created_at.desc`
+    ),
   create: (row: Partial<WorkforcePlanRow>) => pgInsert<WorkforcePlanRow>("workforce_plans", row),
   update: (id: string, patch: Partial<WorkforcePlanRow>) =>
     pgUpdate<WorkforcePlanRow>("workforce_plans", id, patch),
