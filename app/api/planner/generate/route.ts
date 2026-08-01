@@ -61,22 +61,23 @@ export async function POST(req: NextRequest) {
       plan: { agents: proposals },
     });
 
-    const templateIdByKey = new Map(templates.map((t) => [t.key, t.id]));
+    const DEFAULT_CUSTOM_RUNTIME_MODEL = "zai-org/glm-5.2";
+    const templateByKey = new Map(templates.map((t) => [t.key, t]));
 
     const agents = await Promise.all(
-      proposals.map((proposal) =>
-        agentConfigs.create({
+      proposals.map((proposal) => {
+        const template = proposal.templateKeyOrNull ? templateByKey.get(proposal.templateKeyOrNull) : undefined;
+        return agentConfigs.create({
           workforce_plan_id: plan.id,
           agent_key: proposal.agentKey,
           agent_type: proposal.templateKeyOrNull ? "preset" : "custom",
-          template_id: proposal.templateKeyOrNull
-            ? templateIdByKey.get(proposal.templateKeyOrNull)
-            : undefined,
+          template_id: template?.id,
           status: proposal.templateKeyOrNull ? "needs_configuration" : "needs_information",
           required_tools: proposal.requiredTools,
           config: {},
-        })
-      )
+          runtime_model: template?.default_runtime_model ?? DEFAULT_CUSTOM_RUNTIME_MODEL,
+        });
+      })
     );
 
     return NextResponse.json({ plan, agents });

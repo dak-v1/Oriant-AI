@@ -27,6 +27,8 @@ export interface AgentTemplate {
   config_schema: Record<string, unknown>;
   est_tokens_per_task?: number;
   required_tools?: string[];
+  /** Added to the live table in Step 2 (scripts/seed-agent-templates.ts) — was missing from this type until now. */
+  default_runtime_model?: string;
   created_at: string;
 }
 

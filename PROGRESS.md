@@ -17,7 +17,8 @@
 - [x] Step 4: Custom Agent Design-Call Flow
   Note: "Full lifecycle verified end-to-end by hand in Postman on plan f5f51ce7...: generate → configure → gate correctly blocked → design-call (start/turn/clarify, 11 turns) → re-configure → approve succeeded. Plan status='approved', requiredTools correctly deduped to 6 tools across 3 agents."
 - [ ] Step 5: Workflow Refinement Chat
-- [ ] Step 6: Cost Estimator
+- [x] Step 6: Cost Estimator
+  Note: "Verified via Postman against plan f5f51ce7...: backfilled 3 agents' runtime_model, GET cost-estimate returned volumeSource='facts' (real 650/mo from seeded report), correct per-agent costs (deepseek-v4-flash agents ~$1.30-1.95/mo, glm-5.2 custom agent ~$13.52/mo — ~10x higher, matches rate table). generate.ts fixed to set runtime_model at creation time going forward. Composio fees intentionally excluded (composioFeeUsd: null) pending Step 7."
 - [ ] Step 7: Integrations Backend
 - [ ] Step 8: Handoff to Person C
 - [ ] Step 9: Frontend Rewiring
