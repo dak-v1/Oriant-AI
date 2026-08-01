@@ -30,6 +30,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const journey = useDemoStore((s) => s.journey);
   const setJourney = useDemoStore((s) => s.setJourney);
+  const setCallInProgress = useDemoStore((s) => s.setCallInProgress);
   const presentation = useAutopilot((s) => s.presentation);
   const pathname = usePathname();
   const router = useRouter();
@@ -64,6 +65,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         const activeSession = activeSessionId
           ? payload.state?.onboarding?.sessions?.[activeSessionId]
           : undefined;
+        setCallInProgress(activeSession?.status === "voice_in_progress");
         const onboardingReviewReady = activeSession?.currentStep === "review"
           || activeSession?.status === "review_pending"
           || activeSession?.status === "approved"
@@ -90,11 +92,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         if (!cancelled) setServerSynced(true);
       });
     return () => { cancelled = true; };
-  }, [setJourney]);
+  }, [setCallInProgress, setJourney]);
 
   /* Route guard: forward deep links redirect to the current step (spec §5). */
   useEffect(() => {
     if (!mounted || !serverSynced) return;
+    const callInProgress = useDemoStore.getState().onboarding.callInProgress;
+    const callLockedRoute = pathname === "/app/onboarding"
+      || pathname === "/app/discovery"
+      || pathname === "/app/discovery/review";
+    if (callInProgress && callLockedRoute) {
+      router.replace("/app/onboarding/voice-call");
+      return;
+    }
     const redirect = guardRoute(pathname, journey);
     if (redirect && redirect !== pathname) router.replace(redirect);
   }, [mounted, pathname, journey, router, serverSynced]);

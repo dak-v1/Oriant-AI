@@ -112,7 +112,7 @@ function fixtureQuestions(session: OnboardingSession): DiscoveryInterviewQuestio
   if (tools.length > 0) {
     questions.splice(3, 0, {
       id: "workflow_data_inputs",
-      question: `What information or documents are needed each time ${task} happens?`,
+      question: `What information is needed each time ${task} happens?`,
       reason: "The inputs show what Oriant must read, check, or prepare before acting.",
       helperText: `Since ${area} already uses ${tools.slice(0, 3).join(", ")}${tools.length > 3 ? " and others" : ""}, tell Oriant what it needs from those tools each time.`,
       examples: ["Customer name and address", "Booking date", "Invoice amount", "Job notes or photos"],
@@ -169,12 +169,27 @@ async function generateInterviewResult(session: OnboardingSession): Promise<Inte
       "Generate tailored interview cards. The end goal is a grounded workflow description: where the work hurts today, what starts it, what happens, where it can safely be automated, and where a person must decide. Avoid generic business-strategy questions.",
   });
 
-  const generatedQuestions = Array.isArray((result.data as { questions?: unknown }).questions)
-    ? (result.data as { questions: DiscoveryInterviewQuestion[] }).questions
-    : [];
+  const rawQuestions = result.data && typeof result.data === "object"
+    ? (result.data as { questions?: unknown }).questions
+    : undefined;
+  const generatedQuestions: unknown[] = Array.isArray(rawQuestions) ? rawQuestions : [];
+  const isValidQuestion = (item: unknown): item is DiscoveryInterviewQuestion => {
+    if (!item || typeof item !== "object") return false;
+    const question = item as Partial<DiscoveryInterviewQuestion>;
+    return typeof question.id === "string"
+      && question.id.trim().length > 0
+      && typeof question.question === "string"
+      && question.question.trim().length > 0
+      && typeof question.reason === "string"
+      && question.reason.trim().length > 0
+      && typeof question.helperText === "string"
+      && question.helperText.trim().length > 0
+      && Array.isArray(question.examples)
+      && question.examples.every((example) => typeof example === "string");
+  };
   const validQuestions = generatedQuestions.length >= 4
     && generatedQuestions.length <= 7
-    && generatedQuestions.every((item) => item && item.id && item.question && item.reason && item.helperText && Array.isArray(item.examples));
+    && generatedQuestions.every(isValidQuestion);
   const uniqueQuestions = validQuestions
     ? new Set(generatedQuestions.map((item) => item.question.trim().toLowerCase()))
     : new Set<string>();
@@ -186,5 +201,5 @@ async function generateInterviewResult(session: OnboardingSession): Promise<Inte
     };
   }
 
-  return { mode: result.mode, questions: result.data.questions, ...(result.error ? { error: result.error } : {}) };
+  return { mode: result.mode, questions: generatedQuestions, ...(result.error ? { error: result.error } : {}) };
 }

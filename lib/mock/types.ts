@@ -98,6 +98,8 @@ export interface CustomTool {
 
 export interface OnboardingState {
   channel: OnboardingChannel;
+  /** True while the single-call onboarding experience is in progress. */
+  callInProgress: boolean;
   backendSessionId: string | null;
   mode: AutomationMode | null;
   usedDemoCompany: boolean;

@@ -124,7 +124,7 @@ export function buildInternalHandoffJson(
     !onboarding.currentWorkflow.trim() ? "Current workflow summary is missing." : "",
     !triggerAnswer ? "Workflow trigger is still missing." : "",
     !stepsAnswer ? "Ordered workflow steps are still incomplete." : "",
-    !inputsAnswer ? "Workflow inputs or required documents are still missing." : "",
+    !inputsAnswer ? "The information needed to run this workflow is still missing." : "",
     !decisionsAnswer ? "Human approval boundaries are still missing." : "",
     !tools.length ? "Workflow tools have not been confirmed yet." : "",
   ].filter(Boolean);
@@ -252,9 +252,12 @@ export function buildDynamicReportSections(
     !onboarding.repetitiveTask.trim() ? "The repetitive task to improve first is still missing." : "",
     !onboarding.currentWorkflow.trim() ? "A direct owner description of the current workflow is still missing." : "",
     !tools.length ? "The workflow tools have not been selected yet." : "",
-    !inputsAnswer ? "The interview has not yet captured the exact inputs or documents needed each time." : "",
+    !inputsAnswer ? "The interview has not yet captured the information needed each time." : "",
     !decisionsAnswer ? "The approval boundary for this workflow has not been fully captured yet." : "",
   ].filter(Boolean);
+  const missingSummary = missingItems.length
+    ? `Still missing: ${missingItems.join(" ")}`
+    : "Core onboarding and interview inputs have been captured.";
 
   const opportunities = listOrFallback(
     [
@@ -476,9 +479,7 @@ export function buildDynamicReportSections(
         {
           source: "Current discovery coverage",
           provenance: missingItems.length ? "oriant_assumption" : "owner_confirmed",
-          quote: missingItems.length
-            ? "Some onboarding or interview details are still missing."
-            : "Core onboarding and interview inputs have been captured.",
+          quote: missingSummary,
         },
       ],
       confirmedFacts: missingItems.length ? 0 : 1,
@@ -515,6 +516,17 @@ export function buildDynamicReportFacts(
   const decisionsAnswer = firstAnswer(discovery, ["decision", "human"]);
   const successAnswer = firstAnswer(discovery, ["success", "outcome"]);
   const tools = [...onboarding.selectedToolIds, ...onboarding.customTools.map((tool) => tool.name)];
+  const missingItems = [
+    !onboarding.businessArea.trim() ? "A confirmed business area has not been captured yet." : "",
+    !onboarding.repetitiveTask.trim() ? "The repetitive task to improve first is still missing." : "",
+    !onboarding.currentWorkflow.trim() ? "A direct owner description of the current workflow is still missing." : "",
+    !tools.length ? "The workflow tools have not been selected yet." : "",
+    !inputsAnswer ? "The interview has not yet captured the information needed each time." : "",
+    !decisionsAnswer ? "The approval boundary for this workflow has not been fully captured yet." : "",
+  ].filter(Boolean);
+  const missingSummary = missingItems.length
+    ? `Still missing: ${missingItems.join(" ")}`
+    : "Core onboarding and interview inputs have been captured.";
 
   return [
     { id: "fact-company-intro", sectionId: "company-overview", label: "Business intro", value: safeText(onboarding.intro, "Business intro still missing"), source: detectSource(Boolean(onboarding.intro), "owner") },
@@ -526,7 +538,7 @@ export function buildDynamicReportFacts(
 
     { id: "fact-process-workflow", sectionId: "current-processes", label: "Current workflow", value: safeText(onboarding.currentWorkflow, "Not yet described"), source: detectSource(Boolean(onboarding.currentWorkflow), "owner") },
     { id: "fact-process-steps", sectionId: "current-processes", label: "Workflow steps", value: safeText(stepsAnswer, "Not yet answered"), source: detectSource(Boolean(stepsAnswer), "interview") },
-    { id: "fact-process-inputs", sectionId: "current-processes", label: "Inputs and documents", value: safeText(inputsAnswer, "Not yet answered"), source: detectSource(Boolean(inputsAnswer), "interview") },
+    { id: "fact-process-inputs", sectionId: "current-processes", label: "Workflow information", value: safeText(inputsAnswer, "Not yet answered"), source: detectSource(Boolean(inputsAnswer), "interview") },
 
     { id: "fact-goal-scope", sectionId: "business-goals", label: "Start preference", value: scopeLabel(onboarding.automationScope), source: detectSource(Boolean(onboarding.automationScope), "owner") },
     { id: "fact-goal-success", sectionId: "business-goals", label: "Success outcome", value: safeText(successAnswer, "Not yet answered"), source: detectSource(Boolean(successAnswer), "interview") },
@@ -542,7 +554,7 @@ export function buildDynamicReportFacts(
     { id: "fact-approval-owner", sectionId: "approval-restrictions", label: "Approval owner", value: safeText(onboarding.approvalOwner, "Not specified"), source: detectSource(Boolean(onboarding.approvalOwner), "owner") },
 
     { id: "fact-assumptions-gaps", sectionId: "assumptions", label: "Open assumptions", value: "Some discovery gaps are still being treated as assumptions until confirmed.", source: "inference" },
-    { id: "fact-missing-info", sectionId: "missing-information", label: "Missing information status", value: "Some onboarding or interview details are still incomplete.", source: "inference" },
+    { id: "fact-missing-info", sectionId: "missing-information", label: "Missing information status", value: missingSummary, source: "inference" },
 
     { id: "fact-opportunity-task", sectionId: "potential-opportunities", label: "First workflow candidate", value: safeText(onboarding.repetitiveTask, "Not specified"), source: detectSource(Boolean(onboarding.repetitiveTask), "owner") },
     { id: "fact-opportunity-outcome", sectionId: "potential-opportunities", label: "Desired result", value: safeText(successAnswer, "Not yet answered"), source: detectSource(Boolean(successAnswer), "interview") },

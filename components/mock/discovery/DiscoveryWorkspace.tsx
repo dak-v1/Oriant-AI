@@ -190,6 +190,14 @@ export default function DiscoveryWorkspace() {
     window.setTimeout(() => setJustConfirmed(null), reduced ? 500 : 1500);
   };
 
+  const handleVoiceConfirm = (q: DiscoveryQuestion, text: string) => {
+    void fetch("/api/discovery/voice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ questionId: q.id, transcript: text, confirmedAnswer: text, language: "en" }),
+    });
+  };
+
   const compileReport = async () => {
     const goals: Record<string, boolean> = {};
     if (onboarding.businessArea.trim()) goals[onboarding.businessArea.trim()] = true;
@@ -207,9 +215,13 @@ export default function DiscoveryWorkspace() {
           canvasUploaded: false,
         }),
       });
-      if (!response.ok) throw new Error("Supabase could not save the company report.");
-    } catch {
-      setLoadError("Supabase could not save the company report. Check your connection and try again.");
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error || "The live Discovery Agent could not compile the company report.");
+      }
+    } catch (error) {
+      setCompiling(false);
+      setLoadError(error instanceof Error ? error.message : "The live Discovery Agent could not compile the company report.");
       return;
     }
 
@@ -489,12 +501,12 @@ export default function DiscoveryWorkspace() {
                         <h2 className="oa-h3" style={{ margin: 0 }}>A few details need clarifying</h2>
                       </div>
                     </div>
-                    <CardsMode questions={clarificationQuestions} answers={clarificationAnswers} justConfirmed={null} onConfirm={handleClarificationConfirm} />
+                    <CardsMode questions={clarificationQuestions} answers={clarificationAnswers} justConfirmed={null} onConfirm={handleClarificationConfirm} onVoiceConfirm={handleVoiceConfirm} />
                   </section>
                 ) : null}
 
                 {!clarificationReview ? (
-                  <CardsMode questions={questions} answers={answers} justConfirmed={justConfirmed} onConfirm={handleConfirm} />
+                    <CardsMode questions={questions} answers={answers} justConfirmed={justConfirmed} onConfirm={handleConfirm} onVoiceConfirm={handleVoiceConfirm} />
                 ) : null}
               </>
             )}

@@ -9,6 +9,7 @@ import type {
   VoiceSession,
   VoiceTurn,
 } from "../contracts";
+import type { buildDiscoveryHandoff } from "./discovery-handoff";
 import { assertSupabaseConfigured, getSupabaseAdmin, supabaseLive } from "./supabase";
 
 function orgExternalKey(db: Db): string {
@@ -90,7 +91,7 @@ async function resolveSessionRecord(db: Db): Promise<{ orgId: string; sessionId:
 
   const org = await supabase
     .from("organizations")
-    .select("id")
+    .select("id, name")
     .eq("external_key", orgExternalKey(db))
     .maybeSingle();
   if (org.error || !org.data?.id) return null;
@@ -204,23 +205,7 @@ export async function mirrorOnboardingToSupabase(db: Db): Promise<"live" | "fixt
     if (blueprintResult.error) throw blueprintResult.error;
   }
 
-  if (session.handoff) {
-    const handoffResult = await supabase
-      .from("role_b_handoffs")
-      .upsert({
-        external_id: session.handoff.id,
-        session_id: sessionId,
-        blueprint_version: session.handoff.blueprintVersion,
-        idempotency_key: session.handoff.idempotencyKey,
-        occurred_at: session.handoff.occurredAt,
-        status: session.handoff.status,
-        payload: session.handoff.payload,
-        created_at: session.handoff.createdAt,
-      }, { onConflict: "external_id" });
-    if (handoffResult.error) throw handoffResult.error;
-  }
-
-    const discoverySessionResult = await supabase
+  const discoverySessionResult = await supabase
       .from("discovery_sessions")
       .upsert({
         session_id: sessionId,
@@ -322,6 +307,44 @@ export async function mirrorOnboardingToSupabase(db: Db): Promise<"live" | "fixt
   return "live";
 }
 
+/**
+ * Persist the current discovery findings for the next agentic flow layer.
+ * The payload is intentionally written unchanged from the company report's
+ * canonical handoff builder; it is not converted to the legacy blueprint.
+ */
+export async function mirrorDiscoveryHandoffToSupabase(
+  db: Db,
+  payload: ReturnType<typeof buildDiscoveryHandoff>,
+): Promise<"live" | "fixture"> {
+  assertSupabaseConfigured();
+  const supabase = getSupabaseAdmin();
+  if (!supabase || !db.report) return "fixture";
+
+  const record = await resolveSessionRecord(db);
+  if (!record) return "fixture";
+
+  const generatedAt = payload.generated_at;
+  const externalId = `discovery:${record.externalId}:report:${db.report.version}`;
+  const result = await supabase
+    .from("role_b_handoffs")
+    .upsert({
+      external_id: externalId,
+      session_id: record.sessionId,
+      handoff_type: "discovery_findings",
+      report_version: db.report.version,
+      blueprint_version: null,
+      idempotency_key: externalId,
+      occurred_at: generatedAt,
+      status: "ready",
+      payload,
+      payload_hash: null,
+      updated_at: generatedAt,
+    }, { onConflict: "external_id" });
+
+  if (result.error) throw result.error;
+  return "live";
+}
+
 function parseAnswerRow(row: {
   question_id: string;
   field_path: string;
@@ -350,10 +373,14 @@ export async function hydrateOnboardingFromSupabase(db: Db): Promise<"live" | "f
 
   const org = await supabase
     .from("organizations")
-    .select("id")
+    .select("id, name")
     .eq("external_key", orgExternalKey(db))
     .maybeSingle();
   if (org.error || !org.data?.id) return "fixture";
+
+  // Keep the server snapshot's organization identity aligned with Supabase.
+  db.org.name = org.data.name as string;
+  db.org.initials = db.org.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 
   const sessionRow = await supabase
     .from("onboarding_sessions")

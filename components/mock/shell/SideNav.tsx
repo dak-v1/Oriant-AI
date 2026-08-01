@@ -14,6 +14,7 @@ import styles from "./shell.module.css";
 
 export default function SideNav({ ready }: { ready: boolean }) {
   const journey = useDemoStore((s) => s.journey);
+  const callInProgress = useDemoStore((s) => s.onboarding.callInProgress);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -61,7 +62,24 @@ export default function SideNav({ ready }: { ready: boolean }) {
               <div className={styles.navChildren}>
                 {section.children.map((child) => {
                   const childUnlocked = ready && atLeast(journey, child.min);
+                  const callLocked = callInProgress && (
+                    child.route === "/app/onboarding"
+                    || child.route === "/app/discovery"
+                    || child.route === "/app/discovery/review"
+                  );
                   const childActive = pathname === child.route;
+                  if (callLocked) {
+                    return (
+                      <span
+                        key={child.route}
+                        className={`${styles.navChild} ${styles.navChildLocked}`}
+                        aria-disabled="true"
+                        title="Available after your call"
+                      >
+                        {child.label}
+                      </span>
+                    );
+                  }
                   return (
                     <Link
                       key={child.route}

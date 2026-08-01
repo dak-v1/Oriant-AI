@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion, type Variants } from "framer-motion";
-import { ArrowRight, Check, ChevronLeft } from "lucide-react";
+import { ArrowRight, Check, ChevronLeft, LoaderCircle } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
 import { useApCommand } from "@/lib/mock/autopilot";
 import { AP } from "@/components/mock/autopilot/script";
@@ -92,6 +92,7 @@ export default function OnboardingFlow() {
     useDemoStore.getState().onboarding.completed ? 4 : 0,
   );
   const [dir, setDir] = useState(1);
+  const [transitioningToInterview, setTransitioningToInterview] = useState(false);
 
   /* Consent checkbox mirrors the store but stays locally toggleable. */
   const [consentChecked, setConsentChecked] = useState(false);
@@ -257,21 +258,6 @@ export default function OnboardingFlow() {
   const onConfirmIntro = (text: string) => {
     setIntro(text);
     captureSection("company");
-    if (onboarding.channel === "voice") {
-      void fetch("/api/onboarding/voice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          questionId: "company_intro",
-          transcript: text,
-          confirmedAnswer: text,
-          language: "en",
-        }),
-      }).then(() => setOnboardingSync("saved")).catch((err: unknown) => {
-        setOnboardingSync("error", err instanceof Error ? err.message : "Could not save transcript.");
-      });
-      return;
-    }
     void persistPatch({ intro: text });
   };
 
@@ -307,8 +293,9 @@ export default function OnboardingFlow() {
   const onUseDemo = () => {
     applyDemoCompany();
     setMode("assist");
-    setWorkflowBuilder("invite");
-    setBuilderAccess("account_manager");
+    setOrganizationShape("solo");
+    setWorkflowBuilder("self");
+    setBuilderAccess("workflows_only");
     setAutomationScope("focus_area");
     setBusinessArea("Operations");
     setRepetitiveTask("Rescheduling customer appointments over the phone");
@@ -320,14 +307,14 @@ export default function OnboardingFlow() {
     setMaxVisited(3);
     void persistPatch({
       mode: "assist",
-      workflowBuilder: "invite",
-      builderAccess: "account_manager",
+      workflowBuilder: "self",
+      builderAccess: "workflows_only",
       automationScope: "focus_area",
       businessArea: "Operations",
       repetitiveTask: "Rescheduling customer appointments over the phone",
       currentWorkflow: "Messages come in through Gmail and WhatsApp, the coordinator checks the calendar manually, then calls customers one by one to shift appointments and update the spreadsheet.",
       intro: "We run BrightPath Home Services in Singapore, eighteen of us doing residential maintenance, around 650 customer requests a month. Too much of our day goes into sorting Gmail and WhatsApp messages by hand and rescheduling appointments over the phone. Marketing keeps waiting on me, and every Friday the finance team combs through overdue invoices manually.",
-      organizationShape: "owner_with_team",
+      organizationShape: "solo",
       employeeCount: 18,
       approvalOwner: "Sarah Tan",
       employeeEmails: ["marcus@brightpath.sg", "sarah@brightpath.sg", "jolene@brightpath.sg"],
@@ -456,6 +443,7 @@ export default function OnboardingFlow() {
   };
 
   const onContinue = () => {
+    if (transitioningToInterview) return;
     if (
       step === 2 &&
       (onboarding.selectedToolIds.length > 0 || onboarding.customTools.length > 0)
@@ -469,6 +457,11 @@ export default function OnboardingFlow() {
     if (!consentChecked) {
       onConsentChange(true);
     }
+    setTransitioningToInterview(true);
+    // Persist the final onboarding checkpoint before the interview route is
+    // guarded by the shell. The save remains non-blocking so the loading UI
+    // can appear immediately while Supabase finishes syncing.
+    void persistPatch({ currentStep: "review", consentAccepted: true });
     completeOnboarding();
     setJourney("discovery");
     toast({
@@ -476,7 +469,8 @@ export default function OnboardingFlow() {
       detail: "Next: the process interview, where Oriant goes deeper into how the workflow runs.",
       tone: "ok",
     });
-    router.replace("/app/discovery");
+    // Let the status overlay paint before the next route begins loading.
+    window.setTimeout(() => router.push("/app/discovery"), 100);
   };
 
   const variants = stepVariants(Boolean(reduced));
@@ -627,10 +621,10 @@ export default function OnboardingFlow() {
                 type="button"
                 className="oa-btn oa-btn--primary"
                 onClick={onContinue}
-                disabled={continueDisabled}
+                disabled={continueDisabled || transitioningToInterview}
               >
-                {step === 3 ? "Continue to Interview" : "Continue"}
-                <ArrowRight size={15} aria-hidden />
+                {transitioningToInterview ? "Preparing interview…" : step === 4 ? "Continue to Interview" : "Continue"}
+                {transitioningToInterview ? <LoaderCircle size={15} className="oa-spin" aria-hidden /> : <ArrowRight size={15} aria-hidden />}
               </button>
             )}
           </div>
@@ -638,6 +632,17 @@ export default function OnboardingFlow() {
 
         <CaptureRail />
       </div>
+      {transitioningToInterview && (
+        <div className={styles.transitionOverlay} role="status" aria-live="polite">
+          <div className={`oa-card ${styles.transitionCard}`}>
+            <LoaderCircle size={22} className="oa-spin" aria-hidden />
+            <div>
+              <strong>Collating your responses</strong>
+              <p>Oriant is passing your onboarding answers to the Discovery Agent.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

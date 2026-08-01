@@ -6,7 +6,7 @@
  */
 import type { CompanyReport, Db } from "../contracts";
 import { aiandJson } from "./providers/aiand";
-import { trace } from "./orchestrator";
+import { GateError, trace } from "./orchestrator";
 
 const selected = (m: Record<string, boolean>) => Object.keys(m).filter((k) => m[k]);
 
@@ -27,11 +27,20 @@ function fixtureReport(db: Db): Omit<CompanyReport, "version" | "status" | "hist
   const task = sessionValue(db, "repetitive_task");
   const workflow = sessionValue(db, "current_workflow");
   const answers = { ...db.call.answers, ...(db.call.clarificationAnswers ?? {}) };
-  const trigger = answers.workflow_trigger || answers.clarify_trigger || "";
+  const trigger = answers.workflow_trigger || answers.trigger_source || answers.trigger_definition || answers.clarify_trigger || "";
   const steps = answers.workflow_steps || "";
   const inputs = answers.workflow_data_inputs || "";
-  const decisions = answers.human_decisions || answers.clarify_human_boundary || "";
-  const outcome = answers.workflow_success || answers.clarify_success || "";
+  const decisions = answers.human_decisions
+    || answers.human_approval_boundaries
+    || answers.decision_logic
+    || answers.clarify_human_boundary
+    || db.call.clarificationAnswers?.clarify_approval_boundaries_and_logic
+    || "";
+  const outcome = answers.workflow_success
+    || answers.output_preference
+    || answers.data_sync_workflow
+    || answers.clarify_success
+    || "";
   const sessionId = db.onboarding.activeSessionId;
   const session = sessionId ? db.onboarding.sessions[sessionId] : undefined;
   const selectedTools = selected(db.call.systems);
@@ -120,6 +129,7 @@ export async function generateReport(db: Db): Promise<void> {
     schemaName: "company_report",
     schema: REPORT_SCHEMA,
     fixture,
+    timeoutMs: 15_000,
     system:
       "You are the Discovery Agent for an AI-workforce platform. Convert the owner's kickoff-call answers into a structured company report. " +
       "Evidence discipline: never state a volume, cost or permission the owner did not supply — mark uncertain items in prose as needing confirmation. " +
@@ -140,6 +150,14 @@ export async function generateReport(db: Db): Promise<void> {
   });
 
   trace(db, "aiand", "company_report_generation", "completed", result.mode, result.error);
+
+  if (result.mode !== "live") {
+    throw new GateError(
+      result.error
+        ? `AI& could not compile the company report: ${result.error}`
+        : "AI& is not available. Configure the live AI& provider before compiling the company report.",
+    );
+  }
 
   db.report = {
     version: 1,

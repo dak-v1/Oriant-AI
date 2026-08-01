@@ -198,7 +198,9 @@ const ONBOARDING_QUESTIONS: OnboardingQuestionDefinition[] = [
 
 function freshDb(): Db {
   return {
-    org: { ...ORG },
+    // Keep the server identity aligned with the current BrightPath demo
+    // instead of the legacy Overtone prototype fixture.
+    org: { ...ORG, name: "BrightPath Home Services", initials: "BH" },
     phase: "onboarding",
     onboarding: {
       activeSessionId: null,

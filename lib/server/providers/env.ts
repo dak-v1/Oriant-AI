@@ -7,6 +7,7 @@
 export interface ProviderEnv {
   aiand: { key?: string; baseUrl?: string; model: string };
   nosana: { key?: string; whisperUrl?: string };
+  elevenlabs: { key?: string; voiceId?: string; model: string };
   doubleword: { key?: string; baseUrl?: string; model: string };
   daytona: { key?: string; apiUrl: string };
   supabase: { url?: string; anonKey?: string; serviceRoleKey?: string };
@@ -22,6 +23,11 @@ export function providerEnv(): ProviderEnv {
     nosana: {
       key: process.env.NOSANA_API_KEY || undefined,
       whisperUrl: process.env.NOSANA_WHISPER_URL || undefined,
+    },
+    elevenlabs: {
+      key: process.env.ELEVENLABS_API_KEY || undefined,
+      voiceId: process.env.ELEVENLABS_VOICE_ID || undefined,
+      model: process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2",
     },
     doubleword: {
       key: process.env.DOUBLEWORD_API_KEY || undefined,
@@ -42,6 +48,7 @@ export function providerEnv(): ProviderEnv {
 
 export function aiandLive() { const e = providerEnv().aiand; return !!(e.key && e.baseUrl && e.model); }
 export function nosanaLive() { const e = providerEnv().nosana; return !!e.whisperUrl; }
+export function elevenLabsLive() { const e = providerEnv().elevenlabs; return !!(e.key && e.voiceId); }
 export function doublewordLive() { const e = providerEnv().doubleword; return !!(e.key && e.baseUrl && e.model); }
 export function daytonaLive() { const e = providerEnv().daytona; return !!e.key; }
 export function supabaseLive() { const e = providerEnv().supabase; return !!(e.url && (e.serviceRoleKey || e.anonKey)); }
@@ -50,6 +57,6 @@ export function supabaseLive() { const e = providerEnv().supabase; return !!(e.u
 export function providerStatus() {
   return {
     aiand: aiandLive(), nosana: nosanaLive(),
-    doubleword: doublewordLive(), daytona: daytonaLive(), supabase: supabaseLive(),
+    doubleword: doublewordLive(), elevenlabs: elevenLabsLive(), daytona: daytonaLive(), supabase: supabaseLive(),
   };
 }

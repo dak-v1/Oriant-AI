@@ -340,13 +340,14 @@ export function ensureOnboardingSession(db: Db, preferredChannel: OnboardingChan
 
 export function getOnboardingState(db: Db) {
   const session = ensureOnboardingSession(db);
-  return { session, questions: db.onboarding.questions };
+  return { session, questions: db.onboarding.questions, organizationName: db.org.name };
 }
 
 export function updateOnboardingSession(
   db: Db,
   patch: {
     preferredChannel?: OnboardingChannel;
+    startCall?: boolean;
     currentStep?: OnboardingSession["currentStep"];
     mode?: string;
     intro?: string;
@@ -451,8 +452,29 @@ export function updateOnboardingSession(
 
   session.progress = progressPercent(session, db.onboarding.questions);
   session.status = answeredRequired(session, db.onboarding.questions) ? "review_pending" : "in_progress";
+  if (patch.startCall) {
+    session.preferredChannel = "voice";
+    session.status = "voice_in_progress";
+    session.currentStep = "intro";
+    session.completedAt = undefined;
+  }
   session.updatedAt = now;
   logSystem(db, "onboarding", "session_updated", "completed", undefined, session.id);
+  return session;
+}
+
+/** Finish the one-call experience and make the saved answers reviewable. */
+export function completeVoiceCall(db: Db) {
+  const session = ensureOnboardingSession(db, "voice");
+  const completedAt = nowIso();
+  session.preferredChannel = "voice";
+  session.status = "review_pending";
+  session.currentStep = "review";
+  session.completedAt = completedAt;
+  session.updatedAt = completedAt;
+  db.call.completedAt = completedAt;
+  audit(db, "voice.call_completed", session.id);
+  logSystem(db, "voice", "call_completed", "completed", undefined, session.id);
   return session;
 }
 
@@ -503,6 +525,41 @@ export function attachVoiceTranscript(
   session.updatedAt = now;
   session.progress = progressPercent(session, db.onboarding.questions);
   logSystem(db, "voice", "transcript_attached", "completed", undefined, session.id, input.questionId);
+  return session;
+}
+
+/** Save a discovery interview voice turn without treating its question as onboarding. */
+export function attachDiscoveryVoiceTranscript(
+  db: Db,
+  input: { questionId: string; transcript: string; confirmedAnswer?: string; language?: string },
+) {
+  const session = ensureOnboardingSession(db, "voice");
+  const now = nowIso();
+  const voice: VoiceSession = session.voice ?? {
+    id: uid("voice"),
+    provider: "nosana",
+    language: input.language ?? "en",
+    startedAt: now,
+    lastTurnAt: now,
+    turns: [],
+  };
+  voice.lastTurnAt = now;
+  voice.turns.unshift({
+    id: uid("turn"),
+    questionId: input.questionId,
+    transcript: input.transcript,
+    confirmedAnswer: input.confirmedAnswer,
+    status: input.confirmedAnswer ? "confirmed" : "captured",
+    createdAt: now,
+  });
+  session.voice = voice;
+  session.preferredChannel = "voice";
+  session.updatedAt = now;
+  db.call.answers = {
+    ...db.call.answers,
+    ...(input.confirmedAnswer?.trim() ? { [input.questionId]: input.confirmedAnswer.trim() } : {}),
+  };
+  logSystem(db, "voice", "discovery_transcript_attached", "completed", undefined, session.id, input.questionId);
   return session;
 }
 

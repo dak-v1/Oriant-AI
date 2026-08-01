@@ -112,6 +112,8 @@ export function useBrowserSpeechCapture({
   const [listening, setListening] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [finalTranscript, setFinalTranscript] = useState("");
+  const [interimTranscript, setInterimTranscript] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const RecognitionCtor = useMemo<BrowserSpeechRecognitionConstructor | null>(() => {
@@ -137,6 +139,8 @@ export function useBrowserSpeechCapture({
 
   const reset = useCallback(() => {
     setTranscript("");
+    setFinalTranscript("");
+    setInterimTranscript("");
     setError(null);
     deliveredRef.current = null;
   }, []);
@@ -199,18 +203,24 @@ export function useBrowserSpeechCapture({
         let recognition: BrowserSpeechRecognition | null = null;
         if (RecognitionCtor) {
           recognition = new RecognitionCtor();
-          recognition.continuous = false;
+          recognition.continuous = true;
           recognition.interimResults = true;
           recognition.lang = lang;
           recognition.maxAlternatives = 1;
 
           recognition.onresult = (event) => {
-            let next = "";
+            let finalText = "";
+            let interimText = "";
             for (let i = 0; i < event.results.length; i += 1) {
-              next += event.results[i][0]?.transcript ?? "";
+              const text = event.results[i][0]?.transcript ?? "";
+              if (event.results[i].isFinal) finalText += text;
+              else interimText += text;
             }
-            const clean = next.trim();
-            setTranscript(clean);
+            const cleanFinal = finalText.trim();
+            const cleanInterim = interimText.trim();
+            setFinalTranscript(cleanFinal);
+            setInterimTranscript(cleanInterim);
+            setTranscript([cleanFinal, cleanInterim].filter(Boolean).join(" "));
           };
 
           recognition.onerror = (event) => {
@@ -300,6 +310,8 @@ export function useBrowserSpeechCapture({
     listening,
     processing,
     transcript,
+    finalTranscript,
+    interimTranscript,
     error,
     start,
     stop,

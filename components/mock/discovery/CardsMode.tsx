@@ -18,11 +18,13 @@ export default function CardsMode({
   answers,
   justConfirmed,
   onConfirm,
+  onVoiceConfirm,
 }: {
   questions: DiscoveryQuestion[];
   answers: Record<string, string>;
   justConfirmed: DiscoveryQuestion | null;
   onConfirm: (q: DiscoveryQuestion, text: string) => void;
+  onVoiceConfirm?: (q: DiscoveryQuestion, text: string) => void;
 }) {
   const reduced = useReducedMotion();
   const firstOpen = questions.find((q) => !answers[q.id])?.id ?? questions[0]?.id ?? null;
@@ -101,6 +103,7 @@ export default function CardsMode({
                       answer={q.answer ?? ""}
                       initialText={answers[q.id] ?? ""}
                       onConfirm={(text) => onConfirm(q, text)}
+                      onVoiceConfirm={(text) => onVoiceConfirm?.(q, text)}
                       confirmLabel={done ? "Save answer" : "Confirm answer"}
                       placeholder={q.helperText ?? "Type your answer here…"}
                       variant="embedded"

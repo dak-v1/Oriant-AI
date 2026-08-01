@@ -16,7 +16,7 @@ export const NAV_LINKS = [
 ] as const;
 
 export const CTA = {
-  primary: { label: "Start Free Discovery", href: "/app/onboarding" },
+  primary: { label: "Start Free Discovery", href: "/app/setup" },
   secondary: { label: "See How It Works", href: "#how-it-works" },
   contact: { label: "Contact", href: "#contact" },
 } as const;

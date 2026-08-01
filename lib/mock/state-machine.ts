@@ -133,9 +133,10 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     id: "discovery",
     label: "Discovery",
-    route: "/app/onboarding",
+    route: "/app/setup",
     min: "not_started",
     children: [
+      { label: "Setup preference", route: "/app/setup", min: "not_started" },
       { label: "Onboarding", route: "/app/onboarding", min: "not_started" },
       { label: "Interview", route: "/app/discovery", min: "discovery" },
       { label: "Discovery Review", route: "/app/discovery/review", min: "discovery" },
