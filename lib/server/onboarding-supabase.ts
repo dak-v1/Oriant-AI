@@ -84,7 +84,7 @@ async function ensureSession(orgId: string, session: OnboardingSession) {
   return upsert.data.id as string;
 }
 
-async function resolveSessionRecord(db: Db): Promise<{ orgId: string; sessionId: string; externalId: string } | null> {
+export async function resolveSessionRecord(db: Db): Promise<{ orgId: string; sessionId: string; externalId: string } | null> {
   if (!supabaseLive()) return null;
   const supabase = getSupabaseAdmin();
   if (!supabase) return null;

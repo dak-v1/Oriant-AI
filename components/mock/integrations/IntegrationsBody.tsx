@@ -1,21 +1,25 @@
 "use client";
 /**
  * IntegrationsBody — the shared body of /app/integrations and
- * /app/workspace/integrations (spec §12; §20 "Integrations" motion row).
+ * /app/workspace/integrations.
  *
- * The readable answer to a dense admin panel: search + four tabs
- * (Recommended for your plan / Connected apps / Available apps / MCP and
- * internal tools), generous plan-first cards, a plain-language MCP explainer
- * and the 4-step mock connection wizard. All content is fixture-driven;
- * connection state lives in the demo store.
+ * Step 9 Pass 1: rewired off the real GET /api/integrations/[organizationId]
+ * endpoint. Tool display content (name/purpose/permissions/reads/actions)
+ * still comes from the INTEGRATIONS fixture — those are stable catalog facts
+ * a real integrations manifest would carry too — but connection *status*
+ * and which tools are "recommended" now come from the approved plan's real
+ * required-tools + integration_connections state. Only the 7 Composio-routed
+ * tools (RECOMMENDED_APP_IDS) are real; the rest stay visible with Connect
+ * disabled per the earlier product decision.
  */
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
-import { Cable, Search } from "lucide-react";
+import { Cable, LoaderCircle, Search, TriangleAlert } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
 import { INTEGRATIONS, INTEGRATION_TAB_ORDER } from "@/lib/mock/fixtures/integrations";
 import { RECOMMENDED_APP_IDS } from "@/lib/mock/fixtures/ids";
-import type { IntegrationDef, IntegrationStatus } from "@/lib/mock/types";
+import type { IntegrationDef } from "@/lib/mock/types";
 import { DUR, EASE } from "@/lib/mock/motion";
 import {
   AvailableCard,
@@ -33,19 +37,78 @@ const ALL_DEFS: IntegrationDef[] = [
   ...Object.values(INTEGRATIONS).filter((d) => !RECOMMENDED_APP_IDS.includes(d.id)),
 ].filter(Boolean);
 
+const REAL_TOOL_IDS = new Set(RECOMMENDED_APP_IDS);
+
+interface ToolSummary {
+  toolKey: string;
+  status: string;
+  provider: string | null;
+  neededByAgents: string[];
+}
+
 export default function IntegrationsBody() {
   const [tab, setTab] = useState<string>(INTEGRATION_TAB_ORDER[0].id);
   const [query, setQuery] = useState("");
   const [wizardId, setWizardId] = useState<string | null>(null);
   const [manageId, setManageId] = useState<string | null>(null);
 
-  const integrations = useDemoStore((s) => s.integrations);
+  const organizationId = useDemoStore((s) => s.onboarding.organizationId);
+  const setOrganizationId = useDemoStore((s) => s.setOrganizationId);
   const reduced = useReducedMotion();
+  const searchParams = useSearchParams();
 
-  const statusOf = (def: IntegrationDef): IntegrationStatus =>
-    integrations[def.id]?.status ?? def.defaultStatus;
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [tools, setTools] = useState<ToolSummary[]>([]);
+  const toolByKey = useMemo(() => new Map(tools.map((t) => [t.toolKey, t])), [tools]);
 
-  /* Tabs: arrow-key support with roving tabindex (spec §19). */
+  const refreshTools = useCallback(async (orgId: string) => {
+    const res = await fetch(`/api/integrations/${orgId}`, { cache: "no-store" });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(body.error ?? "Could not load your integrations.");
+    }
+    const data = (await res.json()) as { tools: ToolSummary[] };
+    setTools(data.tools);
+  }, []);
+
+  const bootstrap = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      let orgId = organizationId;
+      if (!orgId) {
+        const ctxRes = await fetch("/api/planner/context", { cache: "no-store" });
+        if (!ctxRes.ok) throw new Error("Could not resolve your organization yet.");
+        const ctx = (await ctxRes.json()) as { organizationId: string };
+        orgId = ctx.organizationId;
+        setOrganizationId(orgId);
+      }
+      await refreshTools(orgId);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Could not load your integrations.");
+    } finally {
+      setLoading(false);
+    }
+  }, [organizationId, refreshTools, setOrganizationId]);
+
+  useEffect(() => {
+    void bootstrap();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* Returning from an OAuth tab: lib/server/planner/providers/composio.ts
+     builds the callback as /app/integrations?tool=<toolKey>&status=callback —
+     fast-path a refresh instead of waiting for the wizard's own poll tick. */
+  useEffect(() => {
+    const tool = searchParams.get("tool");
+    if (tool && organizationId) void refreshTools(organizationId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const statusOf = (def: IntegrationDef): string => toolByKey.get(def.id)?.status ?? "not_connected";
+
+  /* Tabs: arrow-key support with roving tabindex. */
   const onTabKey = (e: React.KeyboardEvent) => {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
     e.preventDefault();
@@ -56,18 +119,13 @@ export default function IntegrationsBody() {
     document.getElementById(`integrations-tab-${next}`)?.focus();
   };
 
-  /* Tab memberships (unfiltered — tab counts stay stable while searching). */
   const recommendedDefs = useMemo(
-    () =>
-      RECOMMENDED_APP_IDS.map((id) => INTEGRATIONS[id]).filter((def) => {
-        const st = integrations[def.id]?.status ?? def.defaultStatus;
-        return st === "required" || st === "connected";
-      }),
-    [integrations],
+    () => tools.map((t) => INTEGRATIONS[t.toolKey]).filter((def): def is IntegrationDef => Boolean(def)),
+    [tools],
   );
   const connectedDefs = useMemo(
-    () => ALL_DEFS.filter((def) => (integrations[def.id]?.status ?? def.defaultStatus) === "connected"),
-    [integrations],
+    () => ALL_DEFS.filter((def) => (toolByKey.get(def.id)?.status ?? "not_connected") === "connected"),
+    [toolByKey],
   );
   const availableDefs = useMemo(
     () => ALL_DEFS.filter((def) => def.kind === "app" && !RECOMMENDED_APP_IDS.includes(def.id)),
@@ -82,11 +140,8 @@ export default function IntegrationsBody() {
     mcp: mcpDefs.length,
   };
 
-  const readyCount = RECOMMENDED_APP_IDS.filter(
-    (id) => integrations[id]?.status === "connected",
-  ).length;
+  const readyCount = tools.filter((t) => t.status === "connected").length;
 
-  /* Search filters name + purpose across the ACTIVE tab (spec §12). */
   const q = query.trim().toLowerCase();
   const matches = (def: IntegrationDef) =>
     q === "" || `${def.name} ${def.purpose}`.toLowerCase().includes(q);
@@ -104,37 +159,39 @@ export default function IntegrationsBody() {
     </div>
   );
 
-  /* ── Tab panels ── */
-
   const renderRecommended = () => {
     const list = recommendedDefs.filter(matches);
     return (
       <>
-        <div className={`oa-panel ${styles.progressPanel}`}>
-          <div className={styles.progressText}>
-            <p className={styles.progressLine}>
-              {readyCount} of {RECOMMENDED_APP_IDS.length} plan connections ready
-            </p>
-            <p className="oa-sub">
-              Connect now or during activation; nothing here blocks your plan approval.
-            </p>
-          </div>
-          <div className={styles.progressBar}>
-            <div
-              className="oa-progress oa-progress--teal"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={RECOMMENDED_APP_IDS.length}
-              aria-valuenow={readyCount}
-              aria-label="Plan connections ready"
-            >
-              <span style={{ width: `${(readyCount / RECOMMENDED_APP_IDS.length) * 100}%` }} />
+        {tools.length > 0 && (
+          <div className={`oa-panel ${styles.progressPanel}`}>
+            <div className={styles.progressText}>
+              <p className={styles.progressLine}>
+                {readyCount} of {tools.length} plan connections ready
+              </p>
+              <p className="oa-sub">Connect the tools your approved plan needs.</p>
+            </div>
+            <div className={styles.progressBar}>
+              <div
+                className="oa-progress oa-progress--teal"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={tools.length}
+                aria-valuenow={readyCount}
+                aria-label="Plan connections ready"
+              >
+                <span style={{ width: `${(readyCount / Math.max(tools.length, 1)) * 100}%` }} />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {list.length === 0 ? (
-          noMatches
+          tools.length === 0 ? (
+            <p className="oa-sub">This plan doesn&apos;t require any connected tools.</p>
+          ) : (
+            noMatches
+          )
         ) : (
           <div className={styles.cardGrid}>
             {list.map((def, i) => (
@@ -163,8 +220,7 @@ export default function IntegrationsBody() {
           </span>
           <p className={styles.emptyTitle}>Nothing is connected yet.</p>
           <p className="oa-sub" style={{ maxWidth: 420 }}>
-            Start with the connections your plan recommends, or leave them for the activation
-            checklist. Your plan does not wait on this screen.
+            Start with the connections your plan recommends.
           </p>
           <button
             type="button"
@@ -183,7 +239,7 @@ export default function IntegrationsBody() {
           <ConnectedRow
             key={def.id}
             def={def}
-            runtime={integrations[def.id]}
+            runtime={{ status: "connected", connectedAt: null }}
             index={i}
             onManage={openManage}
           />
@@ -201,10 +257,11 @@ export default function IntegrationsBody() {
           <AvailableCard
             key={def.id}
             def={def}
-            status={statusOf(def)}
+            status="not_connected"
             index={i}
             onConnect={openConnect}
             onManage={openManage}
+            disabled
           />
         ))}
       </div>
@@ -222,9 +279,7 @@ export default function IntegrationsBody() {
           <div className={styles.calloutText}>
             <h3 className="oa-h3">What is an MCP connection?</h3>
             <p className={styles.purpose}>
-              A secure tool connection that lets an agent use a specific system or capability. You
-              approve them in plain language here; protocols, servers and scopes stay inside
-              Advanced.
+              A secure tool connection that lets an agent use a specific system or capability.
             </p>
           </div>
         </div>
@@ -237,10 +292,11 @@ export default function IntegrationsBody() {
               <McpCard
                 key={def.id}
                 def={def}
-                status={statusOf(def)}
+                status="not_connected"
                 index={i}
                 onConnect={openConnect}
                 onManage={openManage}
+                disabled
               />
             ))}
           </div>
@@ -249,9 +305,30 @@ export default function IntegrationsBody() {
     );
   };
 
+  if (loading) {
+    return (
+      <div style={{ display: "grid", placeItems: "center", padding: 48 }}>
+        <LoaderCircle size={22} className="oa-spin" aria-hidden />
+        <p className="oa-sub" style={{ marginTop: 12 }}>Loading your integrations…</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className={`oa-card ${styles.empty}`} style={{ padding: 32 }}>
+        <TriangleAlert size={20} aria-hidden />
+        <p className={styles.emptyTitle}>Couldn&apos;t load integrations</p>
+        <p className="oa-sub">{loadError}</p>
+        <button type="button" className="oa-btn oa-btn--primary" onClick={() => void bootstrap()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   return (
     <section>
-      {/* Controls: the four tabs + search over the active tab */}
       <div className={styles.controls}>
         <div className={styles.tabsWrap}>
           <div
@@ -306,8 +383,19 @@ export default function IntegrationsBody() {
         {tab === "mcp" && renderMcp()}
       </motion.div>
 
-      <ConnectWizard defId={wizardId} onClose={() => setWizardId(null)} />
-      <ManageDrawer defId={manageId} onClose={() => setManageId(null)} />
+      <ConnectWizard
+        defId={wizardId}
+        organizationId={organizationId}
+        real={wizardId ? REAL_TOOL_IDS.has(wizardId) : false}
+        onClose={() => setWizardId(null)}
+        onConnected={() => organizationId && void refreshTools(organizationId)}
+      />
+      <ManageDrawer
+        defId={manageId}
+        status={manageId ? statusOf(INTEGRATIONS[manageId]) : "connected"}
+        neededByAgents={manageId ? toolByKey.get(manageId)?.neededByAgents ?? [] : []}
+        onClose={() => setManageId(null)}
+      />
     </section>
   );
 }

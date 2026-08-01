@@ -101,6 +101,8 @@ export interface OnboardingState {
   /** True while the single-call onboarding experience is in progress. */
   callInProgress: boolean;
   backendSessionId: string | null;
+  /** Real organizations.id UUID (Step 9 Pass 1), resolved via GET /api/planner/context. */
+  organizationId: string | null;
   mode: AutomationMode | null;
   usedDemoCompany: boolean;
   /** Owner's opening answer (voice sim or typed). */
@@ -437,6 +439,20 @@ export interface PlanAgent {
   designApproved: boolean;
   /** Order of workflows (ids) within this agent (reorderable). */
   workflowOrder: string[];
+  /**
+   * Real-backend fields (Step 9 Pass 1), set by syncPlanFromServer when this
+   * agent was synced from a real agent_configs row. Undefined for
+   * fixture-only mock agents — components must not assume these are present.
+   */
+  configId?: string;
+  templateId?: string | null;
+  name?: string;
+  description?: string;
+  requiredTools?: string[];
+  /** Template's JSON Schema for this agent's config fields (preset agents only). */
+  configSchema?: Record<string, unknown>;
+  /** The agent's real, already-saved freeform config (agent_configs.config) — used to pre-fill the schema form. */
+  realConfig?: Record<string, unknown>;
 }
 
 export interface PlanChange {
@@ -455,6 +471,14 @@ export interface WorkforcePlanState {
   /** Extra one-off plan notes added by NL commands (e.g. new approval rules). */
   planRules: string[];
   lastChange: PlanChange | null;
+  /**
+   * Real workforce_plans.id (Step 9 Pass 1), set by syncPlanFromServer.
+   * Undefined/null for a plan that only exists as fixture/mock state. The
+   * real organization_id lives on onboarding.organizationId instead (set at
+   * the same bootstrap step, one identity value shared by planner +
+   * integrations rather than duplicated per slice).
+   */
+  id?: string | null;
 }
 
 /** NL command fixture: matches input → deterministic plan mutation description. */

@@ -46,6 +46,13 @@ import type {
   WorkspaceTeam,
 } from "./types";
 import { cancelAllMockWork } from "./services";
+// Step 9 Pass 1: real planner backend row shapes, type-only (no runtime
+// import from lib/server/* reaches the client bundle).
+import type {
+  AgentConfigExt,
+  AgentTemplate,
+  WorkforcePlanRow,
+} from "@/lib/server/planner/types";
 import { planTotals } from "./pricing";
 import { atLeast } from "./state-machine";
 import { AGENT, DEMO_TODAY } from "./fixtures/ids";
@@ -114,6 +121,7 @@ function initialState(): DemoState {
       channel: "typed",
       callInProgress: false,
       backendSessionId: null,
+      organizationId: null,
       mode: null,
       usedDemoCompany: false,
       intro: "",
@@ -330,7 +338,16 @@ export interface DemoActions {
   approveReport: () => void;
 
   /* planner */
+  /** Step 9 Pass 1: lightweight setter for screens (e.g. /app/integrations) that only need the real org id, not a full plan sync. */
+  setOrganizationId: (organizationId: string) => void;
   setPlanGenerated: () => void;
+  /** Step 9 Pass 1: hydrate plan + agents from a real GET /api/planner/context or POST /api/planner/generate response. */
+  syncPlanFromServer: (params: {
+    organizationId: string;
+    plan: WorkforcePlanRow;
+    agents: AgentConfigExt[];
+    templates: AgentTemplate[];
+  }) => void;
   addAgentToPlan: (agentId: string) => void;
   removeAgentFromPlan: (agentId: string) => void;
   reorderPlanAgents: (orderedAgentIds: string[]) => void;
@@ -409,6 +426,7 @@ export const useDemoStore = create<DemoStore>()((set, get) => ({
             channel: "voice",
             callInProgress: false,
             backendSessionId: null,
+            organizationId: null,
             mode: "assist",
             usedDemoCompany: true,
             organizationShape: "solo",
@@ -947,6 +965,9 @@ export const useDemoStore = create<DemoStore>()((set, get) => ({
         })),
 
       /* ── planner ── */
+      setOrganizationId: (organizationId) =>
+        set((st) => ({ onboarding: { ...st.onboarding, organizationId } })),
+
       setPlanGenerated: () =>
         set((st) => ({
           plan: st.plan.agents.length
@@ -954,6 +975,61 @@ export const useDemoStore = create<DemoStore>()((set, get) => ({
             : { ...st.plan, agents: structuredClone(INITIAL_PLAN_AGENTS), stale: false },
           journey: atLeast(st.journey, "plan_review") ? st.journey : "plan_review",
         })),
+
+      syncPlanFromServer: ({ organizationId, plan, agents, templates }) =>
+        set((st) => {
+          const templateById = new Map(templates.map((t) => [t.id, t]));
+          const mapStatus = (status: string): PlanAgent["status"] => {
+            if (status === "configured" || status === "ready") return "ready_to_build";
+            if (status === "needs_information") return "needs_information";
+            return "needs_configuration";
+          };
+          const blankConfig: AgentConfig = {
+            operatingMode: "draft_only",
+            triggers: [],
+            channels: [],
+            workflowsEnabled: {},
+            approvalActions: [],
+            processOwner: "",
+            approvalOwner: "",
+            quietHours: "",
+            runFrequency: "",
+            dataAccess: [],
+            forbiddenActions: [],
+          };
+          const planAgents: PlanAgent[] = agents.map((a) => {
+            const template = a.template_id ? templateById.get(a.template_id) : undefined;
+            return {
+              agentId: a.agent_key,
+              status: mapStatus(a.status),
+              config: blankConfig,
+              designAnswers: null,
+              designApproved: false,
+              workflowOrder: [],
+              configId: a.id,
+              templateId: a.template_id ?? null,
+              name: template?.name ?? a.agent_key,
+              description: template?.description,
+              requiredTools: a.required_tools ?? [],
+              configSchema: template?.config_schema,
+              realConfig: a.config ?? {},
+            };
+          });
+          return {
+            onboarding: { ...st.onboarding, organizationId },
+            plan: {
+              id: plan.id,
+              version: plan.version,
+              status: plan.status === "approved" ? "approved" : "draft",
+              approvedAt: plan.approved_at ?? null,
+              stale: false,
+              agents: planAgents,
+              planRules: [],
+              lastChange: null,
+            },
+            journey: atLeast(st.journey, "plan_review") ? st.journey : "plan_review",
+          };
+        }),
 
       addAgentToPlan: (agentId) =>
         set((st) => {

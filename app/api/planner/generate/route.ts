@@ -53,13 +53,28 @@ export async function POST(req: NextRequest) {
       templates,
     });
 
-    const plan = await workforcePlans.create({
-      role_b_handoff_id: handoff.id,
-      organization_id: org.id,
-      version: 1,
-      status: "draft",
-      plan: { agents: proposals },
-    });
+    let plan;
+    try {
+      plan = await workforcePlans.create({
+        role_b_handoff_id: handoff.id,
+        organization_id: org.id,
+        version: 1,
+        status: "draft",
+        plan: { agents: proposals },
+      });
+    } catch (err) {
+      // The listByHandoff check above is a check-then-insert race — a
+      // concurrent request (e.g. two rapid page loads) can pass it before
+      // either insert lands. workforce_plans_role_b_handoff_id_key (added
+      // in 20260802_workforce_plans_unique_handoff.sql) is the real guard;
+      // this just turns that DB-level rejection into the same clean 409
+      // instead of a raw 500.
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("workforce_plans_role_b_handoff_id_key") || message.includes("duplicate key")) {
+        throw new PlannerError(409, "A workforce plan already exists for this handoff.");
+      }
+      throw err;
+    }
 
     const DEFAULT_CUSTOM_RUNTIME_MODEL = "zai-org/glm-5.2";
     const templateByKey = new Map(templates.map((t) => [t.key, t]));

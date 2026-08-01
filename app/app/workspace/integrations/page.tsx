@@ -4,6 +4,7 @@
  * connections screen (spec §5, §12). Same body component as
  * /app/integrations with a workspace-flavoured header.
  */
+import { Suspense } from "react";
 import IntegrationsBody from "@/components/mock/integrations/IntegrationsBody";
 
 export default function WorkspaceIntegrationsPage() {
@@ -19,7 +20,9 @@ export default function WorkspaceIntegrationsPage() {
           </p>
         </div>
       </header>
-      <IntegrationsBody />
+      <Suspense fallback={null}>
+        <IntegrationsBody />
+      </Suspense>
     </main>
   );
 }

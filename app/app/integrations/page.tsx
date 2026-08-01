@@ -4,6 +4,7 @@
  * Plan-phase flavour: guided, plain-language, plan-first. The body is shared
  * with the workspace variant.
  */
+import { Suspense } from "react";
 import IntegrationsBody from "@/components/mock/integrations/IntegrationsBody";
 
 export default function IntegrationsPage() {
@@ -19,7 +20,11 @@ export default function IntegrationsPage() {
           </p>
         </div>
       </header>
-      <IntegrationsBody />
+      {/* IntegrationsBody reads ?tool=&status=callback via useSearchParams
+          (the Composio OAuth return trip) — needs a Suspense boundary. */}
+      <Suspense fallback={null}>
+        <IntegrationsBody />
+      </Suspense>
     </main>
   );
 }
