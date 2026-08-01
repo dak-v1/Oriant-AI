@@ -121,6 +121,12 @@ export async function getRoleBHandoff(sessionId: string): Promise<RoleBHandoffRo
   return rows[0] ?? null;
 }
 
+/** Reverse lookup by the handoff's own id — getRoleBHandoff() above looks up by session_id instead. */
+export async function getRoleBHandoffById(id: string): Promise<RoleBHandoffRow | null> {
+  const rows = await pgGet<RoleBHandoffRow>(`role_b_handoffs?id=eq.${id}&select=*`);
+  return rows[0] ?? null;
+}
+
 /**
  * Latest APPROVED company report for a session. Same read pattern as
  * hydrateDiscoveryFromSupabase in lib/server/onboarding-supabase.ts (order

@@ -311,3 +311,24 @@ export interface WorkforcePlanRow {
   approved_at?: string | null;
   created_at: string;
 }
+
+// ── agent design-call spec ──────────────────────────────────────────────────
+
+/**
+ * Synthesized answer set from a custom agent's design call, stored under
+ * agent_configs.config.spec. Deliberately NOT imported from
+ * lib/contracts.ts's AgentSpecAnswers (even though the field names match
+ * what was asked for) — keeps this backend's config shape self-defined
+ * rather than coupled to the old orchestrator-adjacent type.
+ */
+export interface AgentSpec {
+  objective?: string;
+  trigger?: string;
+  inputs?: string;
+  rules?: string;
+  tools?: string;
+  forbidden?: string;
+  success?: string;
+  /** Answers from extra clarification-round questions that aren't one of the 7 known fields. */
+  notes?: Record<string, string>;
+}
