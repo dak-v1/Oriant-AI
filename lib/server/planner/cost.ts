@@ -162,7 +162,7 @@ export async function estimatePlanCost(workforcePlanId: string): Promise<PlanCos
   const plan = await workforcePlans.get(workforcePlanId);
   if (!plan) throw new PlannerError(404, "Workforce plan not found.");
 
-  const agents = await agentConfigs.listByPlan(workforcePlanId);
+  const agents = await agentConfigs.listActiveByPlan(workforcePlanId);
   const templates = await agentTemplates.list();
   const templateById = new Map(templates.map((t) => [t.id, t]));
 

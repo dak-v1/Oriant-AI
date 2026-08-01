@@ -15,6 +15,7 @@ export async function POST(
 
     const agent = await agentConfigs.get(agentConfigId);
     if (!agent) throw new PlannerError(404, "Agent config not found.");
+    if (agent.archived_at) throw new PlannerError(404, "This agent has been removed from the plan.");
 
     if (agent.status !== "needs_configuration") {
       if (agent.status === "needs_information") {

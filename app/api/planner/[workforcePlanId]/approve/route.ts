@@ -16,7 +16,7 @@ export async function POST(
     const plan = await workforcePlans.get(workforcePlanId);
     if (!plan) throw new PlannerError(404, "Workforce plan not found.");
 
-    const agents = await agentConfigs.listByPlan(workforcePlanId);
+    const agents = await agentConfigs.listActiveByPlan(workforcePlanId);
     if (agents.length === 0) throw new PlannerError(400, "Plan has no agents.");
 
     const blockers = agents.filter((a) => !READY_STATUSES.has(a.status));

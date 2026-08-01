@@ -35,13 +35,10 @@ export interface AgentTemplate {
 // ── agent_configs (extended) ────────────────────────────────────────────────
 
 /**
- * Full current+planned row shape for agent_configs. `agent_type`,
- * `template_id`, `status`, and `required_tools` are confirmed live columns
- * (checked via PostgREST introspection). `runtime_model` is NOT a real
- * column yet — it's stubbed here so downstream code can be written against
- * it now, but a migration
- *   ALTER TABLE agent_configs ADD COLUMN runtime_model text;
- * is required before it can actually be persisted or read from Supabase.
+ * Full row shape for agent_configs. All fields below are confirmed live
+ * columns (checked via PostgREST introspection, most recently while adding
+ * `archived_at`). `runtime_model` was added and backfilled in an earlier
+ * task — it's a real, populated column now, not a stub.
  */
 export interface AgentConfigExt {
   id: string;
@@ -53,8 +50,13 @@ export interface AgentConfigExt {
   template_id?: string;
   status: string;
   required_tools?: string[];
-  /** NOT YET a real column on agent_configs — see doc comment above. */
   runtime_model?: string;
+  /**
+   * Soft-delete marker. Agent removal is ALWAYS a soft delete (never a hard
+   * DELETE) — undo/redo and agent_design_sessions/turns depend on stable
+   * row ids. `null`/absent means active; set means removed from the plan.
+   */
+  archived_at?: string | null;
 }
 
 // ── integration_connections ─────────────────────────────────────────────────
@@ -106,11 +108,30 @@ export interface AgentDesignTurn {
 
 // ── plan_change_requests ─────────────────────────────────────────────────────
 
+/**
+ * One proposed mutation from the refinement chat. `configPatch` here is the
+ * final, already-parsed shape — see lib/server/planner/chat.ts for why the
+ * AI& wire format carries it as a JSON string instead (strict json_schema
+ * mode doesn't accommodate a genuinely free-form nested object).
+ */
+export interface DiffOp {
+  op: "add" | "remove" | "reconfigure";
+  agentKey: string;
+  templateKeyOrNull?: string | null;
+  configPatch?: Record<string, unknown>;
+  reasoning: string;
+}
+
+export interface DiffPreviewOp extends DiffOp {
+  /** Human-readable one-liner, e.g. "Remove agent \"x\"." */
+  summary: string;
+}
+
 export interface PlanChangeRequest {
   id: string;
   workforce_plan_id: string;
   instruction_text: string;
-  diff_preview?: Record<string, unknown>;
+  diff_preview?: { ops: DiffPreviewOp[] } | null;
   applied: boolean;
   created_at: string;
 }
@@ -311,6 +332,29 @@ export interface WorkforcePlanRow {
   plan: Record<string, unknown>;
   approved_by?: string | null;
   approved_at?: string | null;
+  created_at: string;
+  /**
+   * Undo/redo pointer — separate from `version` above (which is set once at
+   * creation and never changes for this plan's lifetime so far). Starts at
+   * 1; bumped by /chat/apply, moved by /undo and /redo.
+   */
+  current_version: number;
+}
+
+// ── workforce_plan_snapshots ─────────────────────────────────────────────────
+
+/**
+ * A point-in-time checkpoint for undo/redo. `agent_configs_snapshot` holds
+ * full AgentConfigExt rows (active agents only, at the moment of
+ * snapshotting) — reusing the structured type here since we control the
+ * jsonb contents, same reasoning as CompanyReportRow.report elsewhere.
+ */
+export interface WorkforcePlanSnapshotRow {
+  id: string;
+  workforce_plan_id: string;
+  version: number;
+  plan_snapshot: Record<string, unknown>;
+  agent_configs_snapshot: AgentConfigExt[];
   created_at: string;
 }
 

@@ -26,6 +26,7 @@ import type {
   RoleBHandoffRow,
   CompanyReportRow,
   WorkforcePlanRow,
+  WorkforcePlanSnapshotRow,
 } from "./types";
 
 function restConfig() {
@@ -95,6 +96,15 @@ async function pgDelete(table: string, id: string): Promise<void> {
   });
   if (!res.ok) {
     throw new Error(`Delete from ${table} failed (${res.status}): ${await res.text()}`);
+  }
+}
+
+/** Delete-by-filter, for cases where the condition isn't a single id (e.g. redo-stack truncation). */
+async function pgDeleteWhere(path: string): Promise<void> {
+  const { baseUrl, headers } = restConfig();
+  const res = await fetch(`${baseUrl}/${path}`, { method: "DELETE", headers });
+  if (!res.ok) {
+    throw new Error(`Delete ${path} failed (${res.status}): ${await res.text()}`);
   }
 }
 
@@ -194,8 +204,14 @@ export const agentTemplates = {
 export const agentConfigs = {
   get: (id: string) =>
     pgGet<AgentConfigExt>(`agent_configs?id=eq.${id}&select=*`).then((r) => r[0] ?? null),
+  /** ALL rows for a plan, including archived — needed by undo/redo restoration and /chat/apply's "un-archive on add" lookup. */
   listByPlan: (workforcePlanId: string) =>
     pgGet<AgentConfigExt>(`agent_configs?workforce_plan_id=eq.${workforcePlanId}&select=*`),
+  /** Active (non-archived) rows only — the "current agents for a plan" getter used by generate/configure/approve/cost-estimate/chat. */
+  listActiveByPlan: (workforcePlanId: string) =>
+    pgGet<AgentConfigExt>(
+      `agent_configs?workforce_plan_id=eq.${workforcePlanId}&archived_at=is.null&select=*`
+    ),
   create: (row: Partial<AgentConfigExt>) => pgInsert<AgentConfigExt>("agent_configs", row),
   update: (id: string, patch: Partial<AgentConfigExt>) =>
     pgUpdate<AgentConfigExt>("agent_configs", id, patch),
@@ -259,6 +275,18 @@ export const agentDesignTurns = {
   update: (id: string, patch: Partial<AgentDesignTurn>) =>
     pgUpdate<AgentDesignTurn>("agent_design_turns", id, patch),
   remove: (id: string) => pgDelete("agent_design_turns", id),
+};
+
+export const workforcePlanSnapshots = {
+  getByVersion: (workforcePlanId: string, version: number) =>
+    pgGet<WorkforcePlanSnapshotRow>(
+      `workforce_plan_snapshots?workforce_plan_id=eq.${workforcePlanId}&version=eq.${version}&select=*`
+    ).then((r) => r[0] ?? null),
+  create: (row: Partial<WorkforcePlanSnapshotRow>) =>
+    pgInsert<WorkforcePlanSnapshotRow>("workforce_plan_snapshots", row),
+  /** Redo-stack truncation: delete every snapshot past a given version, not a single row. */
+  deleteVersionsGreaterThan: (workforcePlanId: string, version: number) =>
+    pgDeleteWhere(`workforce_plan_snapshots?workforce_plan_id=eq.${workforcePlanId}&version=gt.${version}`),
 };
 
 export const planChangeRequests = {
