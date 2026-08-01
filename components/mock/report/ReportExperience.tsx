@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronDown, ChevronUp, FileCheck2, TriangleAlert } from "lucide-react";
 import type { OnboardingState, ReportSectionId } from "@/lib/mock/types";
+import type { CompanyReport } from "@/lib/contracts";
 import { useDemoStore } from "@/lib/mock/store";
 import { atLeast } from "@/lib/mock/state-machine";
 import { DEMO_COMPANY } from "@/lib/mock/fixtures/demo-company";
@@ -54,12 +55,13 @@ export default function ReportExperience() {
 
   const onboarding = useDemoStore((s) => s.onboarding);
   const discovery = useDemoStore((s) => s.discovery);
-  const sections = useMemo(() => buildDynamicReportSections(onboarding, discovery), [onboarding, discovery]);
+  const [sourceReport, setSourceReport] = useState<CompanyReport | null>(null);
+  const sections = useMemo(() => buildDynamicReportSections(onboarding, discovery, sourceReport), [onboarding, discovery, sourceReport]);
   const sectionById = useMemo(() => new Map(sections.map((s) => [s.id, s])), [sections]);
   const visibleSectionOrder = useMemo(() => sections.map((section) => section.id), [sections]);
   const reportFacts = useMemo(() => buildDynamicReportFacts(onboarding, discovery), [onboarding, discovery]);
   const reportFactsBySection = useMemo(() => factsBySection(reportFacts), [reportFacts]);
-  const handoffJson = useMemo(() => buildInternalHandoffJson(onboarding, discovery, report), [onboarding, discovery, report]);
+  const handoffJson = useMemo(() => buildInternalHandoffJson(onboarding, discovery, report, sourceReport), [onboarding, discovery, report, sourceReport]);
 
   const [activeId, setActiveId] = useState<ReportPaneSectionId>(sections[0]?.id ?? "company-overview");
   const [drawerFor, setDrawerFor] = useState<ReportSectionId | null>(null);
@@ -106,8 +108,20 @@ export default function ReportExperience() {
         }
       }
       if (discoveryRes.ok) {
-        const data = await discoveryRes.json() as { answers?: Record<string, string>; completedAt?: string | null };
-        syncDiscoveryFromServer({ answers: data.answers ?? {}, completed: Boolean(data.completedAt) });
+        const data = await discoveryRes.json() as {
+          answers?: Record<string, string>;
+          clarificationAnswers?: Record<string, string>;
+          clarificationQuestions?: Array<{ id: string; question: string }>;
+          report?: CompanyReport | null;
+          completedAt?: string | null;
+        };
+        setSourceReport(data.report ?? null);
+        syncDiscoveryFromServer({
+          answers: data.answers ?? {},
+          clarificationAnswers: data.clarificationAnswers ?? {},
+          clarificationQuestions: data.clarificationQuestions ?? [],
+          completed: Boolean(data.completedAt),
+        });
       }
     }).catch(() => {
       // The report can still render from the current in-memory snapshot.

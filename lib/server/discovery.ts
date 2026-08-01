@@ -82,6 +82,17 @@ function fixtureReport(db: Db): Omit<CompanyReport, "version" | "status" | "hist
   if (steps) base.facts.push({ k: "Workflow steps", v: steps });
   if (inputs) base.facts.push({ k: "Required inputs", v: inputs });
   if (outcome) base.facts.push({ k: "Desired outcome", v: outcome });
+  const knownAnswerIds = new Set([
+    "workflow_trigger",
+    "workflow_steps",
+    "workflow_data_inputs",
+    "human_decisions",
+    "workflow_success",
+  ]);
+  for (const [questionId, answer] of Object.entries(answers)) {
+    if (knownAnswerIds.has(questionId) || !answer.trim()) continue;
+    base.facts.push({ k: `Captured answer: ${questionId}`, v: answer });
+  }
   return base;
 }
 

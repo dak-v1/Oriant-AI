@@ -221,6 +221,8 @@ export interface DiscoveryState {
   currentIndex: number;
   /** questionId → confirmed answer text (possibly owner-edited). */
   answers: Record<string, string>;
+  clarificationAnswers?: Record<string, string>;
+  clarificationQuestions?: Array<{ id: string; question: string }>;
   /** ids of facts added so far (accumulates via confirmations + uploads). */
   factIds: string[];
   /** Simulated SOP upload done (adds bonus facts). */

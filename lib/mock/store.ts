@@ -145,6 +145,8 @@ function initialState(): DemoState {
       mode: "voice",
       currentIndex: 0,
       answers: {},
+      clarificationAnswers: {},
+      clarificationQuestions: [],
       factIds: [],
       uploadedMore: false,
       invitedEmployee: false,

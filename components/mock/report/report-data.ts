@@ -10,6 +10,7 @@ import type {
   ReportSectionId,
 } from "@/lib/mock/types";
 import { DEMO_COMPANY } from "@/lib/mock/fixtures/demo-company";
+import type { CompanyReport } from "@/lib/contracts";
 
 function safeText(value: string | null | undefined, fallback: string) {
   const trimmed = value?.trim();
@@ -32,7 +33,8 @@ function detectSource(hasValue: boolean, preferred: FactSource = "owner"): FactS
 }
 
 function firstAnswer(discovery: DiscoveryState, patterns: string[]) {
-  const entry = Object.entries(discovery.answers).find(([id]) => patterns.some((pattern) => id.includes(pattern)));
+  const answers = { ...discovery.answers, ...(discovery.clarificationAnswers ?? {}) };
+  const entry = Object.entries(answers).find(([id]) => patterns.some((pattern) => id.includes(pattern)));
   return entry?.[1]?.trim() ?? "";
 }
 
@@ -107,6 +109,7 @@ export function buildInternalHandoffJson(
   onboarding: OnboardingState,
   discovery: DiscoveryState,
   report: CompanyReportState,
+  sourceReport?: CompanyReport | null,
 ) {
   const triggerAnswer = firstAnswer(discovery, ["trigger"]);
   const stepsAnswer = firstAnswer(discovery, ["steps"]);
@@ -139,7 +142,7 @@ export function buildInternalHandoffJson(
 
   return {
     handoff_type: "discovery_findings",
-    generated_at: "2026-07-30",
+    generated_at: new Date().toISOString(),
     raw_inputs: {
       company_name: DEMO_COMPANY.name,
       onboarding: {
@@ -148,6 +151,9 @@ export function buildInternalHandoffJson(
         employee_count: onboarding.employeeCount || null,
         workflow_builder: onboarding.workflowBuilder,
         builder_access: onboarding.builderAccess,
+        approval_preference: onboarding.approvalPreference,
+        onboarding_ownership: onboarding.onboardingOwnership,
+        automation_mode: onboarding.mode,
         automation_scope: onboarding.automationScope,
         business_area: onboarding.businessArea || null,
         repetitive_task: onboarding.repetitiveTask || null,
@@ -155,18 +161,22 @@ export function buildInternalHandoffJson(
         selected_tools: onboarding.selectedToolIds,
         custom_tools: onboarding.customTools,
         employee_emails: onboarding.employeeEmails,
+        department_approvals: onboarding.departmentApprovals,
         ...(includeApprovalOwner ? { approval_owner: approvalOwnerValue } : {}),
       },
       interview: {
         answered_count: Object.keys(discovery.answers).length,
         completed: discovery.completed,
         answers: discovery.answers,
+        clarification_answers: discovery.clarificationAnswers ?? {},
+        clarification_questions: discovery.clarificationQuestions ?? [],
         fact_ids: discovery.factIds,
       },
       report_meta: {
         version: report.version,
         status: report.status,
         stale: report.stale,
+        server_report: sourceReport ?? null,
       },
     },
     structured_findings: {
@@ -216,6 +226,7 @@ export function buildInternalHandoffJson(
 export function buildDynamicReportSections(
   onboarding: OnboardingState,
   discovery: DiscoveryState,
+  sourceReport?: CompanyReport | null,
 ): ReportSectionDef[] {
   const intro = safeText(onboarding.intro, `${DEMO_COMPANY.name} is still gathering its business summary.`);
   const employeeCount = safeText(onboarding.employeeCount, "team size not yet specified");
@@ -233,6 +244,8 @@ export function buildDynamicReportSections(
   const inputsAnswer = firstAnswer(discovery, ["input", "document", "data_inputs"]);
   const decisionsAnswer = firstAnswer(discovery, ["decision", "human"]);
   const successAnswer = firstAnswer(discovery, ["success", "outcome"]);
+  const process = sourceReport?.processes[0];
+  const reportPain = sourceReport?.pain[0];
 
   const missingItems = [
     !onboarding.businessArea.trim() ? "A confirmed business area has not been captured yet." : "",
@@ -299,8 +312,8 @@ export function buildDynamicReportSections(
       id: "current-processes",
       title: "Current processes",
       body: [
-        workflow,
-        stepsAnswer || "The interview has not yet captured a full start-to-finish workflow answer, so Oriant is still relying on the onboarding description above.",
+        safeText(process?.name, workflow),
+        safeText(stepsAnswer, process?.trigger ? `The workflow is triggered by: ${process.trigger}` : "The interview has not yet captured a full start-to-finish workflow answer."),
       ],
       bullets: listOrFallback(
         [triggerAnswer, handoffAnswer, inputsAnswer].filter(Boolean),
@@ -348,7 +361,7 @@ export function buildDynamicReportSections(
       id: "bottlenecks",
       title: "Bottlenecks",
       body: [
-        `The main pressure point currently appears to be ${area.toLowerCase()}, especially around ${task.toLowerCase()}.`,
+        reportPain?.detail || `The main pressure point currently appears to be ${area.toLowerCase()}, especially around ${task.toLowerCase()}.`,
       ],
       bullets: listOrFallback(
         [triggerAnswer, handoffAnswer, stepsAnswer].filter(Boolean),
@@ -368,11 +381,13 @@ export function buildDynamicReportSections(
       id: "existing-systems",
       title: "Existing systems",
       body: [
-        tools.length
+        sourceReport?.systems.length
+          ? `${DEMO_COMPANY.name} currently expects this workflow to involve ${sourceReport.systems.map((system) => system.name).join(", ")}. Oriant should design around these systems rather than assuming a replacement project.`
+          : tools.length
           ? `${DEMO_COMPANY.name} currently expects this workflow to involve ${toolList}. Oriant should design around these systems rather than assuming a replacement project.`
           : "No workflow tools have been confirmed yet, so system recommendations are still provisional.",
       ],
-      bullets: listOrFallback(tools.map((tool) => tool), ["No tools selected yet."]),
+      bullets: listOrFallback(sourceReport?.systems.map((system) => `${system.name}: ${system.use}`) ?? tools, ["No tools selected yet."]),
       evidence: [
         {
           source: "Onboarding tool selection",
@@ -410,7 +425,7 @@ export function buildDynamicReportSections(
       id: "approval-restrictions",
       title: "Approval restrictions",
       body: [
-        decisionsAnswer || "The interview has not yet fully captured which decisions must always stay with a person.",
+        sourceReport?.constraints.join(" ") || decisionsAnswer || "The interview has not yet fully captured which decisions must always stay with a person.",
       ],
       bullets: listOrFallback(
         [
