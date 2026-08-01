@@ -45,20 +45,20 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  margin-top: 42px;
+  margin-top: 34px;
 }
 
 .option {
-  min-height: 270px;
+  min-height: 0;
   display: flex;
   align-items: flex-start;
-  gap: 18px;
-  padding: 24px;
+  gap: 15px;
+  padding: 20px;
   text-align: left;
   color: #152038;
   background: rgba(255, 255, 253, .76);
   border: 1px solid #d8dfdc;
-  border-radius: 22px;
+  border-radius: 18px;
   cursor: pointer;
   transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
 }
@@ -85,10 +85,10 @@
   border-radius: 13px;
 }
 
-.optionBody { display: grid; gap: 11px; }
-.optionBody strong { font-size: 21px; line-height: 1.15; letter-spacing: -.025em; }
-.optionBody > span:not(.optionMeta) { color: #68758e; font-size: 15px; line-height: 1.5; }
-.optionMeta { display: flex; align-items: center; gap: 7px; margin-top: 7px; color: #263d8f; font-size: 13px; font-weight: 750; }
+.optionBody { display: grid; gap: 8px; min-width: 0; }
+.optionBody strong { font-size: 19px; line-height: 1.18; letter-spacing: -.025em; }
+.optionBody > span:not(.optionMeta) { color: #68758e; font-size: 14px; line-height: 1.45; }
+.optionMeta { display: flex; align-items: center; gap: 7px; margin-top: 5px; color: #263d8f; font-size: 12px; font-weight: 750; }
 .optionMeta svg:last-child { margin-left: auto; }
 
 @media (max-width: 700px) {
