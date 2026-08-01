@@ -25,6 +25,7 @@ import type {
   OnboardingSessionRow,
   RoleBHandoffRow,
   CompanyReportRow,
+  WorkforcePlanRow,
 } from "./types";
 
 function restConfig() {
@@ -158,6 +159,19 @@ export function getCanonicalToolIds(payload: unknown): string[] {
 
   return [];
 }
+
+export const workforcePlans = {
+  get: (id: string) =>
+    pgGet<WorkforcePlanRow>(`workforce_plans?id=eq.${id}&select=*`).then((r) => r[0] ?? null),
+  listByHandoff: (roleBHandoffId: string) =>
+    pgGet<WorkforcePlanRow>(
+      `workforce_plans?role_b_handoff_id=eq.${roleBHandoffId}&select=*&order=version.desc`
+    ),
+  create: (row: Partial<WorkforcePlanRow>) => pgInsert<WorkforcePlanRow>("workforce_plans", row),
+  update: (id: string, patch: Partial<WorkforcePlanRow>) =>
+    pgUpdate<WorkforcePlanRow>("workforce_plans", id, patch),
+  remove: (id: string) => pgDelete("workforce_plans", id),
+};
 
 // ── basic CRUD stubs for the 6 new tables ───────────────────────────────────
 

@@ -12,8 +12,8 @@
 ## Steps
 - [x] Step 0: Seed test org/session/handoff/report (scripts/seed-test-org.ts)
 - [x] Step 1: Schema & Types
-- [ ] Step 2: Seed Agent Templates
-- [ ] Step 3: Core Planner Lifecycle
+- [x] Step 2: Seed Agent Templates
+- [x] Step 3: Core Planner Lifecycle
 - [ ] Step 4: Custom Agent Design-Call Flow
 - [ ] Step 5: Workflow Refinement Chat
 - [ ] Step 6: Cost Estimator

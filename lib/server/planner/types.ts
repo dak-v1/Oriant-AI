@@ -291,3 +291,23 @@ export interface CompanyReportRow {
   created_at: string;
   updated_at: string;
 }
+
+// ── workforce_plans ──────────────────────────────────────────────────────────
+
+/**
+ * DB row for workforce_plans. Confirmed live via PostgREST introspection —
+ * note organization_id and role_b_handoff_id have NO foreign key constraints
+ * (checked separately; see the FK audit elsewhere in this plan file), so
+ * nothing here enforces referential integrity beyond application code.
+ */
+export interface WorkforcePlanRow {
+  id: string;
+  role_b_handoff_id: string;
+  organization_id: string;
+  version: number;
+  status: string;
+  plan: Record<string, unknown>;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  created_at: string;
+}
