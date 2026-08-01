@@ -466,7 +466,7 @@ export default function DiscoveryWorkspace() {
                       </p>
                     </div>
                     <div className={styles.reviewBannerActions}>
-                      <button type="button" className="oa-btn oa-btn--primary" onClick={() => void compileReport()} disabled={!clarificationsComplete}>
+                      <button type="button" className="oa-btn oa-btn--primary" onClick={() => setCompiling(true)} disabled={!clarificationsComplete}>
                         {clarificationsComplete ? "Compile company report" : "Answer clarification questions"}
                         <ArrowRight size={15} aria-hidden />
                       </button>
