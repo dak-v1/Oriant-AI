@@ -18,10 +18,14 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
     preferredChannel?: "typed" | "voice";
+    startCall?: boolean;
   };
   return mutate(async (db) => {
     await hydrateOnboardingFromSupabase(db);
-    updateOnboardingSession(db, { preferredChannel: body.preferredChannel ?? "typed" });
+    updateOnboardingSession(db, {
+      preferredChannel: body.preferredChannel ?? "typed",
+      startCall: body.startCall,
+    });
     await mirrorOnboardingToSupabase(db);
   });
 }
@@ -47,6 +51,7 @@ export async function PATCH(req: NextRequest) {
     departmentApprovals?: DepartmentApproval[];
     selectedToolIds?: string[];
     consentAccepted?: boolean;
+    startCall?: boolean;
   };
   return mutate(async (db) => {
     await hydrateOnboardingFromSupabase(db);

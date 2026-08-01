@@ -1,0 +1,65 @@
+.page { min-height: calc(100vh - 110px); padding: 40px clamp(18px, 4vw, 58px) 70px; background: linear-gradient(135deg, #f6f8f5, #fbfbf8 58%, #eef2fb); }
+.callLayout { width: min(1180px, 100%); margin: 0 auto; }
+.callWorkspace { display: grid; gap: 22px; }
+.callHeader { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.callColumns { display: grid; grid-template-columns: minmax(260px, .85fr) minmax(0, 1.15fr); gap: 24px; align-items: start; }
+.callRail { display: grid; align-content: start; gap: 48px; padding-top: 8px; }
+.railBrand { display: flex; align-items: center; gap: 10px; color: #17233d; font-weight: 800; letter-spacing: -.02em; }
+.railMark { width: 33px; height: 33px; display: grid; place-items: center; color: white; background: #223778; border-radius: 11px; }
+.railIntro { display: grid; gap: 12px; max-width: 245px; }
+.eyebrow { margin: 0; color: #66789f; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.railIntro h2 { margin: 0; color: #111b30; font-size: 25px; line-height: 1.08; letter-spacing: -.04em; }
+.railIntro p:last-child { margin: 0; color: #78849b; font-size: 14px; line-height: 1.55; }
+.stageList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 5px; background: rgba(238,243,239,.78); border: 1px solid #d9e0da; border-radius: 16px; }
+.stageItem { display: flex; align-items: center; gap: 10px; color: #9aa4b6; font-size: 13px; }
+.stageItem span { width: 25px; height: 25px; display: grid; place-items: center; border: 1px solid #ccd3d8; border-radius: 50%; }
+.stageActive { color: #233a89; font-weight: 750; }.stageActive span { color: #3d5bd1; border-color: #8ca0e4; background: #e9edff; }
+.stageItem { padding: 10px 12px; border-radius: 11px; }
+.stageActive { background: white; box-shadow: 0 5px 16px rgba(38,55,97,.07); }
+.callMain { max-width: none; min-width: 0; }
+.callTop, .capturedHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.callTopActions { display: inline-flex; align-items: center; gap: 14px; }
+.endCall { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; color: #a83445; background: #fff4f5; border: 1px solid #e4aeb8; border-radius: 999px; font-size: 12px; font-weight: 750; cursor: pointer; }
+.endCall:hover:not(:disabled) { background: #fff4f5; }
+.endCall:disabled { cursor: wait; opacity: .55; }
+.progress { color: #66748d; font-size: 12px; font-weight: 750; }
+.transcriptPanel { min-height: 560px; display: flex; flex-direction: column; padding: 27px; background: rgba(22,34,64,.96); border: 1px solid #263c74; border-radius: 24px; box-shadow: 0 18px 45px rgba(38,55,97,.13); }
+.transcriptPanel h2 { margin: 10px 0 7px; color: white; font-size: 31px; letter-spacing: -.04em; }
+.transcriptPanel .eyebrow { color: #aebcf1; }
+.transcriptHint { margin: 0; color: #a7b4d1; font-size: 14px; line-height: 1.5; }
+.transcriptStream { flex: 1; display: grid; align-content: end; gap: 16px; min-height: 330px; margin: 22px 0; padding: 18px; background: rgba(8,17,40,.42); border: 1px solid rgba(171,190,242,.18); border-radius: 16px; overflow: auto; }
+.transcriptEmpty { align-self: center; margin: 0; color: #8f9dbd; font-size: 14px; line-height: 1.5; text-align: center; }
+.transcriptTurn { display: grid; gap: 5px; }
+.transcriptLabel { color: #8fa9ff; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.transcriptTurn p { margin: 0; color: #f6f8ff; font-size: 15px; line-height: 1.55; }
+.transcriptInterim { color: #b8c2dc !important; }
+.transcriptStatus { display: flex; align-items: center; gap: 8px; color: #c4cee4; font-size: 12px; }
+.statusDot { width: 8px; height: 8px; border-radius: 50%; background: #62d6b1; box-shadow: 0 0 0 5px rgba(98,214,177,.12); }
+.questionPanel { position: relative; margin-top: 18px; padding: 34px; background: rgba(255,255,253,.86); border: 1px solid #d7dedb; border-radius: 26px; box-shadow: 0 18px 45px rgba(38,55,97,.08); }
+.questionNumber { position: absolute; top: 31px; right: 33px; width: 31px; height: 31px; display: grid; place-items: center; color: #3e58be; background: #e8edff; border-radius: 50%; font-weight: 800; }
+.sectionLabel { margin: 0 0 14px; color: #66805f; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.questionPanel h1 { max-width: 550px; margin: 0; color: #111b30; font-size: clamp(28px, 4vw, 43px); line-height: 1.05; letter-spacing: -.045em; }
+.helper { max-width: 560px; margin: 15px 0 25px; color: #748198; font-size: 16px; line-height: 1.5; }
+.questionPanel :global(.oa-btn--primary) { background: #1d2b55; }.error { margin: 12px 0 0; color: #a33f49; font-size: 13px; }
+.capturedPanel { display: grid; gap: 12px; margin-top: 18px; padding: 20px 22px; background: rgba(238,243,239,.74); border: 1px solid #d9e0da; border-radius: 18px; }
+.capturedHeader { color: #55657d; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }.capturedHeader span:last-child { color: #3553c7; }
+.empty { margin: 0; color: #7e899b; font-size: 14px; }.capturedRow { display: flex; align-items: flex-start; gap: 10px; color: #63728a; font-size: 13px; line-height: 1.45; }.capturedRow > svg { flex: none; margin-top: 3px; color: #2a9b87; }.capturedRow span { display: grid; gap: 2px; }.capturedRow strong { color: #17233d; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.cardRow { display: flex; align-items: flex-start; gap: 10px; padding: 10px 11px; color: #63728a; border: 1px solid transparent; border-radius: 13px; font-size: 13px; line-height: 1.4; }
+.cardRowActive { color: #263d8f; background: #f4f6ff; border-color: #cbd5f5; }
+.cardStatus { flex: none; width: 22px; height: 22px; display: grid; place-items: center; color: #6f7d91; background: #edf0ec; border-radius: 8px; }
+.cardRowActive .cardStatus { color: #385bd0; background: #e4eaff; }
+.cardRow > span:last-child { display: grid; gap: 3px; }
+.cardRow strong { color: #17233d; font-size: 13px; font-weight: 750; }
+.cardRow em { color: #77849a; font-size: 12px; font-style: normal; }
+.footerNote { display: flex; align-items: center; gap: 7px; margin: 18px 0 0; color: #7d889b; font-size: 12px; }.footerNote svg { color: #405bd0; }
+.preCallCard { width: min(660px, 100%); margin: 7vh auto 0; padding: 48px; text-align: center; background: rgba(255,255,253,.92); border: 1px solid #d7dedb; border-radius: 28px; box-shadow: 0 20px 60px rgba(38,55,97,.1); }
+.preCallCard h1 { margin: 12px 0; color: #111b30; font-size: 43px; line-height: 1; letter-spacing: -.05em; }
+.preCallCard > p:not(.eyebrow):not(.preCallNote) { max-width: 500px; margin: 0 auto; color: #748198; line-height: 1.6; }
+.preCallDetails { display: grid; gap: 10px; margin: 26px auto; max-width: 340px; color: #53637d; text-align: left; font-size: 13px; }
+.preCallDetails span { display: flex; align-items: center; gap: 9px; }
+.preCallDetails svg { color: #3f5fd0; }
+.preCallCard .primaryAction { border: 0; cursor: pointer; }
+.preCallNote { margin: 16px 0 0; color: #8a95a6; font-size: 12px; }
+.completeCard { width: min(620px, 100%); margin: 7vh auto 0; padding: 48px; text-align: center; background: rgba(255,255,253,.9); border: 1px solid #d7dedb; border-radius: 28px; box-shadow: 0 20px 60px rgba(38,55,97,.1); }.completeIcon { width: 52px; height: 52px; display: grid; place-items: center; margin: 0 auto 22px; color: #167f73; background: #dff3eb; border-radius: 17px; }.completeCard h1 { margin: 12px 0; color: #111b30; font-size: 39px; line-height: 1; letter-spacing: -.05em; }.completeCard p:not(.eyebrow) { color: #748198; line-height: 1.6; }.primaryAction { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; padding: 13px 17px; color: white; background: #1d2b55; border-radius: 12px; font-weight: 750; text-decoration: none; }
+@media (max-width: 860px) { .callColumns { grid-template-columns: 1fr; }.transcriptPanel { min-height: 360px; }.transcriptStream { min-height: 190px; } }
+@media (max-width: 760px) { .callLayout { width: 100%; }.callHeader { align-items: flex-start; }.stageList { grid-template-columns: 1fr; }.stageItem { font-size: 11px; line-height: 1.3; }.questionPanel { padding: 24px; }.questionNumber { top: 22px; right: 22px; } }

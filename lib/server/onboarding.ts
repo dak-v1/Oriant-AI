@@ -347,6 +347,7 @@ export function updateOnboardingSession(
   db: Db,
   patch: {
     preferredChannel?: OnboardingChannel;
+    startCall?: boolean;
     currentStep?: OnboardingSession["currentStep"];
     mode?: string;
     intro?: string;
@@ -451,8 +452,29 @@ export function updateOnboardingSession(
 
   session.progress = progressPercent(session, db.onboarding.questions);
   session.status = answeredRequired(session, db.onboarding.questions) ? "review_pending" : "in_progress";
+  if (patch.startCall) {
+    session.preferredChannel = "voice";
+    session.status = "voice_in_progress";
+    session.currentStep = "intro";
+    session.completedAt = undefined;
+  }
   session.updatedAt = now;
   logSystem(db, "onboarding", "session_updated", "completed", undefined, session.id);
+  return session;
+}
+
+/** Finish the one-call experience and make the saved answers reviewable. */
+export function completeVoiceCall(db: Db) {
+  const session = ensureOnboardingSession(db, "voice");
+  const completedAt = nowIso();
+  session.preferredChannel = "voice";
+  session.status = "review_pending";
+  session.currentStep = "review";
+  session.completedAt = completedAt;
+  session.updatedAt = completedAt;
+  db.call.completedAt = completedAt;
+  audit(db, "voice.call_completed", session.id);
+  logSystem(db, "voice", "call_completed", "completed", undefined, session.id);
   return session;
 }
 

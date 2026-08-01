@@ -112,6 +112,7 @@ function initialState(): DemoState {
     journey: "not_started",
     onboarding: {
       channel: "typed",
+      callInProgress: false,
       backendSessionId: null,
       mode: null,
       usedDemoCompany: false,
@@ -205,6 +206,7 @@ let activitySeq = 100;
 function normalizeOnboardingArrays(payload: Partial<OnboardingState>): Partial<OnboardingState> {
   return {
     ...payload,
+    ...(payload.callInProgress !== undefined ? { callInProgress: Boolean(payload.callInProgress) } : {}),
     ...(payload.intro !== undefined
       ? { intro: typeof payload.intro === "string" ? payload.intro : "" }
       : {}),
@@ -271,6 +273,7 @@ export interface DemoActions {
   setBackendSession: (sessionId: string) => void;
   setOnboardingSync: (status: OnboardingState["syncStatus"], error?: string | null) => void;
   setChannel: (channel: OnboardingChannel) => void;
+  setCallInProgress: (inProgress: boolean) => void;
   setMode: (m: AutomationMode) => void;
   setIntro: (text: string) => void;
   setOrganizationShape: (shape: OrganizationShape) => void;
@@ -404,6 +407,7 @@ export const useDemoStore = create<DemoStore>()((set, get) => ({
         if (done("onboarding")) {
           s.onboarding = {
             channel: "voice",
+            callInProgress: false,
             backendSessionId: null,
             mode: "assist",
             usedDemoCompany: true,
@@ -554,6 +558,8 @@ export const useDemoStore = create<DemoStore>()((set, get) => ({
         set((st) => ({ onboarding: { ...st.onboarding, syncStatus, syncError } })),
       setChannel: (channel) =>
         set((st) => ({ onboarding: { ...st.onboarding, channel } })),
+      setCallInProgress: (callInProgress) =>
+        set((st) => ({ onboarding: { ...st.onboarding, callInProgress } })),
       setMode: (mode) =>
         set((st) => ({ onboarding: { ...st.onboarding, mode } })),
       setIntro: (intro) =>

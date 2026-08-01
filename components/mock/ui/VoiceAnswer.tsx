@@ -24,6 +24,7 @@ export default function VoiceAnswer({
   initialText = "",
   onConfirm,
   onVoiceConfirm,
+  onLiveTextChange,
   confirmLabel = "Confirm answer",
   placeholder = "Or type your answer instead…",
   autoFocusMic = false,
@@ -35,6 +36,8 @@ export default function VoiceAnswer({
   initialText?: string;
   onConfirm: (finalText: string) => void;
   onVoiceConfirm?: (finalText: string) => void | Promise<void>;
+  /** Receives interim speech text while the browser recognizer is listening. */
+  onLiveTextChange?: (text: string) => void;
   confirmLabel?: string;
   placeholder?: string;
   autoFocusMic?: boolean;
@@ -86,8 +89,9 @@ export default function VoiceAnswer({
   useEffect(() => {
     if ((stage === "listening" || stage === "revealing") && transcript !== text) {
       setText(transcript);
+      onLiveTextChange?.(transcript);
     }
-  }, [stage, text, transcript]);
+  }, [onLiveTextChange, stage, text, transcript]);
 
   useEffect(() => {
     if (!listening && !processing && (stage === "listening" || stage === "revealing")) {

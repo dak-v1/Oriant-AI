@@ -36,6 +36,8 @@ export function saveVoicePref(on: boolean): void {
 }
 
 let cachedVoice: SpeechSynthesisVoice | null = null;
+let activeAudio: HTMLAudioElement | null = null;
+let activeAudioUrl: string | null = null;
 
 function pickVoice(): SpeechSynthesisVoice | null {
   if (!speechSupported()) return null;
@@ -64,8 +66,43 @@ export function primeVoices(): void {
 }
 
 export function cancelSpeech(): void {
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio.currentTime = 0;
+    activeAudio = null;
+  }
+  if (activeAudioUrl) {
+    URL.revokeObjectURL(activeAudioUrl);
+    activeAudioUrl = null;
+  }
   if (!speechSupported()) return;
   try { window.speechSynthesis.cancel(); } catch { /* nothing to cancel */ }
+}
+
+/** Prefer ElevenLabs when configured, with browser speech as a safe fallback. */
+export async function speakAgent(text: string, onEnd?: () => void): Promise<void> {
+  if (!text.trim()) return;
+  cancelSpeech();
+  try {
+    const response = await fetch("/api/voice/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!response.ok) throw new Error("ElevenLabs unavailable");
+    const blob = await response.blob();
+    activeAudioUrl = URL.createObjectURL(blob);
+    activeAudio = new Audio(activeAudioUrl);
+    activeAudio.onended = () => {
+      if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
+      activeAudio = null;
+      activeAudioUrl = null;
+      onEnd?.();
+    };
+    await activeAudio.play();
+  } catch {
+    speak(text, onEnd);
+  }
 }
 
 /**
