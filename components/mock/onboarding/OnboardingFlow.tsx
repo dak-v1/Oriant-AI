@@ -307,8 +307,9 @@ export default function OnboardingFlow() {
   const onUseDemo = () => {
     applyDemoCompany();
     setMode("assist");
-    setWorkflowBuilder("invite");
-    setBuilderAccess("account_manager");
+    setOrganizationShape("solo");
+    setWorkflowBuilder("self");
+    setBuilderAccess("workflows_only");
     setAutomationScope("focus_area");
     setBusinessArea("Operations");
     setRepetitiveTask("Rescheduling customer appointments over the phone");
@@ -320,14 +321,14 @@ export default function OnboardingFlow() {
     setMaxVisited(3);
     void persistPatch({
       mode: "assist",
-      workflowBuilder: "invite",
-      builderAccess: "account_manager",
+      workflowBuilder: "self",
+      builderAccess: "workflows_only",
       automationScope: "focus_area",
       businessArea: "Operations",
       repetitiveTask: "Rescheduling customer appointments over the phone",
       currentWorkflow: "Messages come in through Gmail and WhatsApp, the coordinator checks the calendar manually, then calls customers one by one to shift appointments and update the spreadsheet.",
       intro: "We run BrightPath Home Services in Singapore, eighteen of us doing residential maintenance, around 650 customer requests a month. Too much of our day goes into sorting Gmail and WhatsApp messages by hand and rescheduling appointments over the phone. Marketing keeps waiting on me, and every Friday the finance team combs through overdue invoices manually.",
-      organizationShape: "owner_with_team",
+      organizationShape: "solo",
       employeeCount: 18,
       approvalOwner: "Sarah Tan",
       employeeEmails: ["marcus@brightpath.sg", "sarah@brightpath.sg", "jolene@brightpath.sg"],

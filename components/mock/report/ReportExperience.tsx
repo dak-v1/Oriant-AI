@@ -18,7 +18,6 @@ import type { OnboardingState, ReportSectionId } from "@/lib/mock/types";
 import type { CompanyReport } from "@/lib/contracts";
 import { useDemoStore } from "@/lib/mock/store";
 import { atLeast } from "@/lib/mock/state-machine";
-import { DEMO_COMPANY } from "@/lib/mock/fixtures/demo-company";
 import { DEMO_TODAY } from "@/lib/mock/fixtures/ids";
 import { DUR, EASE } from "@/lib/mock/motion";
 import Drawer from "@/components/mock/ui/Drawer";
@@ -32,7 +31,6 @@ import { effectiveFactStatus } from "./ReportFactList";
 import {
   buildDynamicReportFacts,
   buildDynamicReportSections,
-  buildInternalHandoffJson,
   factsBySection,
 } from "./report-data";
 import { formatDemoDate, formatDemoDateTime } from "./report-utils";
@@ -55,13 +53,15 @@ export default function ReportExperience() {
 
   const onboarding = useDemoStore((s) => s.onboarding);
   const discovery = useDemoStore((s) => s.discovery);
+  const [organizationName, setOrganizationName] = useState("Organization");
   const [sourceReport, setSourceReport] = useState<CompanyReport | null>(null);
   const sections = useMemo(() => buildDynamicReportSections(onboarding, discovery, sourceReport), [onboarding, discovery, sourceReport]);
   const sectionById = useMemo(() => new Map(sections.map((s) => [s.id, s])), [sections]);
   const visibleSectionOrder = useMemo(() => sections.map((section) => section.id), [sections]);
   const reportFacts = useMemo(() => buildDynamicReportFacts(onboarding, discovery), [onboarding, discovery]);
   const reportFactsBySection = useMemo(() => factsBySection(reportFacts), [reportFacts]);
-  const handoffJson = useMemo(() => buildInternalHandoffJson(onboarding, discovery, report, sourceReport), [onboarding, discovery, report, sourceReport]);
+  const [handoffJson, setHandoffJson] = useState<Record<string, unknown> | null>(null);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
 
   const [activeId, setActiveId] = useState<ReportPaneSectionId>(sections[0]?.id ?? "company-overview");
   const [drawerFor, setDrawerFor] = useState<ReportSectionId | null>(null);
@@ -76,10 +76,12 @@ export default function ReportExperience() {
     void Promise.all([
       fetch("/api/onboarding/session", { cache: "no-store" }),
       fetch("/api/discovery/session", { cache: "no-store" }),
-    ]).then(async ([onboardingRes, discoveryRes]) => {
+      fetch("/api/report/handoff", { cache: "no-store" }),
+    ]).then(async ([onboardingRes, discoveryRes, handoffRes]) => {
       if (cancelled) return;
       if (onboardingRes.ok) {
         const data = await onboardingRes.json() as {
+          organizationName?: string;
           session?: {
             preferredChannel?: "typed" | "voice";
             organization?: { shape?: OnboardingState["organizationShape"]; employeeCount?: number; approvalOwner?: string; employeeEmails?: string[] };
@@ -87,7 +89,8 @@ export default function ReportExperience() {
             consentAccepted?: boolean;
             answers?: Record<string, { value: unknown }>;
           };
-        };
+          };
+        setOrganizationName(data.organizationName ?? "Organization");
         const session = data.session;
         if (session) {
           const answers = session.answers ?? {};
@@ -123,8 +126,15 @@ export default function ReportExperience() {
           completed: Boolean(data.completedAt),
         });
       }
+      if (handoffRes.ok) {
+        setHandoffJson(await handoffRes.json() as Record<string, unknown>);
+        setHandoffError(null);
+      } else {
+        const error = await handoffRes.json().catch(() => ({})) as { error?: string };
+        setHandoffError(error.error ?? "The internal handoff could not be loaded.");
+      }
     }).catch(() => {
-      // The report can still render from the current in-memory snapshot.
+      setHandoffError("The Supabase-backed internal handoff could not be loaded.");
     });
     return () => { cancelled = true; };
   }, [syncDiscoveryFromServer, syncOnboardingFromServer]);
@@ -312,7 +322,7 @@ export default function ReportExperience() {
           >
             {/* Document header */}
             <header className={styles.docHead}>
-              <p className="oa-eyebrow">{DEMO_COMPANY.name}</p>
+              <p className="oa-eyebrow">{organizationName}</p>
               <div className={styles.docHeadTop}>
                 <h2 className={styles.docTitle}>
                   Company <span className="oa-serif">Understanding</span> Report
@@ -410,7 +420,11 @@ export default function ReportExperience() {
                       </p>
                       <details className={styles.handoffBox}>
                         <summary className={styles.handoffToggle}>Open internal handoff JSON</summary>
-                        <pre className={styles.handoffPre}>{JSON.stringify(handoffJson, null, 2)}</pre>
+                        {handoffError ? (
+                          <p role="alert">{handoffError}</p>
+                        ) : (
+                          <pre className={styles.handoffPre}>{handoffJson ? JSON.stringify(handoffJson, null, 2) : "Loading the Supabase-backed handoff..."}</pre>
+                        )}
                       </details>
                     </div>
                   </motion.div>

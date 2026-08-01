@@ -90,7 +90,7 @@ async function resolveSessionRecord(db: Db): Promise<{ orgId: string; sessionId:
 
   const org = await supabase
     .from("organizations")
-    .select("id")
+    .select("id, name")
     .eq("external_key", orgExternalKey(db))
     .maybeSingle();
   if (org.error || !org.data?.id) return null;
@@ -350,10 +350,14 @@ export async function hydrateOnboardingFromSupabase(db: Db): Promise<"live" | "f
 
   const org = await supabase
     .from("organizations")
-    .select("id")
+    .select("id, name")
     .eq("external_key", orgExternalKey(db))
     .maybeSingle();
   if (org.error || !org.data?.id) return "fixture";
+
+  // Keep the server snapshot's organization identity aligned with Supabase.
+  db.org.name = org.data.name as string;
+  db.org.initials = db.org.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 
   const sessionRow = await supabase
     .from("onboarding_sessions")

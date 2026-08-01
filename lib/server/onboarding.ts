@@ -340,7 +340,7 @@ export function ensureOnboardingSession(db: Db, preferredChannel: OnboardingChan
 
 export function getOnboardingState(db: Db) {
   const session = ensureOnboardingSession(db);
-  return { session, questions: db.onboarding.questions };
+  return { session, questions: db.onboarding.questions, organizationName: db.org.name };
 }
 
 export function updateOnboardingSession(
