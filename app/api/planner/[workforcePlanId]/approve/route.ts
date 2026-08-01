@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withPlannerErrors } from "@/lib/server/planner/http";
 import { PlannerError } from "@/lib/server/planner/errors";
 import { agentConfigs, workforcePlans } from "@/lib/server/planner/db";
+import { dedupeRequiredTools } from "@/lib/server/planner/handoff";
 
 const READY_STATUSES = new Set(["configured", "ready"]);
 
@@ -34,9 +35,7 @@ export async function POST(
       approved_by: "pending-auth",
     });
 
-    const requiredTools = Array.from(
-      new Set(agents.flatMap((a) => a.required_tools ?? []))
-    );
+    const requiredTools = dedupeRequiredTools(agents);
 
     return NextResponse.json({ plan: updated, requiredTools });
   });

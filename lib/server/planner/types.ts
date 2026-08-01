@@ -83,7 +83,9 @@ export interface RoleCHandoff {
   idempotency_key: string;
   payload: Record<string, unknown>;
   status: string;
+  consumed_at?: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 // ── agent_design_sessions / agent_design_turns ──────────────────────────────

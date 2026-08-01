@@ -1,0 +1,61 @@
+{
+  "pages": {
+    "/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/layout.css",
+      "static/chunks/app/layout.js"
+    ],
+    "/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/page.css",
+      "static/chunks/app/page.js"
+    ],
+    "/api/planner/[workforcePlanId]/finalize-handoff/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/planner/[workforcePlanId]/finalize-handoff/route.js"
+    ],
+    "/api/integrations/[organizationId]/[toolKey]/status/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/integrations/[organizationId]/[toolKey]/status/route.js"
+    ],
+    "/api/integrations/[organizationId]/[toolKey]/connect/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/integrations/[organizationId]/[toolKey]/connect/route.js"
+    ],
+    "/api/planner/[workforcePlanId]/undo/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/planner/[workforcePlanId]/undo/route.js"
+    ],
+    "/api/planner/[workforcePlanId]/chat/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/planner/[workforcePlanId]/chat/route.js"
+    ],
+    "/api/integrations/[organizationId]/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/integrations/[organizationId]/route.js"
+    ],
+    "/api/planner/[workforcePlanId]/chat/apply/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/planner/[workforcePlanId]/chat/apply/route.js"
+    ],
+    "/api/planner/[workforcePlanId]/approve/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/planner/[workforcePlanId]/approve/route.js"
+    ],
+    "/api/planner/[workforcePlanId]/handoff/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/planner/[workforcePlanId]/handoff/route.js"
+    ]
+  }
+}

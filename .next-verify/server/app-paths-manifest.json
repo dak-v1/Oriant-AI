@@ -1,0 +1,4 @@
+{
+  "/api/planner/[workforcePlanId]/finalize-handoff/route": "app/api/planner/[workforcePlanId]/finalize-handoff/route.js",
+  "/api/planner/[workforcePlanId]/handoff/route": "app/api/planner/[workforcePlanId]/handoff/route.js"
+}
