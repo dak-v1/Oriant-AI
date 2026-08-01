@@ -13,6 +13,9 @@ export async function GET() {
     await hydrateDiscoveryFromSupabase(db);
     return {
       answers: db.call.answers,
+      clarificationQuestions: db.call.clarificationQuestions ?? [],
+      clarificationAnswers: db.call.clarificationAnswers ?? {},
+      clarificationCompletedAt: db.call.clarificationCompletedAt ?? null,
       report: db.report,
       completedAt: db.call.completedAt ?? null,
     };

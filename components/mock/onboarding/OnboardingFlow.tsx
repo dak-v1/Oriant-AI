@@ -400,7 +400,7 @@ export default function OnboardingFlow() {
     onConsentChange(true);
     window.setTimeout(() => {
       completeOnboarding();
-      router.push("/app/discovery");
+      router.replace("/app/discovery");
     }, 1800);
   });
 
@@ -476,7 +476,7 @@ export default function OnboardingFlow() {
       detail: "Next: the process interview, where Oriant goes deeper into how the workflow runs.",
       tone: "ok",
     });
-    router.push("/app/discovery");
+    router.replace("/app/discovery");
   };
 
   const variants = stepVariants(Boolean(reduced));

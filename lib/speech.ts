@@ -8,7 +8,7 @@
  * the gesture), and can be switched off from the call controls at any time.
  */
 
-const STORAGE_KEY = "margo.voice";
+let voicePreference = true;
 
 /** Voices Margo sounds right in, best first — matched loosely by name. */
 const PREFERRED = [
@@ -26,23 +26,13 @@ export function speechSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-/** Persisted across sessions so the choice sticks. Defaults to on. */
+/** Runtime-only preference. Persistent product data belongs in Supabase. */
 export function loadVoicePref(): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    const v = window.localStorage.getItem(STORAGE_KEY);
-    return v === null ? true : v === "1";
-  } catch {
-    return true;
-  }
+  return voicePreference;
 }
 
 export function saveVoicePref(on: boolean): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, on ? "1" : "0");
-  } catch {
-    /* private mode — the session default is fine */
-  }
+  voicePreference = on;
 }
 
 let cachedVoice: SpeechSynthesisVoice | null = null;

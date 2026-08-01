@@ -383,6 +383,9 @@ export interface Db {
     systems: Record<string, boolean>;
     canvasUploaded: boolean;
     completedAt?: string;
+    clarificationQuestions?: DiscoveryClarificationQuestion[];
+    clarificationAnswers?: Record<string, string>;
+    clarificationCompletedAt?: string;
   };
   report: CompanyReport | null;
   plan: WorkflowPlan | null;
@@ -398,6 +401,14 @@ export interface Db {
   audit: AuditEvent[];
   systemEvents: SystemEvent[];
   providerRuns: ProviderRun[];
+}
+
+export interface DiscoveryClarificationQuestion {
+  id: string;
+  question: string;
+  reason: string;
+  helperText: string;
+  examples: string[];
 }
 
 /** Everything the browser is allowed to see (never secrets). */

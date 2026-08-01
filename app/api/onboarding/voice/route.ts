@@ -1,6 +1,9 @@
 import type { NextRequest } from "next/server";
 import { mutate } from "@/lib/server/api";
-import { mirrorOnboardingToSupabase } from "@/lib/server/onboarding-supabase";
+import {
+  hydrateOnboardingFromSupabase,
+  mirrorOnboardingToSupabase,
+} from "@/lib/server/onboarding-supabase";
 import { attachVoiceTranscript } from "@/lib/server/onboarding";
 
 export async function POST(req: NextRequest) {
@@ -10,8 +13,9 @@ export async function POST(req: NextRequest) {
     confirmedAnswer?: string;
     language?: string;
   };
-  return mutate((db) => {
+  return mutate(async (db) => {
+    await hydrateOnboardingFromSupabase(db);
     attachVoiceTranscript(db, body);
-    return mirrorOnboardingToSupabase(db).then(() => {});
+    await mirrorOnboardingToSupabase(db);
   });
 }

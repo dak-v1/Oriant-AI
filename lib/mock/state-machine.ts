@@ -73,6 +73,7 @@ const ROUTE_GATES: { prefix: string; min: JourneyState }[] = [
   { prefix: "/app/integrations", min: "report_approved" },
   { prefix: "/app/planner", min: "report_approved" },
   { prefix: "/app/discovery/report", min: "report_review" },
+  { prefix: "/app/discovery/review", min: "discovery" },
   { prefix: "/app/discovery", min: "discovery" },
   { prefix: "/app/onboarding", min: "not_started" },
 ];
@@ -137,6 +138,7 @@ export const NAV_SECTIONS: NavSection[] = [
     children: [
       { label: "Onboarding", route: "/app/onboarding", min: "not_started" },
       { label: "Interview", route: "/app/discovery", min: "discovery" },
+      { label: "Discovery Review", route: "/app/discovery/review", min: "discovery" },
       { label: "Company report", route: "/app/discovery/report", min: "report_review" },
     ],
   },

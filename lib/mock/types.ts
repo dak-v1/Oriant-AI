@@ -2,7 +2,7 @@
  * lib/mock/types.ts — shared contracts for the Oriant.ai hardcoded product mock.
  *
  * Single source of truth for every fixture, service, store slice and screen
- * (spec §23). Everything here must stay JSON-serialisable and localStorage-safe:
+ * (spec §23). Everything here must stay JSON-serialisable for server responses:
  * no Dates, no functions, no class instances — ISO strings and plain unions only.
  */
 

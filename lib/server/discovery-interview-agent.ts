@@ -9,6 +9,15 @@ export interface DiscoveryInterviewQuestion {
   examples: string[];
 }
 
+type InterviewResult = {
+  mode: "live" | "fixture";
+  questions: DiscoveryInterviewQuestion[];
+  error?: string;
+};
+
+const interviewCache = new Map<string, { expiresAt: number; result: InterviewResult }>();
+const interviewInFlight = new Map<string, Promise<InterviewResult>>();
+
 const RESPONSE_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -115,11 +124,27 @@ function fixtureQuestions(session: OnboardingSession): DiscoveryInterviewQuestio
 
 export async function generateDiscoveryInterviewQuestions(
   db: Db,
-): Promise<{ mode: "live" | "fixture"; questions: DiscoveryInterviewQuestion[] }> {
+): Promise<InterviewResult> {
   const session = activeSession(db);
   if (!session) {
-    return { mode: "fixture", questions: [] };
+    return { mode: "fixture", questions: [], error: "No active onboarding session was found." };
   }
+
+  const cacheKey = `${session.id}:${session.updatedAt}`;
+  const cached = interviewCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.result;
+  const existing = interviewInFlight.get(cacheKey);
+  if (existing) return existing;
+
+  const generation = generateInterviewResult(session);
+  interviewInFlight.set(cacheKey, generation);
+  const result = await generation;
+  interviewInFlight.delete(cacheKey);
+  interviewCache.set(cacheKey, { expiresAt: Date.now() + 5 * 60_000, result });
+  return result;
+}
+
+async function generateInterviewResult(session: OnboardingSession): Promise<InterviewResult> {
 
   const fixture = { questions: fixtureQuestions(session) };
   const result = await aiandJson<typeof fixture>({
@@ -127,19 +152,39 @@ export async function generateDiscoveryInterviewQuestions(
     schemaName: "discovery_interview_questions",
     schema: RESPONSE_SCHEMA,
     fixture,
+    responseFormat: "json_schema",
+    reasoningEffort: "none",
     system:
       "You are Oriant's Discovery Interview Agent. " +
-      "The owner has already completed onboarding. Generate only the next 4 to 7 follow-up interview questions needed to understand the chosen workflow well enough to design the first automation safely. " +
-      "Do not repeat onboarding questions. Use plain business language. One missing detail per question. Keep the questions specific to the workflow already selected.",
+      "The owner has already completed onboarding. Read every onboarding answer before writing questions. Generate only the next 4 to 7 follow-up interview questions needed to understand the selected workflow well enough to identify the real pain point, what can be automated, and what must remain human-controlled. " +
+      "Do not repeat or paraphrase questions already answered in onboarding. Ask one missing detail per question, in plain business language, and keep every question specific to the selected workflow. Cover the trigger, real steps, bottleneck or pain point, tools and inputs, human approval boundaries, desired outcome, and preferred level of automation when those details are missing. Return only a JSON object with a questions array; do not use markdown or code fences.",
     user:
       `Organization shape: ${session.organization.shape}\n` +
       `Business summary: ${typeof session.answers.company_intro?.value === "string" ? session.answers.company_intro.value : ""}\n` +
       `Business area: ${typeof session.answers.business_area?.value === "string" ? session.answers.business_area.value : ""}\n` +
       `Repetitive task: ${typeof session.answers.repetitive_task?.value === "string" ? session.answers.repetitive_task.value : ""}\n` +
       `Current workflow summary: ${typeof session.answers.current_workflow?.value === "string" ? session.answers.current_workflow.value : ""}\n` +
+      `Onboarding automation preference: ${typeof session.answers.automation_mode?.value === "string" ? session.answers.automation_mode.value : ""}\n` +
       `Selected tools: ${session.selectedToolIds.join(", ")}\n` +
-      "Generate tailored interview cards. Avoid generic business-strategy questions unless the workflow cannot be understood without them.",
+      "Generate tailored interview cards. The end goal is a grounded workflow description: where the work hurts today, what starts it, what happens, where it can safely be automated, and where a person must decide. Avoid generic business-strategy questions.",
   });
 
-  return { mode: result.mode, questions: result.data.questions };
+  const generatedQuestions = Array.isArray((result.data as { questions?: unknown }).questions)
+    ? (result.data as { questions: DiscoveryInterviewQuestion[] }).questions
+    : [];
+  const validQuestions = generatedQuestions.length >= 4
+    && generatedQuestions.length <= 7
+    && generatedQuestions.every((item) => item && item.id && item.question && item.reason && item.helperText && Array.isArray(item.examples));
+  const uniqueQuestions = validQuestions
+    ? new Set(generatedQuestions.map((item) => item.question.trim().toLowerCase()))
+    : new Set<string>();
+  if (!validQuestions || uniqueQuestions.size !== generatedQuestions.length) {
+    return {
+      mode: "fixture",
+      questions: fixture.questions,
+      error: "AI& returned duplicate interview questions, so Oriant loaded its workflow-specific backup questions.",
+    };
+  }
+
+  return { mode: result.mode, questions: result.data.questions, ...(result.error ? { error: result.error } : {}) };
 }

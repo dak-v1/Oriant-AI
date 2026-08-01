@@ -1,24 +1,47 @@
+-- Role A Supabase reset and complete schema.
+-- WARNING: this permanently deletes existing Role A onboarding, discovery,
+-- report, audit, event, blueprint, voice, and handoff data.
+
+begin;
+
 create extension if not exists pgcrypto;
 
-create table if not exists organizations (
+-- Drop children first so this works even if an older schema used different
+-- ON DELETE behavior.
+drop table if exists system_events cascade;
+drop table if exists audit_logs cascade;
+drop table if exists role_b_handoffs cascade;
+drop table if exists company_reports cascade;
+drop table if exists business_blueprint_versions cascade;
+drop table if exists discovery_answers cascade;
+drop table if exists discovery_sessions cascade;
+drop table if exists voice_turns cascade;
+drop table if exists voice_sessions cascade;
+drop table if exists onboarding_answers cascade;
+drop table if exists onboarding_sessions cascade;
+drop table if exists organizations cascade;
+
+create table organizations (
   id uuid primary key default gen_random_uuid(),
   external_key text not null unique,
   name text not null,
   approval_owner text,
-  shape text not null default 'solo',
+  shape text not null default 'solo'
+    check (shape in ('solo', 'owner_with_team', 'multi_role_team', 'manager_led')),
   employee_count integer,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
 
-create table if not exists onboarding_sessions (
+create table onboarding_sessions (
   id uuid primary key default gen_random_uuid(),
   external_id text not null unique,
   organization_id uuid not null references organizations(id) on delete cascade,
   preferred_channel text not null default 'typed',
   status text not null default 'not_started',
-  current_step text not null default 'welcome',
-  progress integer not null default 0,
+  current_step text not null default 'welcome'
+    check (current_step in ('welcome', 'intro', 'focus', 'tools', 'review')),
+  progress integer not null default 0 check (progress between 0 and 100),
   consent_accepted boolean not null default false,
   transcript_review_required boolean not null default false,
   schema_version text not null,
@@ -28,7 +51,7 @@ create table if not exists onboarding_sessions (
   completed_at timestamptz
 );
 
-create table if not exists onboarding_answers (
+create table onboarding_answers (
   id uuid primary key default gen_random_uuid(),
   session_id uuid not null references onboarding_sessions(id) on delete cascade,
   question_id text not null,
@@ -41,7 +64,7 @@ create table if not exists onboarding_answers (
   unique (session_id, question_id)
 );
 
-create table if not exists voice_sessions (
+create table voice_sessions (
   id uuid primary key default gen_random_uuid(),
   external_id text not null unique,
   session_id uuid not null references onboarding_sessions(id) on delete cascade,
@@ -51,7 +74,7 @@ create table if not exists voice_sessions (
   last_turn_at timestamptz not null
 );
 
-create table if not exists voice_turns (
+create table voice_turns (
   id uuid primary key default gen_random_uuid(),
   external_id text not null unique,
   voice_session_id uuid not null references voice_sessions(id) on delete cascade,
@@ -62,7 +85,7 @@ create table if not exists voice_turns (
   created_at timestamptz not null
 );
 
-create table if not exists discovery_sessions (
+create table discovery_sessions (
   id uuid primary key default gen_random_uuid(),
   session_id uuid not null unique references onboarding_sessions(id) on delete cascade,
   goals jsonb not null default '{}'::jsonb,
@@ -75,11 +98,7 @@ create table if not exists discovery_sessions (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
-alter table discovery_sessions add column if not exists clarification_questions jsonb not null default '[]'::jsonb;
-alter table discovery_sessions add column if not exists clarification_answers jsonb not null default '{}'::jsonb;
-alter table discovery_sessions add column if not exists clarification_completed_at timestamptz;
-
-create table if not exists discovery_answers (
+create table discovery_answers (
   id uuid primary key default gen_random_uuid(),
   session_id uuid not null references onboarding_sessions(id) on delete cascade,
   question_id text not null,
@@ -89,7 +108,7 @@ create table if not exists discovery_answers (
   unique (session_id, question_id)
 );
 
-create table if not exists business_blueprint_versions (
+create table business_blueprint_versions (
   id uuid primary key default gen_random_uuid(),
   session_id uuid not null references onboarding_sessions(id) on delete cascade,
   version integer not null,
@@ -100,11 +119,11 @@ create table if not exists business_blueprint_versions (
   unique (session_id, version)
 );
 
-create table if not exists company_reports (
+create table company_reports (
   id uuid primary key default gen_random_uuid(),
   session_id uuid not null references onboarding_sessions(id) on delete cascade,
   version integer not null,
-  status text not null,
+  status text not null check (status in ('draft', 'approved')),
   approved_by text,
   approved_at timestamptz,
   report jsonb not null,
@@ -113,7 +132,7 @@ create table if not exists company_reports (
   unique (session_id, version)
 );
 
-create table if not exists role_b_handoffs (
+create table role_b_handoffs (
   id uuid primary key default gen_random_uuid(),
   external_id text not null unique,
   session_id uuid not null references onboarding_sessions(id) on delete cascade,
@@ -125,7 +144,7 @@ create table if not exists role_b_handoffs (
   created_at timestamptz not null
 );
 
-create table if not exists audit_logs (
+create table audit_logs (
   id uuid primary key default gen_random_uuid(),
   external_id text not null unique,
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -136,7 +155,7 @@ create table if not exists audit_logs (
   created_at timestamptz not null
 );
 
-create table if not exists system_events (
+create table system_events (
   id uuid primary key default gen_random_uuid(),
   external_id text not null unique,
   organization_id uuid not null references organizations(id) on delete cascade,
@@ -149,65 +168,23 @@ create table if not exists system_events (
   created_at timestamptz not null
 );
 
--- Keep deployed databases compatible with the application step values. This
--- also repairs older installs whose CHECK constraint only allowed welcome.
-do $$
-declare
-  constraint_row record;
-begin
-  for constraint_row in
-    select conname
-    from pg_constraint
-    where conrelid = 'onboarding_sessions'::regclass
-      and pg_get_constraintdef(oid) ilike '%current_step%'
-  loop
-    execute format('alter table onboarding_sessions drop constraint %I', constraint_row.conname);
-  end loop;
-end $$;
-
-alter table onboarding_sessions
-  add constraint onboarding_sessions_current_step_check
-  check (current_step in ('welcome', 'intro', 'focus', 'tools', 'review'));
-
-do $$
-begin
-  alter table organizations
-    add constraint organizations_shape_check
-    check (shape in ('solo', 'owner_with_team', 'multi_role_team', 'manager_led'));
-exception when duplicate_object then null;
-end $$;
-
-do $$
-begin
-  alter table company_reports
-    add constraint company_reports_status_check
-    check (status in ('draft', 'approved'));
-exception when duplicate_object then null;
-end $$;
-
-create index if not exists idx_onboarding_sessions_org_updated
+create index idx_onboarding_sessions_org_updated
   on onboarding_sessions (organization_id, updated_at desc);
-
-create index if not exists idx_onboarding_answers_session
+create index idx_onboarding_answers_session
   on onboarding_answers (session_id);
-
-create index if not exists idx_voice_sessions_session
+create index idx_voice_sessions_session
   on voice_sessions (session_id);
-
-create index if not exists idx_voice_turns_voice_session
+create index idx_voice_turns_voice_session
   on voice_turns (voice_session_id, created_at desc);
-
-create index if not exists idx_discovery_answers_session
+create index idx_discovery_answers_session
   on discovery_answers (session_id, updated_at desc);
-
-create index if not exists idx_company_reports_session
+create index idx_company_reports_session
   on company_reports (session_id, version desc);
-
-create index if not exists idx_role_b_handoffs_session
+create index idx_role_b_handoffs_session
   on role_b_handoffs (session_id);
-
-create index if not exists idx_audit_logs_session
+create index idx_audit_logs_session
   on audit_logs (session_id, created_at desc);
-
-create index if not exists idx_system_events_session
+create index idx_system_events_session
   on system_events (session_id, created_at desc);
+
+commit;

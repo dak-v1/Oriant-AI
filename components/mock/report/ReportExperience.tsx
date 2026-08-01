@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronDown, ChevronUp, FileCheck2, TriangleAlert } from "lucide-react";
-import type { ReportSectionId } from "@/lib/mock/types";
+import type { OnboardingState, ReportSectionId } from "@/lib/mock/types";
 import { useDemoStore } from "@/lib/mock/store";
 import { atLeast } from "@/lib/mock/state-machine";
 import { DEMO_COMPANY } from "@/lib/mock/fixtures/demo-company";
@@ -49,6 +49,8 @@ export default function ReportExperience() {
 
   const report = useDemoStore((s) => s.report);
   const setSectionNote = useDemoStore((s) => s.setSectionNote);
+  const syncOnboardingFromServer = useDemoStore((s) => s.syncOnboardingFromServer);
+  const syncDiscoveryFromServer = useDemoStore((s) => s.syncDiscoveryFromServer);
 
   const onboarding = useDemoStore((s) => s.onboarding);
   const discovery = useDemoStore((s) => s.discovery);
@@ -66,6 +68,52 @@ export default function ReportExperience() {
   const sectionEls = useRef<Partial<Record<ReportPaneSectionId, HTMLElement | null>>>({});
 
   const approved = report.status === "approved";
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([
+      fetch("/api/onboarding/session", { cache: "no-store" }),
+      fetch("/api/discovery/session", { cache: "no-store" }),
+    ]).then(async ([onboardingRes, discoveryRes]) => {
+      if (cancelled) return;
+      if (onboardingRes.ok) {
+        const data = await onboardingRes.json() as {
+          session?: {
+            preferredChannel?: "typed" | "voice";
+            organization?: { shape?: OnboardingState["organizationShape"]; employeeCount?: number; approvalOwner?: string; employeeEmails?: string[] };
+            selectedToolIds?: string[];
+            consentAccepted?: boolean;
+            answers?: Record<string, { value: unknown }>;
+          };
+        };
+        const session = data.session;
+        if (session) {
+          const answers = session.answers ?? {};
+          const value = (id: string) => answers[id]?.value;
+          syncOnboardingFromServer({
+            channel: session.preferredChannel ?? "typed",
+            organizationShape: session.organization?.shape ?? "solo",
+            employeeCount: typeof session.organization?.employeeCount === "number" ? String(session.organization.employeeCount) : "",
+            approvalOwner: session.organization?.approvalOwner ?? "",
+            employeeEmails: session.organization?.employeeEmails ?? [],
+            intro: typeof value("company_intro") === "string" ? value("company_intro") as string : "",
+            businessArea: typeof value("business_area") === "string" ? value("business_area") as string : "",
+            repetitiveTask: typeof value("repetitive_task") === "string" ? value("repetitive_task") as string : "",
+            currentWorkflow: typeof value("current_workflow") === "string" ? value("current_workflow") as string : "",
+            selectedToolIds: session.selectedToolIds ?? [],
+            consentAccepted: session.consentAccepted ?? false,
+          });
+        }
+      }
+      if (discoveryRes.ok) {
+        const data = await discoveryRes.json() as { answers?: Record<string, string>; completedAt?: string | null };
+        syncDiscoveryFromServer({ answers: data.answers ?? {}, completed: Boolean(data.completedAt) });
+      }
+    }).catch(() => {
+      // The report can still render from the current in-memory snapshot.
+    });
+    return () => { cancelled = true; };
+  }, [syncDiscoveryFromServer, syncOnboardingFromServer]);
 
   /* ── fact-level review totals (improvement spec §11.2/§11.3) ── */
   const factStats = useMemo(() => {
@@ -149,22 +197,29 @@ export default function ReportExperience() {
   }, [reduced, reportFactsBySection, visibleSectionOrder]);
 
   /* ── approval flow (Gate 1) ── */
-  const handleApprove = () => {
+  const handleApprove = async () => {
     const store = useDemoStore.getState();
     const wasStale = store.report.stale;
-    store.approveReport();
-    const next = useDemoStore.getState();
-    // approveReport lands on "report_approved"; the planner route opens at
-    // "planning" — advance only if the journey is not already past it.
-    if (!atLeast(next.journey, "planning")) store.setJourney("planning");
-    toast({
-      title: `Company Report v${next.report.version} approved`,
-      detail: wasStale
-        ? "The Workforce Planner will regenerate from this version."
-        : "Sent to the AI Workforce Planner.",
-      tone: "ok",
-    });
-    router.push("/app/planner");
+    try {
+      const response = await fetch("/api/report/approve", { method: "POST" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error || "The company report could not be approved.");
+      }
+      // The server is authoritative. This only refreshes the in-memory view
+      // after the Supabase-backed mutation succeeds.
+      store.approveReport();
+      const next = useDemoStore.getState();
+      if (!atLeast(next.journey, "planning")) store.setJourney("planning");
+      toast({
+        title: `Company Report v${next.report.version} approved`,
+        detail: wasStale ? "The Workforce Planner will regenerate from this version." : "Sent to the AI Workforce Planner.",
+        tone: "ok",
+      });
+      router.push("/app/planner");
+    } catch (error) {
+      toast({ title: "Approval was not saved", detail: error instanceof Error ? error.message : "Try again.", tone: "info" });
+    }
   };
 
   const handleSaveDraft = () =>
