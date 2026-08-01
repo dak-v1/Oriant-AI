@@ -23,6 +23,7 @@ export default function VoiceAnswer({
   answer,
   initialText = "",
   onConfirm,
+  onVoiceConfirm,
   confirmLabel = "Confirm answer",
   placeholder = "Or type your answer instead…",
   autoFocusMic = false,
@@ -33,6 +34,7 @@ export default function VoiceAnswer({
   answer: string;
   initialText?: string;
   onConfirm: (finalText: string) => void;
+  onVoiceConfirm?: (finalText: string) => void | Promise<void>;
   confirmLabel?: string;
   placeholder?: string;
   autoFocusMic?: boolean;
@@ -43,6 +45,7 @@ export default function VoiceAnswer({
   const [text, setText] = useState(initialText);
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voiceCaptureRef = useRef(false);
   const reduced = useReducedMotion();
   const {
     supported,
@@ -50,6 +53,8 @@ export default function VoiceAnswer({
     listening,
     processing,
     transcript,
+    finalTranscript,
+    interimTranscript,
     error,
     start: startVoice,
     stop: stopVoice,
@@ -62,6 +67,7 @@ export default function VoiceAnswer({
     resetVoice();
     setStage(startMode);
     setText(initialText);
+    voiceCaptureRef.current = false;
     setElapsed(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [answer, initialText, startMode]);
@@ -108,10 +114,12 @@ export default function VoiceAnswer({
       return;
     }
     setStage("listening");
+    voiceCaptureRef.current = true;
     setElapsed(0);
     resetVoice();
     const started = startVoice();
     if (!started) {
+      voiceCaptureRef.current = false;
       setStage("typing");
       return;
     }
@@ -189,6 +197,7 @@ export default function VoiceAnswer({
             className={secondaryBtnClass}
             onClick={() => {
               if (!showComposer) setText("");
+              voiceCaptureRef.current = false;
               setStage("typing");
             }}
             style={embedded ? { minHeight: 44, paddingInline: 16, borderRadius: 14 } : undefined}
@@ -290,12 +299,32 @@ export default function VoiceAnswer({
                   type="button"
                   className="oa-btn oa-btn--primary"
                   disabled={!text.trim() || isVoiceActive}
-                  onClick={() => onConfirm(text.trim())}
+                  onClick={() => {
+                    const finalText = text.trim();
+                    onConfirm(finalText);
+                    if (stage === "editable" && voiceCaptureRef.current) void onVoiceConfirm?.(finalText);
+                  }}
                 >
                   <Check size={15} aria-hidden />
                   {confirmLabel}
                 </button>
               </div>
+
+              {isVoiceActive && (finalTranscript || interimTranscript) ? (
+                <div
+                  aria-live="polite"
+                  style={{
+                    border: "1px solid var(--oa-border)",
+                    borderRadius: 12,
+                    padding: "10px 12px",
+                    lineHeight: 1.5,
+                    background: "var(--oa-bg)",
+                  }}
+                >
+                  <span>{finalTranscript}</span>{finalTranscript && interimTranscript ? " " : null}
+                  <span style={{ color: "var(--oa-muted, #8a93a3)" }}>{interimTranscript}</span>
+                </div>
+              ) : null}
 
               {error ? <p className="oa-sub" style={{ color: "var(--oa-red-ink)", margin: 0 }}>{error}</p> : null}
             </motion.div>

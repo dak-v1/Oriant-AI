@@ -105,6 +105,13 @@ export function buildDiscoveryHandoff(db: Db) {
         clarification_questions: db.call.clarificationQuestions ?? [],
         clarification_completed_at: db.call.clarificationCompletedAt ?? null,
       },
+      voice: session?.voice
+        ? {
+            provider: session.voice.provider,
+            language: session.voice.language,
+            turns: session.voice.turns,
+          }
+        : null,
       report_meta: {
         version: db.report?.version ?? null,
         status: db.report?.status ?? "not_generated",

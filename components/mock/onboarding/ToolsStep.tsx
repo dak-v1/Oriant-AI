@@ -37,7 +37,7 @@ function matchToolsFromTranscript(transcript: string): CatalogTool[] {
 }
 
 async function submitVoiceTranscript(questionId: string, transcript: string) {
-  await fetch("/api/onboarding/voice", {
+  const response = await fetch("/api/onboarding/voice", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -47,6 +47,7 @@ async function submitVoiceTranscript(questionId: string, transcript: string) {
       language: "en",
     }),
   });
+  if (!response.ok) throw new Error("Supabase could not save the voice transcript.");
 }
 
 function recommendationFor(scope: AutomationScope | null, area: string, task: string): string[] {

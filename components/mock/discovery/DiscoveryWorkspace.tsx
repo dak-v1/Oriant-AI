@@ -190,6 +190,14 @@ export default function DiscoveryWorkspace() {
     window.setTimeout(() => setJustConfirmed(null), reduced ? 500 : 1500);
   };
 
+  const handleVoiceConfirm = (q: DiscoveryQuestion, text: string) => {
+    void fetch("/api/discovery/voice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ questionId: q.id, transcript: text, confirmedAnswer: text, language: "en" }),
+    });
+  };
+
   const compileReport = async () => {
     const goals: Record<string, boolean> = {};
     if (onboarding.businessArea.trim()) goals[onboarding.businessArea.trim()] = true;
@@ -489,12 +497,12 @@ export default function DiscoveryWorkspace() {
                         <h2 className="oa-h3" style={{ margin: 0 }}>A few details need clarifying</h2>
                       </div>
                     </div>
-                    <CardsMode questions={clarificationQuestions} answers={clarificationAnswers} justConfirmed={null} onConfirm={handleClarificationConfirm} />
+                    <CardsMode questions={clarificationQuestions} answers={clarificationAnswers} justConfirmed={null} onConfirm={handleClarificationConfirm} onVoiceConfirm={handleVoiceConfirm} />
                   </section>
                 ) : null}
 
                 {!clarificationReview ? (
-                  <CardsMode questions={questions} answers={answers} justConfirmed={justConfirmed} onConfirm={handleConfirm} />
+                    <CardsMode questions={questions} answers={answers} justConfirmed={justConfirmed} onConfirm={handleConfirm} onVoiceConfirm={handleVoiceConfirm} />
                 ) : null}
               </>
             )}

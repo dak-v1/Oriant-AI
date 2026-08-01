@@ -154,7 +154,7 @@ function bestOptionMatch(input: string, options: string[]): string | null {
 }
 
 async function submitVoiceTranscript(questionId: string, transcript: string) {
-  await fetch("/api/onboarding/voice", {
+  const response = await fetch("/api/onboarding/voice", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -164,6 +164,7 @@ async function submitVoiceTranscript(questionId: string, transcript: string) {
       language: "en",
     }),
   });
+  if (!response.ok) throw new Error("Supabase could not save the voice transcript.");
 }
 
 function areaMeta(option: string): { title: string; note: string; icon: typeof BriefcaseBusiness } {
@@ -373,6 +374,7 @@ export default function IntroStep({
               answer={DEMO_INTRO_ANSWER}
               confirmLabel="Save business summary"
               onConfirm={onConfirmIntro}
+              onVoiceConfirm={(text) => submitVoiceTranscript("company_intro", text)}
             />
           ) : (
             <div className={styles.capturedCard}>

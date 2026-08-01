@@ -506,6 +506,41 @@ export function attachVoiceTranscript(
   return session;
 }
 
+/** Save a discovery interview voice turn without treating its question as onboarding. */
+export function attachDiscoveryVoiceTranscript(
+  db: Db,
+  input: { questionId: string; transcript: string; confirmedAnswer?: string; language?: string },
+) {
+  const session = ensureOnboardingSession(db, "voice");
+  const now = nowIso();
+  const voice: VoiceSession = session.voice ?? {
+    id: uid("voice"),
+    provider: "nosana",
+    language: input.language ?? "en",
+    startedAt: now,
+    lastTurnAt: now,
+    turns: [],
+  };
+  voice.lastTurnAt = now;
+  voice.turns.unshift({
+    id: uid("turn"),
+    questionId: input.questionId,
+    transcript: input.transcript,
+    confirmedAnswer: input.confirmedAnswer,
+    status: input.confirmedAnswer ? "confirmed" : "captured",
+    createdAt: now,
+  });
+  session.voice = voice;
+  session.preferredChannel = "voice";
+  session.updatedAt = now;
+  db.call.answers = {
+    ...db.call.answers,
+    ...(input.confirmedAnswer?.trim() ? { [input.questionId]: input.confirmedAnswer.trim() } : {}),
+  };
+  logSystem(db, "voice", "discovery_transcript_attached", "completed", undefined, session.id, input.questionId);
+  return session;
+}
+
 export function generateBusinessBlueprint(db: Db): BusinessBlueprintVersion {
   const session = ensureOnboardingSession(db);
   if (!answeredRequired(session, db.onboarding.questions)) {

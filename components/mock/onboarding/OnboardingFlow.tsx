@@ -257,21 +257,6 @@ export default function OnboardingFlow() {
   const onConfirmIntro = (text: string) => {
     setIntro(text);
     captureSection("company");
-    if (onboarding.channel === "voice") {
-      void fetch("/api/onboarding/voice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          questionId: "company_intro",
-          transcript: text,
-          confirmedAnswer: text,
-          language: "en",
-        }),
-      }).then(() => setOnboardingSync("saved")).catch((err: unknown) => {
-        setOnboardingSync("error", err instanceof Error ? err.message : "Could not save transcript.");
-      });
-      return;
-    }
     void persistPatch({ intro: text });
   };
 
