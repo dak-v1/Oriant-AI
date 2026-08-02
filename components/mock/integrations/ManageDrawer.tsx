@@ -1,49 +1,37 @@
 "use client";
 /**
- * ManageDrawer — review a connected tool (spec §12): plain-language
- * permission summary, what it can read / may request, who approves, and a
- * mock Disconnect that returns the tool to its default status.
+ * ManageDrawer — review a connected tool: plain-language permission
+ * summary, what it can read / may request, who approves.
+ *
+ * Step 9 Pass 1: no real disconnect endpoint exists yet (only /connect and
+ * /status) — Disconnect is dropped rather than faked as a client-only
+ * action that wouldn't persist. Flagged as a real gap, not silently patched.
  */
-import { useRef } from "react";
 import { Check, ShieldCheck } from "lucide-react";
 import Drawer from "@/components/mock/ui/Drawer";
 import StatusBadge from "@/components/mock/ui/StatusBadge";
-import { toast } from "@/components/mock/ui/Toaster";
-import { useDemoStore } from "@/lib/mock/store";
 import type { IntegrationDef } from "@/lib/mock/types";
 import { INTEGRATIONS } from "@/lib/mock/fixtures/integrations";
 import { OWNER } from "@/lib/mock/fixtures/ids";
 import ToolMark from "./ToolMark";
-import { formatConnectedAt, NeededBy, PermCols } from "./IntegrationCards";
+import { PermCols } from "./IntegrationCards";
 import styles from "./integrations.module.css";
 
 export default function ManageDrawer({
   defId,
+  status,
+  neededByAgents,
   onClose,
 }: {
   /** Integration to manage; null = closed. */
   defId: string | null;
+  status: string;
+  /** Agent display names from the real GET /api/integrations/[organizationId] response. */
+  neededByAgents: string[];
   onClose: () => void;
 }) {
-  const lastDefRef = useRef<IntegrationDef | null>(null);
-  if (defId && INTEGRATIONS[defId]) lastDefRef.current = INTEGRATIONS[defId];
-  const def = lastDefRef.current;
-
-  const integrations = useDemoStore((s) => s.integrations);
-  const setIntegrationStatus = useDemoStore((s) => s.setIntegrationStatus);
-  const runtime = def ? integrations[def.id] : undefined;
-
+  const def: IntegrationDef | null = defId ? INTEGRATIONS[defId] ?? null : null;
   if (!def) return null;
-
-  const disconnect = () => {
-    setIntegrationStatus(def.id, def.defaultStatus);
-    toast({
-      title: `${def.name} disconnected`,
-      detail: "Simulated; no real account access was changed.",
-      tone: "info",
-    });
-    onClose();
-  };
 
   return (
     <Drawer
@@ -57,22 +45,14 @@ export default function ManageDrawer({
         </span>
       }
       footer={
-        <>
-          <button type="button" className="oa-btn oa-btn--danger" onClick={disconnect}>
-            Disconnect
-          </button>
-          <button type="button" className="oa-btn oa-btn--ghost" onClick={onClose}>
-            Close
-          </button>
-        </>
+        <button type="button" className="oa-btn oa-btn--ghost" onClick={onClose}>
+          Close
+        </button>
       }
     >
       <div className={styles.manageHead}>
-        <div className={styles.rowText}>
-          <p className={styles.rowTitle}>{def.account}</p>
-          <p className={styles.rowSub}>{formatConnectedAt(runtime?.connectedAt)}</p>
-        </div>
-        <StatusBadge status={runtime?.status ?? "connected"} />
+        <p className={styles.rowTitle}>{def.name}</p>
+        <StatusBadge status={status} />
       </div>
 
       <div className={styles.manageSection}>
@@ -98,12 +78,21 @@ export default function ManageDrawer({
         <PermCols def={def} />
       </div>
 
-      <div className={styles.manageSection}>
-        <NeededBy ids={def.neededBy} />
-      </div>
+      {neededByAgents.length > 0 && (
+        <div className={styles.manageSection}>
+          <span className="oa-micro">Needed by</span>
+          <div className={styles.needBy}>
+            {neededByAgents.map((name) => (
+              <span key={name} className={styles.agentChip}>
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <p className="oa-sim-note" style={{ marginTop: 18 }}>
-        Simulated connection; disconnecting only updates this demo.
+        Disconnecting isn&apos;t available yet — reach out if you need this tool disconnected.
       </p>
     </Drawer>
   );

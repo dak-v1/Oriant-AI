@@ -1,9 +1,9 @@
 /**
  * lib/mock/store.ts — the central typed demo store (spec §2, §5, §23).
  *
- * One zustand store holds the whole journey and persists to localStorage so
- * refresh never destroys progress; Reset Demo clears it and cancels all
- * in-flight mock timers. Screens call actions; mock services drive the
+ * One zustand store holds the current UI snapshot. Authoritative onboarding,
+ * discovery, and report data is loaded from the server/Supabase; Reset Demo
+ * clears the in-memory view and cancels all in-flight mock timers. Screens call actions; mock services drive the
  * time-based updates via the screens (services stay UI-agnostic).
  *
  * Everything in DemoState is JSON-serialisable. Transient UI state (open
@@ -12,9 +12,10 @@
 "use client";
 
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import type {
+  ApprovalPreference,
+  BuilderAccess,
   AgentConfig,
   AgentDesignAnswers,
   AgentWorkflowDef,
@@ -23,13 +24,21 @@ import type {
   CalendarEventState,
   CompanyReportState,
   CustomTool,
+  DepartmentApproval,
   DemoState,
+  DiscoveryState,
   DiscoveryMode,
   IntegrationRuntime,
   IntegrationStatus,
   JourneyState,
   LeanCanvasBlockId,
   NlCommandFixture,
+  OnboardingChannel,
+  OnboardingOwnership,
+  OnboardingState,
+  OrganizationShape,
+  AutomationScope,
+  WorkflowBuilder,
   PlanAgent,
   ReportFactState,
   ReportSectionId,
@@ -37,6 +46,13 @@ import type {
   WorkspaceTeam,
 } from "./types";
 import { cancelAllMockWork } from "./services";
+// Step 9 Pass 1: real planner backend row shapes, type-only (no runtime
+// import from lib/server/* reaches the client bundle).
+import type {
+  AgentConfigExt,
+  AgentTemplate,
+  WorkforcePlanRow,
+} from "@/lib/server/planner/types";
 import { planTotals } from "./pricing";
 import { atLeast } from "./state-machine";
 import { AGENT, DEMO_TODAY } from "./fixtures/ids";
@@ -102,20 +118,44 @@ function initialState(): DemoState {
   return {
     journey: "not_started",
     onboarding: {
+      channel: "typed",
+      callInProgress: false,
+      backendSessionId: null,
+      organizationId: null,
       mode: null,
       usedDemoCompany: false,
       intro: "",
+      organizationShape: "solo",
+      approvalPreference: null,
+      onboardingOwnership: null,
+      workflowBuilder: null,
+      builderAccess: null,
+      automationScope: null,
+      businessArea: "",
+      repetitiveTask: "",
+      currentWorkflow: "",
+      employeeCount: "",
+      approvalOwner: "",
+      employeeEmails: [],
+      departmentApprovals: [],
       selectedToolIds: [],
       customTools: [],
       capturedSections: [],
       consentAccepted: false,
       completed: false,
+      blueprintVersion: null,
+      blueprintStatus: "idle",
+      handoffId: null,
+      syncStatus: "idle",
+      syncError: null,
     },
     leanCanvas: { source: null, values: {}, completed: false },
     discovery: {
       mode: "voice",
       currentIndex: 0,
       answers: {},
+      clarificationAnswers: {},
+      clarificationQuestions: [],
       factIds: [],
       uploadedMore: false,
       invitedEmployee: false,
@@ -171,6 +211,56 @@ function calendarStateFor(status: ApprovalItem["status"]): CalendarEventState {
 
 let activitySeq = 100;
 
+function normalizeOnboardingArrays(payload: Partial<OnboardingState>): Partial<OnboardingState> {
+  return {
+    ...payload,
+    ...(payload.callInProgress !== undefined ? { callInProgress: Boolean(payload.callInProgress) } : {}),
+    ...(payload.intro !== undefined
+      ? { intro: typeof payload.intro === "string" ? payload.intro : "" }
+      : {}),
+    ...(payload.employeeCount !== undefined
+      ? { employeeCount: typeof payload.employeeCount === "string" ? payload.employeeCount : "" }
+      : {}),
+    ...(payload.approvalOwner !== undefined
+      ? { approvalOwner: typeof payload.approvalOwner === "string" ? payload.approvalOwner : "" }
+      : {}),
+    ...(payload.approvalPreference !== undefined
+      ? { approvalPreference: payload.approvalPreference ?? null }
+      : {}),
+    ...(payload.onboardingOwnership !== undefined
+      ? { onboardingOwnership: payload.onboardingOwnership ?? null }
+      : {}),
+    ...(payload.workflowBuilder !== undefined
+      ? { workflowBuilder: payload.workflowBuilder ?? null }
+      : {}),
+    ...(payload.builderAccess !== undefined
+      ? { builderAccess: payload.builderAccess ?? null }
+      : {}),
+    ...(payload.automationScope !== undefined
+      ? { automationScope: payload.automationScope ?? null }
+      : {}),
+    ...(payload.businessArea !== undefined
+      ? { businessArea: typeof payload.businessArea === "string" ? payload.businessArea : "" }
+      : {}),
+    ...(payload.repetitiveTask !== undefined
+      ? { repetitiveTask: typeof payload.repetitiveTask === "string" ? payload.repetitiveTask : "" }
+      : {}),
+    ...(payload.currentWorkflow !== undefined
+      ? { currentWorkflow: typeof payload.currentWorkflow === "string" ? payload.currentWorkflow : "" }
+      : {}),
+    ...(payload.employeeEmails !== undefined
+      ? { employeeEmails: Array.isArray(payload.employeeEmails) ? payload.employeeEmails : [] }
+      : {}),
+    ...(payload.departmentApprovals !== undefined
+      ? {
+          departmentApprovals: Array.isArray(payload.departmentApprovals)
+            ? payload.departmentApprovals
+            : [],
+        }
+      : {}),
+  };
+}
+
 /* ═══════════════════════ store ═══════════════════════ */
 
 export interface DemoActions {
@@ -187,8 +277,26 @@ export interface DemoActions {
 
   /* onboarding */
   beginJourney: () => void;
+  syncOnboardingFromServer: (payload: Partial<OnboardingState>) => void;
+  setBackendSession: (sessionId: string) => void;
+  setOnboardingSync: (status: OnboardingState["syncStatus"], error?: string | null) => void;
+  setChannel: (channel: OnboardingChannel) => void;
+  setCallInProgress: (inProgress: boolean) => void;
   setMode: (m: AutomationMode) => void;
   setIntro: (text: string) => void;
+  setOrganizationShape: (shape: OrganizationShape) => void;
+  setApprovalPreference: (preference: ApprovalPreference) => void;
+  setOnboardingOwnership: (ownership: OnboardingOwnership) => void;
+  setWorkflowBuilder: (builder: WorkflowBuilder) => void;
+  setBuilderAccess: (access: BuilderAccess | null) => void;
+  setAutomationScope: (scope: AutomationScope) => void;
+  setBusinessArea: (area: string) => void;
+  setRepetitiveTask: (task: string) => void;
+  setCurrentWorkflow: (workflow: string) => void;
+  setEmployeeCount: (count: string) => void;
+  setApprovalOwner: (name: string) => void;
+  setEmployeeEmails: (emails: string[]) => void;
+  setDepartmentApprovals: (items: DepartmentApproval[]) => void;
   useDemoCompany: () => void;
   toggleTool: (toolId: string) => void;
   addCustomTool: (tool: Omit<CustomTool, "id">) => void;
@@ -205,6 +313,8 @@ export interface DemoActions {
 
   /* discovery */
   setDiscoveryMode: (m: DiscoveryMode) => void;
+  syncDiscoveryFromServer: (payload: Partial<DiscoveryState>) => void;
+  replaceDiscoveryAnswers: (answers: Record<string, string>, completed?: boolean) => void;
   confirmAnswer: (questionId: string, text: string) => void;
   addFacts: (ids: string[]) => void;
   simulateUploadMore: () => void;
@@ -228,7 +338,16 @@ export interface DemoActions {
   approveReport: () => void;
 
   /* planner */
+  /** Step 9 Pass 1: lightweight setter for screens (e.g. /app/integrations) that only need the real org id, not a full plan sync. */
+  setOrganizationId: (organizationId: string) => void;
   setPlanGenerated: () => void;
+  /** Step 9 Pass 1: hydrate plan + agents from a real GET /api/planner/context or POST /api/planner/generate response. */
+  syncPlanFromServer: (params: {
+    organizationId: string;
+    plan: WorkforcePlanRow;
+    agents: AgentConfigExt[];
+    templates: AgentTemplate[];
+  }) => void;
   addAgentToPlan: (agentId: string) => void;
   removeAgentFromPlan: (agentId: string) => void;
   reorderPlanAgents: (orderedAgentIds: string[]) => void;
@@ -283,9 +402,7 @@ export interface DemoActions {
 
 export type DemoStore = DemoState & DemoActions;
 
-export const useDemoStore = create<DemoStore>()(
-  persist(
-    (set, get) => ({
+export const useDemoStore = create<DemoStore>()((set, get) => ({
       ...initialState(),
       _hydrated: false,
       planPast: [],
@@ -306,14 +423,61 @@ export const useDemoStore = create<DemoStore>()(
 
         if (done("onboarding")) {
           s.onboarding = {
+            channel: "voice",
+            callInProgress: false,
+            backendSessionId: null,
+            organizationId: null,
             mode: "assist",
             usedDemoCompany: true,
+            organizationShape: "solo",
+            approvalPreference: "owner_all",
+            onboardingOwnership: "owner_only",
+            workflowBuilder: "self",
+            builderAccess: "workflows_only",
+            automationScope: "focus_area",
+            businessArea: "Operations",
+            repetitiveTask: "Rescheduling customer appointments over the phone",
+            currentWorkflow: "Messages come in through Gmail and WhatsApp, the coordinator checks the calendar manually, then calls customers one by one to shift appointments and update the spreadsheet.",
+            employeeCount: String(DEMO_COMPANY.teamSize),
+            approvalOwner: "Sarah Tan",
+            employeeEmails: ["marcus@brightpath.sg", "jolene@brightpath.sg"],
+            departmentApprovals: [
+              {
+                department: "Finance",
+                processOwner: "Marcus Lim",
+                email: "marcus@brightpath.sg",
+                approver: "marcus@brightpath.sg",
+                setupDelegate: "marcus@brightpath.sg",
+                discoveryStatus: "completed",
+              },
+              {
+                department: "Operations",
+                processOwner: "Sarah Tan",
+                email: "sarah@brightpath.sg",
+                approver: "Sarah Tan",
+                setupDelegate: "Sarah Tan",
+                discoveryStatus: "completed",
+              },
+              {
+                department: "Marketing",
+                processOwner: "Jolene Ng",
+                email: "jolene@brightpath.sg",
+                approver: "jolene@brightpath.sg",
+                setupDelegate: "jolene@brightpath.sg",
+                discoveryStatus: "invited",
+              },
+            ],
             customTools: [],
             intro: DEMO_INTRO_ANSWER,
             selectedToolIds: [...DEMO_COMPANY.painPoints.slice(0, 0), "gmail", "google-calendar", "hubspot", "whatsapp-business", "quickbooks", "google-drive", "slack"],
             capturedSections: ["company", "team", "goals", "automation-preference", "tools", "business-info", "consent"],
             consentAccepted: true,
             completed: true,
+            blueprintVersion: 1,
+            blueprintStatus: "approved",
+            handoffId: "handoff_demo",
+            syncStatus: "idle",
+            syncError: null,
           };
         }
         if (done("discovery")) {
@@ -402,10 +566,48 @@ export const useDemoStore = create<DemoStore>()(
       beginJourney: () => {
         if (get().journey === "not_started") set({ journey: "onboarding" });
       },
+      syncOnboardingFromServer: (payload) =>
+        set((st) => ({
+          onboarding: { ...st.onboarding, ...normalizeOnboardingArrays(payload) },
+        })),
+      setBackendSession: (backendSessionId) =>
+        set((st) => ({ onboarding: { ...st.onboarding, backendSessionId } })),
+      setOnboardingSync: (syncStatus, syncError = null) =>
+        set((st) => ({ onboarding: { ...st.onboarding, syncStatus, syncError } })),
+      setChannel: (channel) =>
+        set((st) => ({ onboarding: { ...st.onboarding, channel } })),
+      setCallInProgress: (callInProgress) =>
+        set((st) => ({ onboarding: { ...st.onboarding, callInProgress } })),
       setMode: (mode) =>
         set((st) => ({ onboarding: { ...st.onboarding, mode } })),
       setIntro: (intro) =>
         set((st) => ({ onboarding: { ...st.onboarding, intro } })),
+      setOrganizationShape: (organizationShape) =>
+        set((st) => ({ onboarding: { ...st.onboarding, organizationShape } })),
+      setApprovalPreference: (approvalPreference) =>
+        set((st) => ({ onboarding: { ...st.onboarding, approvalPreference } })),
+      setOnboardingOwnership: (onboardingOwnership) =>
+        set((st) => ({ onboarding: { ...st.onboarding, onboardingOwnership } })),
+      setWorkflowBuilder: (workflowBuilder) =>
+        set((st) => ({ onboarding: { ...st.onboarding, workflowBuilder } })),
+      setBuilderAccess: (builderAccess) =>
+        set((st) => ({ onboarding: { ...st.onboarding, builderAccess } })),
+      setAutomationScope: (automationScope) =>
+        set((st) => ({ onboarding: { ...st.onboarding, automationScope } })),
+      setBusinessArea: (businessArea) =>
+        set((st) => ({ onboarding: { ...st.onboarding, businessArea } })),
+      setRepetitiveTask: (repetitiveTask) =>
+        set((st) => ({ onboarding: { ...st.onboarding, repetitiveTask } })),
+      setCurrentWorkflow: (currentWorkflow) =>
+        set((st) => ({ onboarding: { ...st.onboarding, currentWorkflow } })),
+      setEmployeeCount: (employeeCount) =>
+        set((st) => ({ onboarding: { ...st.onboarding, employeeCount } })),
+      setApprovalOwner: (approvalOwner) =>
+        set((st) => ({ onboarding: { ...st.onboarding, approvalOwner: approvalOwner ?? "" } })),
+      setEmployeeEmails: (employeeEmails) =>
+        set((st) => ({ onboarding: { ...st.onboarding, employeeEmails } })),
+      setDepartmentApprovals: (departmentApprovals) =>
+        set((st) => ({ onboarding: { ...st.onboarding, departmentApprovals } })),
       useDemoCompany: () =>
         set((st) => ({
           journey: st.journey === "not_started" ? "onboarding" : st.journey,
@@ -413,6 +615,44 @@ export const useDemoStore = create<DemoStore>()(
             ...st.onboarding,
             usedDemoCompany: true,
             intro: st.onboarding.intro || DEMO_INTRO_ANSWER,
+            organizationShape: "solo",
+            approvalPreference: "owner_all",
+            onboardingOwnership: "owner_only",
+            workflowBuilder: "self",
+            builderAccess: "workflows_only",
+            automationScope: "focus_area",
+            businessArea: "Operations",
+            repetitiveTask: "Rescheduling customer appointments over the phone",
+            currentWorkflow: "Messages come in through Gmail and WhatsApp, the coordinator checks the calendar manually, then calls customers one by one to shift appointments and update the spreadsheet.",
+            employeeCount: String(DEMO_COMPANY.teamSize),
+            approvalOwner: "Sarah Tan",
+            employeeEmails: ["marcus@brightpath.sg", "jolene@brightpath.sg"],
+            departmentApprovals: [
+              {
+                department: "Finance",
+                processOwner: "Marcus Lim",
+                email: "marcus@brightpath.sg",
+                approver: "marcus@brightpath.sg",
+                setupDelegate: "marcus@brightpath.sg",
+                discoveryStatus: "completed",
+              },
+              {
+                department: "Operations",
+                processOwner: "Sarah Tan",
+                email: "sarah@brightpath.sg",
+                approver: "Sarah Tan",
+                setupDelegate: "Sarah Tan",
+                discoveryStatus: "completed",
+              },
+              {
+                department: "Marketing",
+                processOwner: "Jolene Ng",
+                email: "jolene@brightpath.sg",
+                approver: "jolene@brightpath.sg",
+                setupDelegate: "jolene@brightpath.sg",
+                discoveryStatus: "invited",
+              },
+            ],
             selectedToolIds: [
               "gmail",
               "google-calendar",
@@ -464,7 +704,10 @@ export const useDemoStore = create<DemoStore>()(
       acceptConsent: () =>
         set((st) => ({ onboarding: { ...st.onboarding, consentAccepted: true } })),
       completeOnboarding: () =>
-        set((st) => ({ onboarding: { ...st.onboarding, completed: true } })),
+        set((st) => ({
+          journey: atLeast(st.journey, "discovery") ? st.journey : "discovery",
+          onboarding: { ...st.onboarding, completed: true },
+        })),
 
       /* ── lean canvas ── */
       setCanvasSource: (source) =>
@@ -490,6 +733,40 @@ export const useDemoStore = create<DemoStore>()(
       /* ── discovery ── */
       setDiscoveryMode: (mode) =>
         set((st) => ({ discovery: { ...st.discovery, mode } })),
+      syncDiscoveryFromServer: (payload) =>
+        set((st) => {
+          const answers = payload.answers ? { ...st.discovery.answers, ...payload.answers } : st.discovery.answers;
+          const answeredCount = Object.keys(answers).length;
+          return {
+            discovery: {
+              ...st.discovery,
+              ...payload,
+              answers,
+              currentIndex: Math.max(st.discovery.currentIndex, answeredCount),
+              completed: payload.completed ?? st.discovery.completed ?? false,
+            },
+          };
+        }),
+      replaceDiscoveryAnswers: (answers, completed) =>
+        set((st) => {
+          const factIds = Array.from(
+            new Set(
+              Object.keys(answers).flatMap((questionId) => {
+                const q = DISCOVERY_QUESTIONS.find((item) => item.id === questionId);
+                return q?.factIds ?? [];
+              }),
+            ),
+          );
+          return {
+            discovery: {
+              ...st.discovery,
+              answers,
+              factIds,
+              currentIndex: Math.max(0, Object.keys(answers).length),
+              completed: completed ?? Object.keys(answers).length >= DISCOVERY_QUESTIONS.length,
+            },
+          };
+        }),
       confirmAnswer: (questionId, text) =>
         set((st) => {
           const q = DISCOVERY_QUESTIONS.find((x) => x.id === questionId);
@@ -688,6 +965,9 @@ export const useDemoStore = create<DemoStore>()(
         })),
 
       /* ── planner ── */
+      setOrganizationId: (organizationId) =>
+        set((st) => ({ onboarding: { ...st.onboarding, organizationId } })),
+
       setPlanGenerated: () =>
         set((st) => ({
           plan: st.plan.agents.length
@@ -695,6 +975,61 @@ export const useDemoStore = create<DemoStore>()(
             : { ...st.plan, agents: structuredClone(INITIAL_PLAN_AGENTS), stale: false },
           journey: atLeast(st.journey, "plan_review") ? st.journey : "plan_review",
         })),
+
+      syncPlanFromServer: ({ organizationId, plan, agents, templates }) =>
+        set((st) => {
+          const templateById = new Map(templates.map((t) => [t.id, t]));
+          const mapStatus = (status: string): PlanAgent["status"] => {
+            if (status === "configured" || status === "ready") return "ready_to_build";
+            if (status === "needs_information") return "needs_information";
+            return "needs_configuration";
+          };
+          const blankConfig: AgentConfig = {
+            operatingMode: "draft_only",
+            triggers: [],
+            channels: [],
+            workflowsEnabled: {},
+            approvalActions: [],
+            processOwner: "",
+            approvalOwner: "",
+            quietHours: "",
+            runFrequency: "",
+            dataAccess: [],
+            forbiddenActions: [],
+          };
+          const planAgents: PlanAgent[] = agents.map((a) => {
+            const template = a.template_id ? templateById.get(a.template_id) : undefined;
+            return {
+              agentId: a.agent_key,
+              status: mapStatus(a.status),
+              config: blankConfig,
+              designAnswers: null,
+              designApproved: false,
+              workflowOrder: [],
+              configId: a.id,
+              templateId: a.template_id ?? null,
+              name: template?.name ?? a.agent_key,
+              description: template?.description,
+              requiredTools: a.required_tools ?? [],
+              configSchema: template?.config_schema,
+              realConfig: a.config ?? {},
+            };
+          });
+          return {
+            onboarding: { ...st.onboarding, organizationId },
+            plan: {
+              id: plan.id,
+              version: plan.version,
+              status: plan.status === "approved" ? "approved" : "draft",
+              approvedAt: plan.approved_at ?? null,
+              stale: false,
+              agents: planAgents,
+              planRules: [],
+              lastChange: null,
+            },
+            journey: atLeast(st.journey, "plan_review") ? st.journey : "plan_review",
+          };
+        }),
 
       addAgentToPlan: (agentId) =>
         set((st) => {
@@ -1187,23 +1522,7 @@ export const useDemoStore = create<DemoStore>()(
 
       markNotificationsRead: () =>
         set((st) => ({ workspace: { ...st.workspace, unreadNotifications: [] } })),
-    }),
-    {
-      name: "oriant-demo-v1",
-      version: 2, // v2: onboarding.customTools + report.facts (older snapshots reset)
-      storage: createJSONStorage(() => localStorage),
-      partialize: (s) => {
-        const { _hydrated, planPast, planFuture, ...rest } = s as DemoStore & Record<string, unknown>;
-        void _hydrated;
-        return { ...rest, planPast, planFuture } as Partial<DemoStore>;
-      },
-      migrate: () => ({ ...initialState(), planPast: [], planFuture: [] }) as Partial<DemoStore>,
-      onRehydrateStorage: () => (state) => {
-        if (state) (state as DemoStore)._hydrated = true;
-      },
-    },
-  ),
-);
+}));
 
 /** Selector: plan cost totals (illustrative). useShallow caches the derived
  *  object so the snapshot stays referentially stable between renders. */

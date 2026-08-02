@@ -1,90 +1,91 @@
 "use client";
-/**
- * CaptureRail — the persistent "What we've captured" panel beside the
- * onboarding flow (improvement spec §5 + §8).
- *
- * An intentional info panel: 1.5px border + subtle tint, title row with a
- * captured-fact count, and a quiet "Updated just now" badge that appears
- * when new information lands. Shows ONLY captured facts, grouped with small
- * icons (Company, Team, Goals, Tools, Automation preference, Guardrails),
- * plus exactly one muted "Oriant will ask about this next" line. The full
- * checklist lives in the Company Report, not here.
- */
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import {
-  Building2,
-  Plug,
-  ShieldCheck,
-  SlidersHorizontal,
-  Target,
-  Users,
-} from "lucide-react";
+import { Building2, Plug, ShieldCheck, SlidersHorizontal, Users } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
 import { DEMO_COMPANY, TOOL_CATALOG } from "@/lib/mock/fixtures/demo-company";
 import { DUR, EASE } from "@/lib/mock/motion";
 import styles from "./onboarding.module.css";
 
-const MODE_LABELS: Record<string, string> = {
-  assist: "Assist: AI works with your current team",
-  operate: "Operate: AI runs eligible workflows within limits",
-  unsure: "Not sure yet: Oriant will recommend a level after Discovery",
+const TOOL_NAME = new Map(TOOL_CATALOG.map((tool) => [tool.id, tool.name]));
+
+const BUILDER_LABELS: Record<string, string> = {
+  self: "You'll build the first workflow",
+  invite: "Someone else will build the first workflow",
 };
 
-const TOOL_NAME = new Map(TOOL_CATALOG.map((t) => [t.id, t.name]));
+const ACCESS_LABELS: Record<string, string> = {
+  workflows_only: "Workflow access only",
+  account_manager: "Workflow + account management access",
+};
 
 function clip(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
 }
 
 export default function CaptureRail() {
-  const onboarding = useDemoStore((s) => s.onboarding);
-  const hydrated = useDemoStore((s) => s._hydrated);
+  const onboarding = useDemoStore((state) => state.onboarding);
+  const hydrated = useDemoStore((state) => state._hydrated);
   const reduced = useReducedMotion();
+  const intro = onboarding.intro ?? "";
+  const builderAccess = onboarding.builderAccess ?? "";
+  const workflowBuilder = onboarding.workflowBuilder ?? "";
 
   const toolNames = [
     ...onboarding.selectedToolIds
       .map((id) => TOOL_NAME.get(id))
-      .filter((n): n is string => Boolean(n)),
-    ...onboarding.customTools.map((t) => t.name),
+      .filter((name): name is string => Boolean(name)),
+    ...onboarding.customTools.map((tool) => tool.name),
   ];
 
-  const captured = onboarding.capturedSections;
-  const hasIntro = onboarding.intro.trim().length > 0;
-  const hasTeam = captured.includes("team");
-  const hasGoals = captured.includes("goals");
-
-  /* Captured fact groups — only what exists, in spec §8 group order. */
+  const contributorCount = onboarding.employeeEmails?.length ?? 0;
   const facts: {
     id: string;
     icon: typeof Users;
     label: string;
     body: React.ReactNode;
   }[] = [];
-  if (hasIntro) {
+
+  if (intro.trim()) {
     facts.push({
       id: "company",
       icon: Building2,
-      label: "Company",
-      body: <span>&ldquo;{clip(onboarding.intro.trim(), 120)}&rdquo;</span>,
+      label: "Business summary",
+      body: <span>&ldquo;{clip(intro.trim(), 120)}&rdquo;</span>,
     });
   }
-  if (hasTeam) {
+
+  if (workflowBuilder) {
     facts.push({
-      id: "team",
+      id: "builder",
+      icon: SlidersHorizontal,
+      label: "Workflow setup",
+      body: (
+        <span>
+          {BUILDER_LABELS[workflowBuilder] ?? "Builder not selected"}
+          {workflowBuilder === "invite" && builderAccess
+            ? ` · ${ACCESS_LABELS[builderAccess] ?? builderAccess}`
+            : ""}
+        </span>
+      ),
+    });
+  }
+
+  if (onboarding.capturedSections.includes("team")) {
+    facts.push({
+      id: "setup",
       icon: Users,
-      label: "Team",
-      body: <span>{DEMO_COMPANY.teams.join(" · ")}</span>,
+      label: "Setup",
+      body: (
+        <span>
+          {onboarding.organizationShape === "solo"
+            ? "Solo setup selected."
+            : `${contributorCount} teammate email${contributorCount === 1 ? "" : "s"} added.`}
+        </span>
+      ),
     });
   }
-  if (hasGoals) {
-    facts.push({
-      id: "goals",
-      icon: Target,
-      label: "Goals",
-      body: <span>{DEMO_COMPANY.primaryGoal}.</span>,
-    });
-  }
+
   if (toolNames.length > 0) {
     facts.push({
       id: "tools",
@@ -106,14 +107,7 @@ export default function CaptureRail() {
       ),
     });
   }
-  if (onboarding.mode) {
-    facts.push({
-      id: "automation",
-      icon: SlidersHorizontal,
-      label: "Automation preference",
-      body: <span>{MODE_LABELS[onboarding.mode]}.</span>,
-    });
-  }
+
   if (onboarding.consentAccepted) {
     facts.push({
       id: "guardrails",
@@ -122,33 +116,46 @@ export default function CaptureRail() {
       body: (
         <span>
           {DEMO_COMPANY.alwaysApprove.slice(0, 2).join(", ").toLowerCase()} and{" "}
-          {DEMO_COMPANY.alwaysApprove.length - 2} more always need your
-          approval.
+          {DEMO_COMPANY.alwaysApprove.length - 2} more still need approval.
         </span>
       ),
     });
   }
 
-  /* Exactly ONE next-question line, in the order the flow actually asks. */
   const nextAreas: { done: boolean; label: string }[] = [
-    { done: Boolean(onboarding.mode), label: "how much should run automatically" },
-    { done: hasIntro, label: "what your company does and what takes too much time" },
-    { done: toolNames.length > 0, label: "the tools your team already uses" },
-    { done: onboarding.consentAccepted, label: "permissions and what always needs your approval" },
-    { done: hasTeam, label: "your team and who handles what" },
-    { done: hasGoals, label: "what you want Oriant to improve first" },
+    {
+      done: Boolean(onboarding.organizationShape && workflowBuilder && (workflowBuilder === "self" || builderAccess)),
+      label: "whether you're setting this up alone and who will build the first workflow",
+    },
+    {
+      done: Boolean(onboarding.intro.trim()),
+      label: "what your business does and where time is being lost today",
+    },
+    {
+      done: onboarding.organizationShape === "solo" || contributorCount >= 0,
+      label: "any extra people you may want to bring in later",
+    },
+    {
+      done: toolNames.length > 0,
+      label: "the tools your team already uses",
+    },
+    {
+      done: onboarding.consentAccepted,
+      label: "permissions and what always needs human approval",
+    },
   ];
-  const next = nextAreas.find((a) => !a.done);
+  const next = nextAreas.find((area) => !area.done);
 
-  /* "Updated just now" badge: appears when new info lands, then fades.
-     Baseline is set after store hydration so a refresh never triggers it. */
   const sig = [
     facts.length,
     toolNames.length,
-    onboarding.intro.trim().length,
-    onboarding.mode ?? "",
+    intro.trim().length,
+    workflowBuilder,
+    builderAccess,
     onboarding.consentAccepted,
+    contributorCount,
   ].join("|");
+
   const prevSig = useRef<string | null>(null);
   const [justUpdated, setJustUpdated] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -189,7 +196,7 @@ export default function CaptureRail() {
     <aside className={styles.rail} aria-label="What we've captured">
       <div className={`oa-card oa-card--flat ${styles.railCard}`}>
         <div className={styles.railHead}>
-          <h2 className="oa-h3">What we&rsquo;ve captured</h2>
+          <h2 className="oa-h3">Your setup</h2>
           <span className={styles.railHeadRight} aria-live="polite">
             <AnimatePresence initial={false}>
               {justUpdated && (
@@ -209,28 +216,26 @@ export default function CaptureRail() {
             <span className={styles.railCount}>{facts.length} captured</span>
           </span>
         </div>
-        <p className="oa-sub">
-          Only what you&rsquo;ve shared so far. Everything stays editable.
-        </p>
+        <p className="oa-sub">A live summary of what you&apos;ve shared so far.</p>
 
         {facts.length === 0 && (
           <p className="oa-sub" style={{ fontStyle: "italic" }}>
-            Answers you confirm will settle in here as structured facts.
+            Your answers will build up here as you go.
           </p>
         )}
 
         {facts.length > 0 && (
           <div className={styles.railFacts}>
-            {facts.map((f) => {
-              const Icon = f.icon;
+            {facts.map((fact) => {
+              const Icon = fact.icon;
               return (
-                <motion.div key={f.id} className={styles.railFact} {...appear}>
+                <motion.div key={fact.id} className={styles.railFact} {...appear}>
                   <span className={styles.railFactIcon} aria-hidden>
                     <Icon size={13} />
                   </span>
                   <div className={styles.railFactBody}>
-                    <span className="oa-micro">{f.label}</span>
-                    {f.body}
+                    <span className="oa-micro">{fact.label}</span>
+                    {fact.body}
                   </div>
                 </motion.div>
               );
@@ -240,9 +245,9 @@ export default function CaptureRail() {
 
         <p className={styles.railNext}>
           {next ? (
-            <>Oriant will ask about this next: {next.label}.</>
+            <>Next up: {next.label}.</>
           ) : (
-            <>All areas captured. Discovery goes deeper on each one next.</>
+            <>Everything important is captured. You can move into the first automation brief.</>
           )}
         </p>
       </div>

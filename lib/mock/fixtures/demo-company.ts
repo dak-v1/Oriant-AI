@@ -48,41 +48,41 @@ export type CatalogTool = ToolChip & { purpose: string };
  *  string ids because they exist nowhere else in the mock. */
 export const TOOL_CATALOG: CatalogTool[] = [
   // Communication
-  { id: APP.gmail, name: "Gmail", category: "communication", purpose: "Shared inbox for customer email" },
-  { id: APP.outlook, name: "Outlook", category: "communication", purpose: "Customer email for Microsoft 365 teams" },
-  { id: APP.whatsapp, name: "WhatsApp Business", category: "communication", purpose: "Customer chat on your business number" },
-  { id: APP.telegram, name: "Telegram", category: "communication", purpose: "Direct customer messaging channel" },
-  { id: APP.intercom, name: "Intercom", category: "communication", purpose: "Live chat on your website" },
-  { id: APP.slack, name: "Slack", category: "communication", purpose: "Team chat and internal channels" },
-  { id: APP.teams, name: "Microsoft Teams", category: "communication", purpose: "Team chat and meetings in Microsoft 365" },
+  { id: APP.gmail, name: "Gmail", category: "communication", purpose: "Shared inbox for customer email", iconSlug: "gmail", iconColor: "EA4335" },
+  { id: APP.outlook, name: "Outlook", category: "communication", purpose: "Customer email for Microsoft 365 teams", iconSlug: "microsoftoutlook", iconColor: "0078D4" },
+  { id: APP.whatsapp, name: "WhatsApp Business", category: "communication", purpose: "Customer chat on your business number", iconSlug: "whatsapp", iconColor: "25D366" },
+  { id: APP.telegram, name: "Telegram", category: "communication", purpose: "Direct customer messaging channel", iconSlug: "telegram", iconColor: "26A5E4" },
+  { id: APP.intercom, name: "Intercom", category: "communication", purpose: "Live chat on your website", iconSlug: "intercom", iconColor: "1F8DED" },
+  { id: APP.slack, name: "Slack", category: "communication", purpose: "Team chat and internal channels", iconSlug: "slack", iconColor: "4A154B" },
+  { id: APP.teams, name: "Microsoft Teams", category: "communication", purpose: "Team chat and meetings in Microsoft 365", iconSlug: "microsoftteams", iconColor: "6264A7" },
   // Calendar
-  { id: APP.googleCalendar, name: "Google Calendar", category: "scheduling", purpose: "Team and technician scheduling" },
-  { id: APP.microsoftCalendar, name: "Microsoft Calendar", category: "scheduling", purpose: "Scheduling for Microsoft 365 teams" },
-  { id: APP.calendly, name: "Calendly", category: "scheduling", purpose: "Self-service booking links for customers" },
+  { id: APP.googleCalendar, name: "Google Calendar", category: "scheduling", purpose: "Team and technician scheduling", iconSlug: "googlecalendar", iconColor: "4285F4" },
+  { id: APP.microsoftCalendar, name: "Microsoft Calendar", category: "scheduling", purpose: "Scheduling for Microsoft 365 teams", iconSlug: "microsoftoutlook", iconColor: "0078D4" },
+  { id: APP.calendly, name: "Calendly", category: "scheduling", purpose: "Self-service booking links for customers", iconSlug: "calendly", iconColor: "006BFF" },
   // Customer management
-  { id: APP.hubspot, name: "HubSpot", category: "crm", purpose: "Customer records and deal tracking" },
-  { id: APP.salesforce, name: "Salesforce", category: "crm", purpose: "Customer records for larger sales teams" },
-  { id: APP.pipedrive, name: "Pipedrive", category: "crm", purpose: "Simple sales pipeline tracking" },
+  { id: APP.hubspot, name: "HubSpot", category: "crm", purpose: "Customer records and deal tracking", iconSlug: "hubspot", iconColor: "FF7A59" },
+  { id: APP.salesforce, name: "Salesforce", category: "crm", purpose: "Customer records for larger sales teams", iconSlug: "salesforce", iconColor: "00A1E0" },
+  { id: APP.pipedrive, name: "Pipedrive", category: "crm", purpose: "Simple sales pipeline tracking", iconSlug: "pipedrive", iconColor: "1D7AFC" },
   // Finance
-  { id: APP.quickbooks, name: "QuickBooks", category: "finance", purpose: "Invoicing and accounting" },
-  { id: APP.xero, name: "Xero", category: "finance", purpose: "Cloud accounting and invoicing" },
-  { id: APP.stripe, name: "Stripe", category: "finance", purpose: "Card payments and payouts" },
+  { id: APP.quickbooks, name: "QuickBooks", category: "finance", purpose: "Invoicing and accounting", iconSlug: "intuitquickbooks", iconColor: "2CA01C" },
+  { id: APP.xero, name: "Xero", category: "finance", purpose: "Cloud accounting and invoicing", iconSlug: "xero", iconColor: "13B5EA" },
+  { id: APP.stripe, name: "Stripe", category: "finance", purpose: "Card payments and payouts", iconSlug: "stripe", iconColor: "635BFF" },
   // Marketing
-  { id: APP.mailchimp, name: "Mailchimp", category: "marketing", purpose: "Email newsletters and campaigns" },
-  { id: APP.metaBusiness, name: "Meta Business Suite", category: "marketing", purpose: "Facebook and Instagram publishing" },
-  { id: APP.linkedin, name: "LinkedIn", category: "marketing", purpose: "Company page posts and hiring content" },
-  { id: APP.canva, name: "Canva", category: "marketing", purpose: "Design templates and brand assets" },
+  { id: APP.mailchimp, name: "Mailchimp", category: "marketing", purpose: "Email newsletters and campaigns", iconSlug: "mailchimp", iconColor: "FFE01B" },
+  { id: APP.metaBusiness, name: "Meta Business Suite", category: "marketing", purpose: "Facebook and Instagram publishing", iconSlug: "meta", iconColor: "0668E1" },
+  { id: APP.linkedin, name: "LinkedIn", category: "marketing", purpose: "Company page posts and hiring content", iconSlug: "linkedin", iconColor: "0A66C2" },
+  { id: APP.canva, name: "Canva", category: "marketing", purpose: "Design templates and brand assets", iconSlug: "canva", iconColor: "00C4CC" },
   // Storage
-  { id: APP.googleDrive, name: "Google Drive", category: "storage", purpose: "Shared files and documents" },
-  { id: APP.dropbox, name: "Dropbox", category: "storage", purpose: "File storage and sharing" },
-  { id: APP.onedrive, name: "OneDrive", category: "storage", purpose: "File storage in Microsoft 365" },
-  { id: APP.notion, name: "Notion", category: "storage", purpose: "Team wiki, SOPs and notes" },
+  { id: APP.googleDrive, name: "Google Drive", category: "storage", purpose: "Shared files and documents", iconSlug: "googledrive", iconColor: "34A853" },
+  { id: APP.dropbox, name: "Dropbox", category: "storage", purpose: "File storage and sharing", iconSlug: "dropbox", iconColor: "0061FF" },
+  { id: APP.onedrive, name: "OneDrive", category: "storage", purpose: "File storage in Microsoft 365", iconSlug: "microsoftonedrive", iconColor: "0078D4" },
+  { id: APP.notion, name: "Notion", category: "storage", purpose: "Team wiki, SOPs and notes", iconSlug: "notion", iconColor: "000000" },
   // Commerce
-  { id: "shopify", name: "Shopify", category: "commerce", purpose: "Online store orders and customers" },
-  { id: "woocommerce", name: "WooCommerce", category: "commerce", purpose: "Orders and stock on a WordPress store" },
+  { id: "shopify", name: "Shopify", category: "commerce", purpose: "Online store orders and customers", iconSlug: "shopify", iconColor: "7AB55C" },
+  { id: "woocommerce", name: "WooCommerce", category: "commerce", purpose: "Orders and stock on a WordPress store", iconSlug: "woocommerce", iconColor: "96588A" },
   // Project management
-  { id: APP.asana, name: "Asana", category: "project", purpose: "Task and project tracking" },
-  { id: APP.clickup, name: "ClickUp", category: "project", purpose: "Projects, tasks and docs in one place" },
+  { id: APP.asana, name: "Asana", category: "project", purpose: "Task and project tracking", iconSlug: "asana", iconColor: "F06A6A" },
+  { id: APP.clickup, name: "ClickUp", category: "project", purpose: "Projects, tasks and docs in one place", iconSlug: "clickup", iconColor: "7B68EE" },
 ];
 
 /** Business-function labels (improvement spec §7).

@@ -13,18 +13,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { FileCheck2, TriangleAlert } from "lucide-react";
-import type { ReportSectionId } from "@/lib/mock/types";
+import { ChevronDown, ChevronUp, FileCheck2, TriangleAlert } from "lucide-react";
+import type { OnboardingState, ReportSectionId } from "@/lib/mock/types";
+import type { CompanyReport } from "@/lib/contracts";
 import { useDemoStore } from "@/lib/mock/store";
 import { atLeast } from "@/lib/mock/state-machine";
-import {
-  REPORT_FACTS,
-  REPORT_FACTS_BY_SECTION,
-  REPORT_SECTIONS,
-  REPORT_SECTION_ORDER,
-} from "@/lib/mock/fixtures/company-report";
-import { DISCOVERY_QUESTIONS } from "@/lib/mock/fixtures/discovery-questions";
-import { DEMO_COMPANY } from "@/lib/mock/fixtures/demo-company";
 import { DEMO_TODAY } from "@/lib/mock/fixtures/ids";
 import { DUR, EASE } from "@/lib/mock/motion";
 import Drawer from "@/components/mock/ui/Drawer";
@@ -35,10 +28,16 @@ import ReportSectionCard from "./ReportSectionCard";
 import EvidencePanel from "./EvidencePanel";
 import ReportFooterBar from "./ReportFooterBar";
 import { effectiveFactStatus } from "./ReportFactList";
+import {
+  buildDynamicReportFacts,
+  buildDynamicReportSections,
+  factsBySection,
+} from "./report-data";
 import { formatDemoDate, formatDemoDateTime } from "./report-utils";
 import styles from "./report.module.css";
 
-const SECTION_BY_ID = new Map(REPORT_SECTIONS.map((s) => [s.id, s]));
+const INTERNAL_HANDOFF_ID = "internal-json-handoff" as const;
+type ReportPaneSectionId = ReportSectionId | typeof INTERNAL_HANDOFF_ID;
 
 /** Viewport line (px from top) that decides which section is "active". */
 const SCROLL_LINE = 170;
@@ -49,45 +48,128 @@ export default function ReportExperience() {
 
   const report = useDemoStore((s) => s.report);
   const setSectionNote = useDemoStore((s) => s.setSectionNote);
+  const syncOnboardingFromServer = useDemoStore((s) => s.syncOnboardingFromServer);
+  const syncDiscoveryFromServer = useDemoStore((s) => s.syncDiscoveryFromServer);
 
-  const [activeId, setActiveId] = useState<ReportSectionId>(REPORT_SECTION_ORDER[0]);
+  const onboarding = useDemoStore((s) => s.onboarding);
+  const discovery = useDemoStore((s) => s.discovery);
+  const [organizationName, setOrganizationName] = useState("Organization");
+  const [sourceReport, setSourceReport] = useState<CompanyReport | null>(null);
+  const sections = useMemo(() => buildDynamicReportSections(onboarding, discovery, sourceReport), [onboarding, discovery, sourceReport]);
+  const sectionById = useMemo(() => new Map(sections.map((s) => [s.id, s])), [sections]);
+  const visibleSectionOrder = useMemo(() => sections.map((section) => section.id), [sections]);
+  const reportFacts = useMemo(() => buildDynamicReportFacts(onboarding, discovery), [onboarding, discovery]);
+  const reportFactsBySection = useMemo(() => factsBySection(reportFacts), [reportFacts]);
+  const [handoffJson, setHandoffJson] = useState<Record<string, unknown> | null>(null);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
+
+  const [activeId, setActiveId] = useState<ReportPaneSectionId>(sections[0]?.id ?? "company-overview");
   const [drawerFor, setDrawerFor] = useState<ReportSectionId | null>(null);
+  const [handoffExpanded, setHandoffExpanded] = useState(false);
 
-  const sectionEls = useRef<Partial<Record<ReportSectionId, HTMLElement | null>>>({});
+  const sectionEls = useRef<Partial<Record<ReportPaneSectionId, HTMLElement | null>>>({});
 
   const approved = report.status === "approved";
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([
+      fetch("/api/onboarding/session", { cache: "no-store" }),
+      fetch("/api/discovery/session", { cache: "no-store" }),
+      fetch("/api/report/handoff", { cache: "no-store" }),
+    ]).then(async ([onboardingRes, discoveryRes, handoffRes]) => {
+      if (cancelled) return;
+      if (onboardingRes.ok) {
+        const data = await onboardingRes.json() as {
+          organizationName?: string;
+          session?: {
+            preferredChannel?: "typed" | "voice";
+            organization?: { shape?: OnboardingState["organizationShape"]; employeeCount?: number; approvalOwner?: string; employeeEmails?: string[] };
+            selectedToolIds?: string[];
+            consentAccepted?: boolean;
+            answers?: Record<string, { value: unknown }>;
+          };
+          };
+        setOrganizationName(data.organizationName ?? "Organization");
+        const session = data.session;
+        if (session) {
+          const answers = session.answers ?? {};
+          const value = (id: string) => answers[id]?.value;
+          syncOnboardingFromServer({
+            channel: session.preferredChannel ?? "typed",
+            organizationShape: session.organization?.shape ?? "solo",
+            employeeCount: typeof session.organization?.employeeCount === "number" ? String(session.organization.employeeCount) : "",
+            approvalOwner: session.organization?.approvalOwner ?? "",
+            employeeEmails: session.organization?.employeeEmails ?? [],
+            intro: typeof value("company_intro") === "string" ? value("company_intro") as string : "",
+            businessArea: typeof value("business_area") === "string" ? value("business_area") as string : "",
+            repetitiveTask: typeof value("repetitive_task") === "string" ? value("repetitive_task") as string : "",
+            currentWorkflow: typeof value("current_workflow") === "string" ? value("current_workflow") as string : "",
+            selectedToolIds: session.selectedToolIds ?? [],
+            consentAccepted: session.consentAccepted ?? false,
+          });
+        }
+      }
+      if (discoveryRes.ok) {
+        const data = await discoveryRes.json() as {
+          answers?: Record<string, string>;
+          clarificationAnswers?: Record<string, string>;
+          clarificationQuestions?: Array<{ id: string; question: string }>;
+          report?: CompanyReport | null;
+          completedAt?: string | null;
+        };
+        setSourceReport(data.report ?? null);
+        syncDiscoveryFromServer({
+          answers: data.answers ?? {},
+          clarificationAnswers: data.clarificationAnswers ?? {},
+          clarificationQuestions: data.clarificationQuestions ?? [],
+          completed: Boolean(data.completedAt),
+        });
+      }
+      if (handoffRes.ok) {
+        setHandoffJson(await handoffRes.json() as Record<string, unknown>);
+        setHandoffError(null);
+      } else {
+        const error = await handoffRes.json().catch(() => ({})) as { error?: string };
+        setHandoffError(error.error ?? "The internal handoff could not be loaded.");
+      }
+    }).catch(() => {
+      setHandoffError("The Supabase-backed internal handoff could not be loaded.");
+    });
+    return () => { cancelled = true; };
+  }, [syncDiscoveryFromServer, syncOnboardingFromServer]);
 
   /* ── fact-level review totals (improvement spec §11.2/§11.3) ── */
   const factStats = useMemo(() => {
     let confirmed = 0;
     let unresolved = 0;
-    for (const fact of REPORT_FACTS) {
+    for (const fact of reportFacts) {
       const status = effectiveFactStatus(report.facts[fact.id], approved);
       if (status === "confirmed") confirmed += 1;
       if (status === "unreviewed" || status === "rejected") unresolved += 1;
     }
     return {
-      total: REPORT_FACTS.length,
+      total: reportFacts.length,
       confirmed,
-      needsReview: REPORT_FACTS.length - confirmed,
+      needsReview: reportFacts.length - confirmed,
       unresolved,
-      missingInfoCount: SECTION_BY_ID.get("missing-information")?.bullets.length ?? 0,
+      missingInfoCount: sectionById.get("missing-information")?.bullets.length ?? 0,
     };
-  }, [report.facts, approved]);
+  }, [approved, report.facts, reportFacts, sectionById]);
 
   const statuses = useMemo(() => {
     const out = {} as Record<ReportSectionId, "draft" | "confirmed" | "rejected">;
-    for (const id of REPORT_SECTION_ORDER) out[id] = report.sections[id].status;
+    for (const id of visibleSectionOrder) out[id] = report.sections[id].status;
     return out;
-  }, [report.sections]);
+  }, [report.sections, visibleSectionOrder]);
 
   /* ── scroll-position → active outline section ── */
   useEffect(() => {
     let raf = 0;
     const compute = () => {
       raf = 0;
-      let current: ReportSectionId = REPORT_SECTION_ORDER[0];
-      for (const id of REPORT_SECTION_ORDER) {
+      let current: ReportPaneSectionId = visibleSectionOrder[0] ?? "company-overview";
+      for (const id of [...visibleSectionOrder, INTERNAL_HANDOFF_ID]) {
         const el = sectionEls.current[id];
         if (el && el.getBoundingClientRect().top <= SCROLL_LINE) current = id;
       }
@@ -104,10 +186,10 @@ export default function ReportExperience() {
       window.removeEventListener("resize", onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [visibleSectionOrder]);
 
   const jumpTo = useCallback(
-    (id: ReportSectionId) => {
+    (id: ReportPaneSectionId) => {
       setActiveId(id);
       sectionEls.current[id]?.scrollIntoView({
         behavior: reduced ? "auto" : "smooth",
@@ -122,8 +204,8 @@ export default function ReportExperience() {
   const jumpToUnresolved = useCallback(() => {
     const facts = useDemoStore.getState().report.facts;
     const isApproved = useDemoStore.getState().report.status === "approved";
-    for (const sectionId of REPORT_SECTION_ORDER) {
-      for (const fact of REPORT_FACTS_BY_SECTION[sectionId]) {
+    for (const sectionId of visibleSectionOrder) {
+      for (const fact of reportFactsBySection[sectionId]) {
         const status = effectiveFactStatus(facts[fact.id], isApproved);
         if (status === "unreviewed" || status === "rejected") {
           setActiveId(sectionId);
@@ -136,25 +218,32 @@ export default function ReportExperience() {
         }
       }
     }
-  }, [reduced]);
+  }, [reduced, reportFactsBySection, visibleSectionOrder]);
 
   /* ── approval flow (Gate 1) ── */
-  const handleApprove = () => {
+  const handleApprove = async () => {
     const store = useDemoStore.getState();
     const wasStale = store.report.stale;
-    store.approveReport();
-    const next = useDemoStore.getState();
-    // approveReport lands on "report_approved"; the planner route opens at
-    // "planning" — advance only if the journey is not already past it.
-    if (!atLeast(next.journey, "planning")) store.setJourney("planning");
-    toast({
-      title: `Company Report v${next.report.version} approved`,
-      detail: wasStale
-        ? "The Workforce Planner will regenerate from this version."
-        : "Sent to the AI Workforce Planner.",
-      tone: "ok",
-    });
-    router.push("/app/planner");
+    try {
+      const response = await fetch("/api/report/approve", { method: "POST" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error || "The company report could not be approved.");
+      }
+      // The server is authoritative. This only refreshes the in-memory view
+      // after the Supabase-backed mutation succeeds.
+      store.approveReport();
+      const next = useDemoStore.getState();
+      if (!atLeast(next.journey, "planning")) store.setJourney("planning");
+      toast({
+        title: `Company Report v${next.report.version} approved`,
+        detail: wasStale ? "The Workforce Planner will regenerate from this version." : "Sent to the AI Workforce Planner.",
+        tone: "ok",
+      });
+      router.push("/app/planner");
+    } catch (error) {
+      toast({ title: "Approval was not saved", detail: error instanceof Error ? error.message : "Try again.", tone: "info" });
+    }
   };
 
   const handleSaveDraft = () =>
@@ -165,15 +254,18 @@ export default function ReportExperience() {
     setSectionNote(id, existing ? `${existing}\n${text}` : text);
   };
 
-  const activeDef = SECTION_BY_ID.get(activeId) ?? REPORT_SECTIONS[0];
-  const activeIndex = REPORT_SECTION_ORDER.indexOf(activeDef.id);
-  const drawerDef = drawerFor ? SECTION_BY_ID.get(drawerFor) : undefined;
+  const activeDef = activeId === INTERNAL_HANDOFF_ID
+    ? sections[sections.length - 1]
+    : (sectionById.get(activeId) ?? sections[0]);
+  const activeIndex = visibleSectionOrder.indexOf(activeDef.id);
+  const drawerDef = drawerFor ? sectionById.get(drawerFor) : undefined;
 
   return (
     <>
       <div className={styles.wrap}>
         {/* ── Left: Contents + Completeness ── */}
         <ReportOutline
+          sections={sections}
           statuses={statuses}
           activeId={activeId}
           completeness={factStats}
@@ -230,7 +322,7 @@ export default function ReportExperience() {
           >
             {/* Document header */}
             <header className={styles.docHead}>
-              <p className="oa-eyebrow">{DEMO_COMPANY.name}</p>
+              <p className="oa-eyebrow">{organizationName}</p>
               <div className={styles.docHeadTop}>
                 <h2 className={styles.docTitle}>
                   Company <span className="oa-serif">Understanding</span> Report
@@ -259,20 +351,20 @@ export default function ReportExperience() {
                   ? `Approved ${formatDemoDateTime(report.approvedAt)}`
                   : `Prepared ${formatDemoDate(DEMO_TODAY)}`}
                 <span aria-hidden>·</span>
-                {REPORT_SECTIONS.length} sections · {REPORT_FACTS.length} facts
+                {sections.length + 1} sections · {reportFacts.length} facts
                 <span aria-hidden>·</span>
-                Built from onboarding, your Lean Canvas and {DISCOVERY_QUESTIONS.length} interview
-                answers
+                Built from onboarding and {Object.keys(discovery.answers).length} captured interview answers
               </p>
             </header>
 
             {/* Sections */}
-            {REPORT_SECTIONS.map((def, i) => (
+            {sections.map((def, i) => (
               <ReportSectionCard
                 key={def.id}
                 def={def}
                 state={report.sections[def.id]}
                 index={i}
+                sectionFacts={reportFactsBySection[def.id]}
                 reportApproved={approved}
                 onOpenEvidence={() => {
                   setActiveId(def.id);
@@ -283,6 +375,62 @@ export default function ReportExperience() {
                 }}
               />
             ))}
+
+            <section
+              id={`report-${INTERNAL_HANDOFF_ID}`}
+              ref={(el) => {
+                sectionEls.current[INTERNAL_HANDOFF_ID] = el;
+              }}
+              className={styles.section}
+              aria-labelledby={`report-h-${INTERNAL_HANDOFF_ID}`}
+            >
+              <button
+                type="button"
+                className={styles.sectionToggle}
+                aria-expanded={handoffExpanded}
+                aria-controls={`report-panel-${INTERNAL_HANDOFF_ID}`}
+                onClick={() => setHandoffExpanded((value) => !value)}
+              >
+                <div className={styles.sectionHead}>
+                  <span className={styles.secNum}>13</span>
+                  <h3 className="oa-h3" id={`report-h-${INTERNAL_HANDOFF_ID}`}>
+                    Internal Json handoff
+                  </h3>
+                </div>
+                <span className={styles.sectionToggleIcon} aria-hidden>
+                  {handoffExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </span>
+              </button>
+
+              <AnimatePresence initial={false}>
+                {handoffExpanded ? (
+                  <motion.div
+                    key="handoff-content"
+                    id={`report-panel-${INTERNAL_HANDOFF_ID}`}
+                    className={styles.sectionContent}
+                    initial={reduced ? false : { opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: DUR.card, ease: EASE }}
+                    style={{ overflow: "hidden" }}
+                  >
+                    <div className={styles.sectionBody}>
+                      <p>
+                        This structured payload is for internal handoff into the next agentic flow layer. It combines the onboarding setup, discovery answers, and current report state in one place.
+                      </p>
+                      <details className={styles.handoffBox}>
+                        <summary className={styles.handoffToggle}>Open internal handoff JSON</summary>
+                        {handoffError ? (
+                          <p role="alert">{handoffError}</p>
+                        ) : (
+                          <pre className={styles.handoffPre}>{handoffJson ? JSON.stringify(handoffJson, null, 2) : "Loading the Supabase-backed handoff..."}</pre>
+                        )}
+                      </details>
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </section>
           </motion.article>
 
           {/* Approval bar in normal flow at the end of the report (R-02) */}
@@ -332,7 +480,7 @@ export default function ReportExperience() {
           <EvidencePanel
             def={drawerDef}
             state={report.sections[drawerDef.id]}
-            sectionNumber={REPORT_SECTION_ORDER.indexOf(drawerDef.id) + 1}
+            sectionNumber={visibleSectionOrder.indexOf(drawerDef.id) + 1}
             onAddNote={(text) => appendNote(drawerDef.id, text)}
           />
         )}

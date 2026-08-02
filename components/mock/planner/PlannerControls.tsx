@@ -56,6 +56,7 @@ export default function PlannerControls({
   onRegenerate,
   onOpenGate,
   onOpenSummary,
+  editingDisabled,
 }: {
   version: number;
   stale: boolean;
@@ -71,6 +72,9 @@ export default function PlannerControls({
   onRegenerate: () => void;
   onOpenGate: () => void;
   onOpenSummary: () => void;
+  /** Step 9 Pass 1: hides Regenerate/Undo/Redo — no real backend path for
+   *  structural plan edits yet (only chat/apply, which is deferred). */
+  editingDisabled?: boolean;
 }) {
   const ready = unresolved === 0;
   return (
@@ -101,7 +105,7 @@ export default function PlannerControls({
         </button>
       )}
 
-      {!approved && (
+      {!approved && !editingDisabled && (
         <>
           <button
             type="button"

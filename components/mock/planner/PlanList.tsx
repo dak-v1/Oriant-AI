@@ -1,12 +1,12 @@
 "use client";
 /**
- * PlanList — the compact list alternative to the canvas (improvement spec
- * §12.4): one row per agent with name, status, cost and Configure. Default
- * view below 768px; rows select into the inspector / mobile drawer.
+ * PlanList — one row per agent: name, status, monthly cost and Configure.
+ * Step 9 Pass 1: the only plan view (the graph/connector canvas has no real
+ * backend data to draw — see PROGRESS.md). Reads real agent fields set by
+ * syncPlanFromServer (lib/mock/store.ts) instead of the AGENT_LIBRARY fixture.
  */
 import Link from "next/link";
 import { Settings2 } from "lucide-react";
-import { AGENT_LIBRARY } from "@/lib/mock/fixtures/agent-library";
 import StatusBadge from "@/components/mock/ui/StatusBadge";
 import { money } from "@/lib/mock/pricing";
 import { useDemoStore } from "@/lib/mock/store";
@@ -27,8 +27,7 @@ export default function PlanList({
   return (
     <div className={styles.listRows} aria-label="Workforce plan list">
       {agents.map((agent) => {
-        const def = AGENT_LIBRARY[agent.agentId];
-        if (!def) return null;
+        const name = agent.name ?? agent.agentId;
         const selected = selection?.type === "agent" && selection.agentId === agent.agentId;
         const select = () => onSelect({ type: "agent", agentId: agent.agentId });
         return (
@@ -44,15 +43,17 @@ export default function PlanList({
           >
             <div className={styles.listMain}>
               <button type="button" className={styles.listName} onClick={select}>
-                {def.name}
+                {name}
               </button>
               <span className={styles.listCost}>
-                {money(def.setupCost)} setup · {money(def.monthlyCost)}/mo
+                {agent.requiredTools && agent.requiredTools.length > 0
+                  ? `${agent.requiredTools.length} tool${agent.requiredTools.length === 1 ? "" : "s"} required`
+                  : "No tools required"}
               </span>
             </div>
             <StatusBadge status={agent.status} />
             <Link
-              href={`/app/planner/agents/${def.id}`}
+              href={`/app/planner/agents/${agent.configId ?? agent.agentId}`}
               className="oa-btn oa-btn--soft oa-btn--sm"
             >
               <Settings2 size={13} aria-hidden />
@@ -61,6 +62,7 @@ export default function PlanList({
           </div>
         );
       })}
+      {agents.length === 0 && <p className="oa-sub">No agents in this plan yet.</p>}
     </div>
   );
 }

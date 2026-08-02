@@ -8,7 +8,7 @@
  * the gesture), and can be switched off from the call controls at any time.
  */
 
-const STORAGE_KEY = "margo.voice";
+let voicePreference = true;
 
 /** Voices Margo sounds right in, best first — matched loosely by name. */
 const PREFERRED = [
@@ -26,26 +26,18 @@ export function speechSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-/** Persisted across sessions so the choice sticks. Defaults to on. */
+/** Runtime-only preference. Persistent product data belongs in Supabase. */
 export function loadVoicePref(): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    const v = window.localStorage.getItem(STORAGE_KEY);
-    return v === null ? true : v === "1";
-  } catch {
-    return true;
-  }
+  return voicePreference;
 }
 
 export function saveVoicePref(on: boolean): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, on ? "1" : "0");
-  } catch {
-    /* private mode — the session default is fine */
-  }
+  voicePreference = on;
 }
 
 let cachedVoice: SpeechSynthesisVoice | null = null;
+let activeAudio: HTMLAudioElement | null = null;
+let activeAudioUrl: string | null = null;
 
 function pickVoice(): SpeechSynthesisVoice | null {
   if (!speechSupported()) return null;
@@ -74,8 +66,43 @@ export function primeVoices(): void {
 }
 
 export function cancelSpeech(): void {
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio.currentTime = 0;
+    activeAudio = null;
+  }
+  if (activeAudioUrl) {
+    URL.revokeObjectURL(activeAudioUrl);
+    activeAudioUrl = null;
+  }
   if (!speechSupported()) return;
   try { window.speechSynthesis.cancel(); } catch { /* nothing to cancel */ }
+}
+
+/** Prefer ElevenLabs when configured, with browser speech as a safe fallback. */
+export async function speakAgent(text: string, onEnd?: () => void): Promise<void> {
+  if (!text.trim()) return;
+  cancelSpeech();
+  try {
+    const response = await fetch("/api/voice/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!response.ok) throw new Error("ElevenLabs unavailable");
+    const blob = await response.blob();
+    activeAudioUrl = URL.createObjectURL(blob);
+    activeAudio = new Audio(activeAudioUrl);
+    activeAudio.onended = () => {
+      if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
+      activeAudio = null;
+      activeAudioUrl = null;
+      onEnd?.();
+    };
+    await activeAudio.play();
+  } catch {
+    speak(text, onEnd);
+  }
 }
 
 /**

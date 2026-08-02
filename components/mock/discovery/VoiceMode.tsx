@@ -30,6 +30,7 @@ export default function VoiceMode({
   skipped,
   justConfirmed,
   onConfirm,
+  onVoiceConfirm,
   onSkip,
   onJump,
 }: {
@@ -43,6 +44,7 @@ export default function VoiceMode({
   /** Set while the just-confirmed question's facts fly out. */
   justConfirmed: DiscoveryQuestion | null;
   onConfirm: (q: DiscoveryQuestion, text: string) => void;
+  onVoiceConfirm?: (q: DiscoveryQuestion, text: string) => void;
   onSkip: () => void;
   onJump: (questionId: string) => void;
 }) {
@@ -136,6 +138,7 @@ export default function VoiceMode({
               <VoiceAnswer
                 answer={displayQ.answer}
                 onConfirm={(text) => onConfirm(displayQ, text)}
+                onVoiceConfirm={(text) => onVoiceConfirm?.(displayQ, text)}
                 confirmLabel="Confirm answer"
               />
 

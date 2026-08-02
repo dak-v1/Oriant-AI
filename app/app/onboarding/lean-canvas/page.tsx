@@ -1,10 +1,5 @@
-"use client";
-/**
- * /app/onboarding/lean-canvas — Lean Canvas intake (spec §8). Thin route;
- * the experience lives in components/mock/onboarding/LeanCanvasFlow.
- */
-import LeanCanvasFlow from "@/components/mock/onboarding/LeanCanvasFlow";
+import { redirect } from "next/navigation";
 
-export default function LeanCanvasPage() {
-  return <LeanCanvasFlow />;
+export default function LeanCanvasPageRedirect() {
+  redirect("/app/discovery");
 }

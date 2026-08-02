@@ -11,10 +11,11 @@
  */
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowDownToDot, Check, Minus } from "lucide-react";
-import type { ReportSectionId, ReportSectionStatus } from "@/lib/mock/types";
-import { REPORT_SECTIONS } from "@/lib/mock/fixtures/company-report";
+import type { ReportSectionDef, ReportSectionId, ReportSectionStatus } from "@/lib/mock/types";
 import { DUR, EASE } from "@/lib/mock/motion";
 import styles from "./report.module.css";
+
+type OutlineSectionId = ReportSectionId | "internal-json-handoff";
 
 export interface FactCompleteness {
   total: number;
@@ -26,28 +27,34 @@ export interface FactCompleteness {
 }
 
 export default function ReportOutline({
+  sections,
   statuses,
   activeId,
   completeness,
   onJump,
   onJumpToUnresolved,
 }: {
+  sections: ReportSectionDef[];
   statuses: Record<ReportSectionId, ReportSectionStatus>;
-  activeId: ReportSectionId;
+  activeId: OutlineSectionId;
   completeness: FactCompleteness;
-  onJump: (id: ReportSectionId) => void;
+  onJump: (id: OutlineSectionId) => void;
   onJumpToUnresolved: () => void;
 }) {
   const reduced = useReducedMotion();
   const pct =
     completeness.total > 0 ? Math.round((completeness.confirmed / completeness.total) * 100) : 0;
+  const outlineSections: Array<{ id: OutlineSectionId; title: string }> = [
+    ...sections,
+    { id: "internal-json-handoff", title: "Internal Json handoff" },
+  ];
 
   return (
     <nav className={styles.outline} aria-label="Report contents and completeness">
       <div className={`oa-card oa-card--flat ${styles.outlineList}`}>
         <p className={`oa-micro ${styles.outlineTitle}`}>Contents</p>
-        {REPORT_SECTIONS.map((section, i) => {
-          const status = statuses[section.id];
+        {outlineSections.map((section, i) => {
+          const status = section.id === "internal-json-handoff" ? "confirmed" : statuses[section.id];
           const active = section.id === activeId;
           return (
             <button
@@ -59,7 +66,7 @@ export default function ReportOutline({
                 status === "rejected" ? styles.outlineItemRejected : "",
               ].join(" ")}
               aria-current={active ? "true" : undefined}
-              onClick={() => onJump(section.id)}
+              onClick={() => onJump(section.id as OutlineSectionId)}
             >
               <span className={styles.outlineGlyph} aria-hidden>
                 {status === "confirmed" ? (

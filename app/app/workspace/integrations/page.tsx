@@ -1,47 +1,9 @@
+"use client";
 /**
- * /app/workspace/integrations — one URL, two connections screens, and an
- * explicit switch between them.
- *
- * THE DEFAULT IS THE SCRIPTED DEMO, AND NOTHING HERE CHANGES IT. Visiting this
- * route with no query string renders exactly what it rendered before this file
- * grew a switch: the workspace-flavoured header over
- * `components/mock/integrations/IntegrationsBody` (spec §5, §12).
- * ROLE_C_PLAN's integration checkpoints say the fixture path must keep working
- * permanently — it is the fallback, the test harness and what carries the demo
- * if another lane slips — so it keeps the URL and the live view has to be asked
- * for.
- *
- * OPTING IN, both accepted, the query string winning either way:
- *
- *   /app/workspace/integrations?live=1   the live view over the runtime's
- *                                        integration registry
- *   /app/workspace/integrations?live=0   the scripted screen, even where the
- *                                        environment defaults to live
- *   ORIANT_INTEGRATIONS_LANE=live        make live the default for this
- *                                        deployment
- *
- * Anything the switch cannot read renders a refusal rather than falling back —
- * see `components/live/lane.ts` for why guessing is the one behaviour not
- * available here, and `components/live/integrations/lane.ts` for what it costs
- * on this particular route: the scripted screen reports every tool connected and
- * offers to connect the rest, and none of that reaches the runtime.
- *
- * WHY THE ENVIRONMENT VARIABLE IS NOT `NEXT_PUBLIC_`. This page reads it on the
- * server and passes down a resolved lane, so the value never needs to reach the
- * browser. `docs/RUNTIME_SETUP.md` §3 is emphatic that nothing runtime-shaped
- * gets that prefix.
- *
- * Reading `searchParams` makes this route dynamic, which it effectively already
- * was: both screens are client components that render from a store or a fetch,
- * and neither has anything to prerender. The page itself is a server component
- * so the header below hydrates nothing.
+ * /app/workspace/integrations — the Operate-phase view of the same
+ * connections screen (spec §5, §12). Same body component as
+ * /app/integrations with a workspace-flavoured header.
  */
-import LaneRefusal from "@/components/live/integrations/LaneRefusal";
-import LiveIntegrationsScreen from "@/components/live/integrations/LiveIntegrationsScreen";
-import {
-  INTEGRATIONS_LANE_ENV,
-  resolveIntegrationsLane,
-} from "@/components/live/integrations/lane";
 import IntegrationsBody from "@/components/mock/integrations/IntegrationsBody";
 
 export default async function WorkspaceIntegrationsPage({
@@ -75,7 +37,9 @@ export default async function WorkspaceIntegrationsPage({
           </p>
         </div>
       </header>
-      <IntegrationsBody />
+      <Suspense fallback={null}>
+        <IntegrationsBody />
+      </Suspense>
     </main>
   );
 }

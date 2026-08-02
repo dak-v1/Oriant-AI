@@ -10,6 +10,7 @@
  * keeps the typed path.
  */
 import { nosanaLive, providerEnv } from "./env";
+import { transcribeWithElevenLabs } from "./elevenlabs";
 
 export interface TranscribeResult {
   ok: boolean;
@@ -20,7 +21,9 @@ export interface TranscribeResult {
 
 export async function transcribe(audio: Blob): Promise<TranscribeResult> {
   if (!nosanaLive()) {
-    return { ok: false, mode: "fixture", error: "NOSANA_WHISPER_URL is not configured" };
+    const eleven = await transcribeWithElevenLabs(audio);
+    if (eleven.ok) return { ok: true, mode: "live", text: eleven.text };
+    return { ok: false, mode: "fixture", error: eleven.error || "No speech-to-text provider is configured" };
   }
   const env = providerEnv().nosana;
   const base = env.whisperUrl!.replace(/\/$/, "");
@@ -67,5 +70,7 @@ export async function transcribe(audio: Blob): Promise<TranscribeResult> {
       lastErr = "whisper workload unreachable";
     }
   }
-  return { ok: false, mode: "live", error: lastErr };
+  const eleven = await transcribeWithElevenLabs(audio);
+  if (eleven.ok) return { ok: true, mode: "live", text: eleven.text };
+  return { ok: false, mode: "live", error: lastErr || eleven.error };
 }

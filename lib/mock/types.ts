@@ -2,7 +2,7 @@
  * lib/mock/types.ts — shared contracts for the Oriant.ai hardcoded product mock.
  *
  * Single source of truth for every fixture, service, store slice and screen
- * (spec §23). Everything here must stay JSON-serialisable and localStorage-safe:
+ * (spec §23). Everything here must stay JSON-serialisable for server responses:
  * no Dates, no functions, no class instances — ISO strings and plain unions only.
  */
 
@@ -29,11 +29,37 @@ export type JourneyState =
 /* ═══════════════════════════ Onboarding ═══════════════════════════ */
 
 export type AutomationMode = "assist" | "operate" | "unsure";
+export type OnboardingChannel = "typed" | "voice";
+export type ApprovalPreference =
+  | "owner_all"
+  | "department_leads"
+  | "mixed"
+  | "recommend";
+export type OnboardingOwnership = "owner_only" | "invite_contributors";
+export type WorkflowBuilder = "self" | "invite";
+export type BuilderAccess = "workflows_only" | "account_manager";
+export type AutomationScope = "start_small" | "focus_area" | "whole_business";
+export type OrganizationShape =
+  | "solo"
+  | "owner_with_team"
+  | "multi_role_team"
+  | "manager_led";
+
+export interface DepartmentApproval {
+  department: string;
+  processOwner: string;
+  email: string;
+  approver: string;
+  setupDelegate: string;
+  discoveryStatus: "owner_pending" | "invited" | "completed";
+}
 
 export interface ToolChip {
   id: string;
   name: string;
   category: ToolCategory;
+  iconSlug?: string;
+  iconColor?: string;
 }
 
 export type ToolCategory =
@@ -71,10 +97,29 @@ export interface CustomTool {
 }
 
 export interface OnboardingState {
+  channel: OnboardingChannel;
+  /** True while the single-call onboarding experience is in progress. */
+  callInProgress: boolean;
+  backendSessionId: string | null;
+  /** Real organizations.id UUID (Step 9 Pass 1), resolved via GET /api/planner/context. */
+  organizationId: string | null;
   mode: AutomationMode | null;
   usedDemoCompany: boolean;
   /** Owner's opening answer (voice sim or typed). */
   intro: string;
+  organizationShape: OrganizationShape;
+  approvalPreference: ApprovalPreference | null;
+  onboardingOwnership: OnboardingOwnership | null;
+  workflowBuilder: WorkflowBuilder | null;
+  builderAccess: BuilderAccess | null;
+  automationScope: AutomationScope | null;
+  businessArea: string;
+  repetitiveTask: string;
+  currentWorkflow: string;
+  employeeCount: string;
+  approvalOwner: string;
+  employeeEmails: string[];
+  departmentApprovals: DepartmentApproval[];
   selectedToolIds: string[];
   /** Owner-added tools outside the catalog ("Custom" badge). */
   customTools: CustomTool[];
@@ -82,6 +127,11 @@ export interface OnboardingState {
   capturedSections: string[];
   consentAccepted: boolean;
   completed: boolean;
+  blueprintVersion: number | null;
+  blueprintStatus: "idle" | "draft" | "approved";
+  handoffId: string | null;
+  syncStatus: "idle" | "saving" | "saved" | "error";
+  syncError: string | null;
 }
 
 /* ═══════════════════════════ Lean Canvas ═══════════════════════════ */
@@ -163,6 +213,8 @@ export interface DiscoveryQuestion {
   factIds: string[];
   /** Knowledge sections that pulse when confirmed. */
   sections: KnowledgeSection[];
+  helperText?: string;
+  examples?: string[];
 }
 
 export type DiscoveryMode = "voice" | "text" | "cards" | "upload" | "invite";
@@ -173,6 +225,8 @@ export interface DiscoveryState {
   currentIndex: number;
   /** questionId → confirmed answer text (possibly owner-edited). */
   answers: Record<string, string>;
+  clarificationAnswers?: Record<string, string>;
+  clarificationQuestions?: Array<{ id: string; question: string }>;
   /** ids of facts added so far (accumulates via confirmations + uploads). */
   factIds: string[];
   /** Simulated SOP upload done (adds bonus facts). */
@@ -385,6 +439,20 @@ export interface PlanAgent {
   designApproved: boolean;
   /** Order of workflows (ids) within this agent (reorderable). */
   workflowOrder: string[];
+  /**
+   * Real-backend fields (Step 9 Pass 1), set by syncPlanFromServer when this
+   * agent was synced from a real agent_configs row. Undefined for
+   * fixture-only mock agents — components must not assume these are present.
+   */
+  configId?: string;
+  templateId?: string | null;
+  name?: string;
+  description?: string;
+  requiredTools?: string[];
+  /** Template's JSON Schema for this agent's config fields (preset agents only). */
+  configSchema?: Record<string, unknown>;
+  /** The agent's real, already-saved freeform config (agent_configs.config) — used to pre-fill the schema form. */
+  realConfig?: Record<string, unknown>;
 }
 
 export interface PlanChange {
@@ -403,6 +471,14 @@ export interface WorkforcePlanState {
   /** Extra one-off plan notes added by NL commands (e.g. new approval rules). */
   planRules: string[];
   lastChange: PlanChange | null;
+  /**
+   * Real workforce_plans.id (Step 9 Pass 1), set by syncPlanFromServer.
+   * Undefined/null for a plan that only exists as fixture/mock state. The
+   * real organization_id lives on onboarding.organizationId instead (set at
+   * the same bootstrap step, one identity value shared by planner +
+   * integrations rather than duplicated per slice).
+   */
+  id?: string | null;
 }
 
 /** NL command fixture: matches input → deterministic plan mutation description. */

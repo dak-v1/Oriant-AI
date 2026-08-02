@@ -10,7 +10,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, ChevronDown, Eye, Plus } from "lucide-react";
 import StatusBadge from "@/components/mock/ui/StatusBadge";
 import { DUR, EASE, fadeUp } from "@/lib/mock/motion";
-import type { IntegrationDef, IntegrationRuntime, IntegrationStatus } from "@/lib/mock/types";
+import type { IntegrationDef, IntegrationRuntime } from "@/lib/mock/types";
 import { AGENT_NAME } from "@/lib/mock/fixtures/ids";
 import ToolMark from "./ToolMark";
 import styles from "./integrations.module.css";
@@ -30,7 +30,7 @@ export function formatConnectedAt(iso: string | null | undefined): string {
 }
 
 /** Status badge that swaps with a small morph when Required → Connected. */
-export function StatusSwap({ status }: { status: IntegrationStatus }) {
+export function StatusSwap({ status }: { status: string }) {
   const reduced = useReducedMotion();
   return (
     <span className={styles.cardStatus} style={{ display: "inline-flex" }}>
@@ -105,7 +105,7 @@ export function RecommendedCard({
   onManage,
 }: {
   def: IntegrationDef;
-  status: IntegrationStatus;
+  status: string;
   index: number;
   onConnect: (id: string) => void;
   onManage: (id: string) => void;
@@ -156,12 +156,15 @@ export function AvailableCard({
   index,
   onConnect,
   onManage,
+  disabled,
 }: {
   def: IntegrationDef;
-  status: IntegrationStatus;
+  status: string;
   index: number;
   onConnect: (id: string) => void;
   onManage: (id: string) => void;
+  /** Step 9 Pass 1: true for tools with no real Composio-backed connection yet. */
+  disabled?: boolean;
 }) {
   const reduced = useReducedMotion();
   const connected = status === "connected";
@@ -192,9 +195,15 @@ export function AvailableCard({
             Manage
           </button>
         ) : (
-          <button type="button" className="oa-btn oa-btn--soft oa-btn--sm" onClick={() => onConnect(def.id)}>
+          <button
+            type="button"
+            className="oa-btn oa-btn--soft oa-btn--sm"
+            onClick={() => onConnect(def.id)}
+            disabled={disabled}
+            title={disabled ? "Not available yet" : undefined}
+          >
             <Plus size={14} aria-hidden />
-            Connect
+            {disabled ? "Not yet available" : "Connect"}
           </button>
         )}
       </div>
@@ -264,12 +273,15 @@ export function McpCard({
   index,
   onConnect,
   onManage,
+  disabled,
 }: {
   def: IntegrationDef;
-  status: IntegrationStatus;
+  status: string;
   index: number;
   onConnect: (id: string) => void;
   onManage: (id: string) => void;
+  /** Step 9 Pass 1: true for tools with no real Composio-backed connection yet. */
+  disabled?: boolean;
 }) {
   const reduced = useReducedMotion();
   const connected = status === "connected";
@@ -300,8 +312,14 @@ export function McpCard({
             Manage
           </button>
         ) : (
-          <button type="button" className="oa-btn oa-btn--soft" onClick={() => onConnect(def.id)}>
-            Connect
+          <button
+            type="button"
+            className="oa-btn oa-btn--soft"
+            onClick={() => onConnect(def.id)}
+            disabled={disabled}
+            title={disabled ? "Not available yet" : undefined}
+          >
+            {disabled ? "Not yet available" : "Connect"}
           </button>
         )}
       </div>

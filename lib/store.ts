@@ -308,7 +308,7 @@ export const useApp = create<AppState>((set, get) => {
     pl: { tab: "workflow", view: "plan", sel: "frontdesk", diff: null, nlText: "", nlBusy: false, cfg: { ...DEFAULT_CONFIG }, cfgAgentId: null },
     approvalSel: "a1",
     drag: null,
-    voiceOn: true,        // real value read in hydrate (localStorage is client-only)
+    voiceOn: true,        // runtime preference; persistent product data belongs in Supabase
     voiceSupported: false,
 
     toggleVoice() {

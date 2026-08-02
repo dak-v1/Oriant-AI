@@ -27,6 +27,9 @@ export async function aiandJson<T>(opts: {
   schemaName: string;
   schema: Record<string, unknown>;
   fixture: T;
+  responseFormat?: "json_schema" | "json_object";
+  reasoningEffort?: "none" | "low" | "medium" | "high";
+  timeoutMs?: number;
 }): Promise<AiandResult<T>> {
   if (!aiandLive()) return { mode: "fixture", data: opts.fixture };
 
@@ -44,13 +47,13 @@ export async function aiandJson<T>(opts: {
           { role: "system", content: opts.system },
           { role: "user", content: opts.user },
         ],
-        response_format: {
-          type: "json_schema",
-          json_schema: { name: opts.schemaName, strict: true, schema: opts.schema },
-        },
+        response_format: opts.responseFormat === "json_object"
+          ? { type: "json_object" }
+          : { type: "json_schema", json_schema: { name: opts.schemaName, strict: true, schema: opts.schema } },
+        ...(opts.reasoningEffort ? { reasoning_effort: opts.reasoningEffort } : {}),
         temperature: 0.2,
       }),
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(opts.timeoutMs ?? 20_000),
     });
     if (!res.ok) throw new Error(`AI& ${res.status}: ${(await res.text()).slice(0, 300)}`);
     const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
