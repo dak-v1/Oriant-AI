@@ -21,10 +21,17 @@
  * one the moment the runtime went quiet — which is precisely when an owner most
  * needs to be told that nothing is there. Neither failure announces itself.
  *
- * THE DEFAULT IS THE DEMO, AND NOTHING HERE CAN CHANGE THAT BY ACCIDENT. Only two
- * affirmative inputs select live: `?live=1` on the URL, or the surface's own env
- * var set to `live`. Unset, blank, absent and `demo` all render exactly what
- * shipped before the live screen existed.
+ * THE DEFAULT FOLLOWS WHAT A PERSON TYPED INTO THE ENVIRONMENT, in a fixed
+ * order: the surface's own env var, then `ORIANT_OPERATE_LANE` for the whole
+ * Operate surface, then — with neither set — `ORIANT_RUNTIME_MODE`. That last
+ * step is NOT the inference this module forbids: the forbidden move is deciding
+ * from whether the runtime happens to hold data, and the runtime mode is a value
+ * an operator wrote into .env. It exists because the old rule ("blank means the
+ * demo, always") shipped a deployment with live Composio tools, a live reasoner
+ * and real pending approvals whose every default operating URL rendered a
+ * scripted fiction — the owner's real workforce was reachable only by knowing to
+ * type `?live=1`. A fixture-mode deployment still defaults every surface to the
+ * demo, exactly as before.
  *
  * THE QUERY PARAMETER WINS IN BOTH DIRECTIONS. `?live=0` forces the demo even
  * where the environment defaults to live, because a deployment that has switched
@@ -48,6 +55,20 @@ export type Lane =
   /** The caller asked for something this build does not implement. */
   | { lane: "refused"; setting: string; value: string; accepted: string };
 
+/**
+ * The Operate-wide default every surface shares. A surface's own var overrides
+ * it, so one route can be rehearsed scripted while the rest of the surface runs
+ * live. Never `NEXT_PUBLIC_` — see the pages.
+ */
+export const OPERATE_LANE_ENV = "ORIANT_OPERATE_LANE";
+
+/**
+ * `lib/runtime/session.ts`'s reasoner switch. Read here only to pick the
+ * default when no lane variable is set at all: a runtime armed for live
+ * reasoning defaults its Operate surface to the live screens.
+ */
+export const RUNTIME_MODE_ENV = "ORIANT_RUNTIME_MODE";
+
 export interface LaneInput {
   /**
    * The `live` search parameter as Next hands it over: absent, one value, or an
@@ -56,6 +77,14 @@ export interface LaneInput {
   live: string | string[] | undefined;
   /** `process.env[<surface>_LANE_ENV]`, read on the server. */
   env: string | undefined;
+  /** `process.env[OPERATE_LANE_ENV]` — the surface-wide default `env` overrides. */
+  operateEnv: string | undefined;
+  /**
+   * `process.env[RUNTIME_MODE_ENV]` — consulted only when both lane variables
+   * are unset. Required rather than optional so a call site cannot quietly drop
+   * it and reintroduce the demo-by-default defect on a live-armed server.
+   */
+  runtimeModeEnv: string | undefined;
 }
 
 /** Accepted spellings, lower-cased. Closed sets — nothing is pattern-matched. */
@@ -81,7 +110,10 @@ function refuse(setting: string, value: string, accepted: string): Lane {
  * Resolves one surface's lane. Surface nouns are passed in rather than baked in
  * so the decision logic below has exactly one implementation.
  */
-export function resolveLane(surface: LaneSurface, { live, env }: LaneInput): Lane {
+export function resolveLane(
+  surface: LaneSurface,
+  { live, env, operateEnv, runtimeModeEnv }: LaneInput,
+): Lane {
   /* ── The URL ──
      A repeated parameter is refused rather than resolved to its first or last
      value. `?live=1&live=0` is a caller contradicting itself, and picking a side
@@ -102,18 +134,42 @@ export function resolveLane(surface: LaneSurface, { live, env }: LaneInput): Lan
   }
 
   /* ── The environment ──
-     Reached only when the URL said nothing. Blank is the shipped default and
-     means the demo, so an unconfigured deployment renders exactly what it
-     rendered yesterday. */
+     Reached only when the URL said nothing. The surface's own variable wins,
+     then the Operate-wide one; blank falls through to the next step rather than
+     meaning the demo, because "unset" and "asked for the demo" are different
+     statements and only the second should override a live-armed default. */
   const configured = (env ?? "").trim().toLowerCase();
-  if (configured === "" || configured === ENV_DEMO) return { lane: "demo" };
-  if (configured === ENV_LIVE) return { lane: "live" };
+  if (configured !== "") {
+    if (configured === ENV_DEMO) return { lane: "demo" };
+    if (configured === ENV_LIVE) return { lane: "live" };
+    return refuse(
+      surface.envVar,
+      configured,
+      `"live" for ${surface.liveLabel}, "demo" (or blank) for ${surface.demoLabel}`,
+    );
+  }
 
-  return refuse(
-    surface.envVar,
-    configured,
-    `"live" for ${surface.liveLabel}, "demo" (or blank) for ${surface.demoLabel}`,
-  );
+  const operate = (operateEnv ?? "").trim().toLowerCase();
+  if (operate !== "") {
+    if (operate === ENV_DEMO) return { lane: "demo" };
+    if (operate === ENV_LIVE) return { lane: "live" };
+    return refuse(
+      OPERATE_LANE_ENV,
+      operate,
+      `"live" for ${surface.liveLabel}, "demo" (or blank) for ${surface.demoLabel}`,
+    );
+  }
+
+  /* ── No lane variable at all ──
+     The runtime mode decides. Compared exactly the way lib/runtime/session.ts
+     compares it — strict equality against "live", no trim, no lowercase — so
+     the screens' default can never disagree with the runtime's own reading of
+     the same variable. Anything else (unset, blank, "fixture", a typo) keeps
+     the shipped default: the demo. A typo here is deliberately NOT refused,
+     because the variable belongs to the runtime, which already treats every
+     non-"live" value as fixture; refusing it on the screens would block a
+     deployment the runtime itself accepts. */
+  return runtimeModeEnv === "live" ? { lane: "live" } : { lane: "demo" };
 }
 
 /**

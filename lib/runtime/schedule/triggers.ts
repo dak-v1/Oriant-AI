@@ -355,6 +355,40 @@ function isTriggerKind(value: unknown): value is TriggerSpec["kind"] {
   return (TRIGGER_KINDS as readonly unknown[]).includes(value);
 }
 
+/* ═══════════════════ Reading a stored trigger ═══════════════════ */
+
+/**
+ * The spec off a STORED trigger, checked rather than trusted.
+ *
+ * Every scanner below dereferences `trigger.spec`, and the rows they scan come
+ * out of a store that may hold records written by older code — which is exactly
+ * how an undefined arrives underneath a type that promises it cannot.
+ * Unguarded, that surfaces as `Cannot read properties of undefined (reading
+ * "kind")` with no record named; guarded here, once, it names the trigger and
+ * the fix.
+ *
+ * A THROW, NOT A SKIP. Skipping would leave a schedule trigger due forever and
+ * firing never — the sweep that silently did not happen, the one failure this
+ * module is built to avoid. The cost is accepted with eyes open: a throw out of
+ * `scheduleFirings` fails that pass and every pass after it until the row is
+ * repaired, but it fails NAMED and on every tick, where a skip fails one
+ * workflow silently and forever. The other callers already contain the blast —
+ * `advanceScheduleTrigger` throws land in the tick's per-trigger error channel,
+ * and `dependencyFirings` runs inside `fireDependencies`' own catch.
+ */
+function storedSpecOf(trigger: ScheduledTrigger): TriggerSpec {
+  const spec = (trigger as { spec?: TriggerSpec | null }).spec;
+  if (spec === undefined || spec === null || typeof spec !== "object") {
+    throw new Error(
+      `Trigger ${trigger.triggerId} (${trigger.agentId}/${trigger.workflowId}) has no ` +
+        `readable spec: the stored record's "spec" field is ${JSON.stringify(spec)}. The row ` +
+        `was written by older code or edited by hand; re-activate the plan so ` +
+        `registerPlanTriggers rebuilds it, or disable the trigger.`,
+    );
+  }
+  return spec;
+}
+
 /* ═══════════════════════════ Schedule ═══════════════════════════ */
 
 /**
@@ -374,7 +408,7 @@ export function scheduleFirings(triggers: ScheduledTrigger[], at: Date): Trigger
   const due: { firing: TriggerFiring; fireMs: number }[] = [];
   for (const trigger of triggers) {
     if (!trigger.enabled) continue;
-    if (trigger.spec.kind !== "schedule") continue;
+    if (storedSpecOf(trigger).kind !== "schedule") continue;
     if (trigger.nextFireAt === null) continue;
 
     const fireMs = Date.parse(trigger.nextFireAt);
@@ -432,7 +466,7 @@ export function advanceScheduleTrigger(
   firedAt: Date,
   now: Date,
 ): ScheduledTrigger {
-  const spec = trigger.spec;
+  const spec = storedSpecOf(trigger);
   if (spec.kind !== "schedule") {
     throw new Error(
       `Trigger ${trigger.triggerId} is a "${spec.kind}" trigger and has no schedule to advance. ` +
@@ -477,7 +511,7 @@ export function eventFirings(
 
   for (const trigger of triggers) {
     if (!trigger.enabled) continue;
-    const spec = trigger.spec;
+    const spec = storedSpecOf(trigger);
     if (spec.kind !== "event") continue;
     if (spec.integrationId !== inbound.integrationId) continue;
     if (spec.event !== inbound.event) continue;
@@ -535,7 +569,7 @@ export function thresholdFirings(
   const firings: TriggerFiring[] = [];
   for (const trigger of triggers) {
     if (!trigger.enabled) continue;
-    const spec = trigger.spec;
+    const spec = storedSpecOf(trigger);
     if (spec.kind !== "threshold") continue;
     if (spec.metric !== reading.metric) continue;
     if (!satisfiesOp(reading.value, spec.op, spec.value)) continue;
@@ -600,7 +634,7 @@ export function dependencyFirings(
   const firings: TriggerFiring[] = [];
   for (const trigger of triggers) {
     if (!trigger.enabled) continue;
-    const spec = trigger.spec;
+    const spec = storedSpecOf(trigger);
     if (spec.kind !== "dependency") continue;
     if (trigger.agentId !== completion.agentId) continue;
     if (spec.afterWorkflowId !== completion.workflowId) continue;
@@ -630,7 +664,7 @@ export function dependencyFirings(
  * produce a plausible-looking key that no second computation could reproduce.
  */
 export function buildTriggerEvent(trigger: ScheduledTrigger, cause: TriggerCause): TriggerEvent {
-  const spec = trigger.spec;
+  const spec = storedSpecOf(trigger);
 
   if (trigger.kind !== spec.kind) {
     throw new Error(

@@ -376,7 +376,9 @@ const UNAVAILABLE = [
     label: "Which account is connected",
     reason:
       "The provider is keyed by integration id alone and reports no account, mailbox or " +
-      "workspace identity. Arrives with D's registry.",
+      "workspace identity — the only attribution this build has is the owning " +
+      "organization, which the provider note on this screen states. Arrives with D's " +
+      "registry.",
   },
 ] as const;
 

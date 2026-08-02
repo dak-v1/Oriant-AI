@@ -15,9 +15,6 @@ type InterviewResult = {
   error?: string;
 };
 
-const interviewCache = new Map<string, { expiresAt: number; result: InterviewResult }>();
-const interviewInFlight = new Map<string, Promise<InterviewResult>>();
-
 const RESPONSE_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -122,6 +119,26 @@ function fixtureQuestions(session: OnboardingSession): DiscoveryInterviewQuestio
   return questions.slice(0, 6);
 }
 
+/**
+ * ONE INTERVIEW PER SESSION, GENERATED ONCE AND THEN READ. The set is stored on
+ * `db.call` and returned as-is until the active onboarding session changes.
+ *
+ * This replaced a cache keyed on `${session.id}:${session.updatedAt}`, which
+ * looked like a cache and behaved like a regenerator: POST /api/discovery/answer
+ * bumps `updatedAt` on every save, so ANSWERING a question invalidated the set
+ * that question came from. The next visit to /app/discovery paid the full
+ * 15–20s LLM generation again — even with 7/7 answered — and could come back
+ * with different ids, at which point the saved answers counted against
+ * questions that no longer existed ("6 of 6" one visit, "1 of 6" the next).
+ *
+ * `db.answers` is keyed by these ids, so stability is not a nicety: once one
+ * answer references the set, replacing it orphans data. A new onboarding
+ * session is the one legitimate reason to write new questions.
+ *
+ * Concurrent requests need no extra guard here: every caller reaches this
+ * through `withDb`, which serialises access, so the second request finds the
+ * first one's stored set.
+ */
 export async function generateDiscoveryInterviewQuestions(
   db: Db,
 ): Promise<InterviewResult> {
@@ -130,17 +147,19 @@ export async function generateDiscoveryInterviewQuestions(
     return { mode: "fixture", questions: [], error: "No active onboarding session was found." };
   }
 
-  const cacheKey = `${session.id}:${session.updatedAt}`;
-  const cached = interviewCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return cached.result;
-  const existing = interviewInFlight.get(cacheKey);
-  if (existing) return existing;
+  const stored = db.call.interviewQuestions;
+  if (stored && stored.sessionId === session.id && stored.questions.length > 0) {
+    return {
+      mode: stored.mode,
+      questions: stored.questions,
+      ...(stored.error ? { error: stored.error } : {}),
+    };
+  }
 
-  const generation = generateInterviewResult(session);
-  interviewInFlight.set(cacheKey, generation);
-  const result = await generation;
-  interviewInFlight.delete(cacheKey);
-  interviewCache.set(cacheKey, { expiresAt: Date.now() + 5 * 60_000, result });
+  const result = await generateInterviewResult(session);
+  if (result.questions.length > 0) {
+    db.call.interviewQuestions = { sessionId: session.id, ...result };
+  }
   return result;
 }
 

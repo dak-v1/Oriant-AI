@@ -373,6 +373,8 @@ const helpdesk: AgentSpec = {
           instruction:
             "Send each prepared reply on its own thread. This always pauses first: the owner sees the exact reply and approves it before anything leaves.",
           tool: { integrationId: "gmail", operation: "gmail.messages.send" },
+          // A sweep that prepared zero replies has nothing to send: recorded on the run, never paused for.
+          emptyBatch: { metric: "replies.per_run" },
           risk: "medium",
         },
       ],
@@ -454,6 +456,8 @@ const helpdesk: AgentSpec = {
           instruction:
             "Save the follow-up as an unsent draft on the thread, for the owner to send by hand.",
           tool: { integrationId: "gmail", operation: "gmail.drafts.create" },
+          // No thread worth nudging means no follow-up prepared: zero drafts is a completed run, not a frozen one.
+          emptyBatch: { metric: "replies.per_run" },
           risk: "low",
         },
       ],
@@ -635,6 +639,8 @@ const marketing: AgentSpec = {
           kind: "act",
           instruction: "Save the composed ad as an unsent draft.",
           tool: { integrationId: "gmail", operation: "gmail.drafts.create" },
+          // "Nothing scheduled means nothing composed" is this plan's own rule: zero ads drafts nothing.
+          emptyBatch: { metric: "ads.per_run" },
           risk: "low",
         },
         {
@@ -643,6 +649,8 @@ const marketing: AgentSpec = {
           instruction:
             "Send the campaign email. This always pauses first: the owner sees the exact ad and approves it before anything leaves.",
           tool: { integrationId: "gmail", operation: "gmail.messages.send" },
+          // Zero composed ads is zero sends: the pause exists for the ad, not for the absence of one.
+          emptyBatch: { metric: "ads.per_run" },
           risk: "medium",
         },
       ],

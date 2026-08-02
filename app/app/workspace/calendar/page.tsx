@@ -36,6 +36,7 @@
 import Link from "next/link";
 import { CALENDAR_LANE_ENV, resolveCalendarLane } from "@/components/live/calendar/lane";
 import type { CalendarLane } from "@/components/live/calendar/lane";
+import { OPERATE_LANE_ENV, RUNTIME_MODE_ENV } from "@/components/live/lane";
 import LiveCalendarScreen from "@/components/live/calendar/LiveCalendarScreen";
 import DemoCalendarScreen from "./demo-screen";
 
@@ -50,6 +51,8 @@ export default async function CalendarPage({
   const lane = resolveCalendarLane({
     live: params.live,
     env: process.env[CALENDAR_LANE_ENV],
+    operateEnv: process.env[OPERATE_LANE_ENV],
+    runtimeModeEnv: process.env[RUNTIME_MODE_ENV],
   });
 
   if (lane.lane === "refused") return <LaneRefused lane={lane} />;

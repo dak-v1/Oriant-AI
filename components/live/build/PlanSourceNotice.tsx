@@ -195,6 +195,21 @@ export default function PlanSourceNotice({
         {source.fallbackReason !== null && (
           <p className={styles.noticeDetail}>{source.fallbackReason}</p>
         )}
+        {/* The runtime's sentence above says "run a handoff through the
+            pipeline", and the pipeline's most prominent button runs a stored
+            demo handoff that blocks at Ingest on purpose. Without this
+            qualifier the notice points an owner at a press that cannot deliver
+            what it promises. Dropping the runtime's sentence instead was
+            rejected: it is the one line that names which demo is standing in,
+            and the components must not paraphrase it. */}
+        {isFixture && (
+          <p className={styles.noticeBody}>
+            What replaces it is ingesting a <em>real</em> handoff — pasted on the pipeline
+            page, or collected from Role B. The pipeline&apos;s built-in button runs a
+            stored demo handoff that blocks at Ingest by design, to demonstrate the gap
+            report; pressing it does not replace this workforce.
+          </p>
+        )}
         <p className={styles.noticeBody}>
           Plan <code>{source.planId}</code>, version {source.planVersion}.
         </p>

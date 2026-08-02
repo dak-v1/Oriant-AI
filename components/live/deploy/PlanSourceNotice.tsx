@@ -94,12 +94,28 @@ export default function PlanSourceNotice({
         </h2>
 
         {/* The runtime's sentence, verbatim. It is the one written to explain
-            the fallback, and a paraphrase would lose the instruction at the end
-            of it. Shown only when the runtime sent one — it sends none for a
-            real plan, and inventing a reassuring sentence to fill the space is
-            the failure this component exists to prevent. */}
+            the fallback — it names which demo is standing in — and the
+            components must not paraphrase it. Shown only when the runtime sent
+            one: it sends none for a real plan, and inventing a reassuring
+            sentence to fill the space is the failure this component exists to
+            prevent. */}
         {plan.fallbackReason !== null && (
           <p className={styles.sourceBody}>{plan.fallbackReason}</p>
+        )}
+
+        {/* The qualifier the runtime's instruction needs. "Run a handoff
+            through the pipeline" is true and incomplete: the pipeline's most
+            prominent button runs a stored demo handoff that blocks at Ingest
+            on purpose, so an owner sent there without this sentence presses
+            the one control that cannot replace the demo. Editing the
+            runtime's sentence instead was rejected — see the comment above. */}
+        {!own && plan.fallbackReason !== null && (
+          <p className={styles.sourceBody}>
+            Replacing it means ingesting a <em>real</em> handoff — pasted on the pipeline
+            page, or collected from Role B. The pipeline&apos;s built-in stored-handoff
+            button is a demonstration of the gap report and blocks at Ingest by design;
+            pressing it does not change which workforce this button would activate.
+          </p>
         )}
 
         {!own && plan.fallbackReason === null && (

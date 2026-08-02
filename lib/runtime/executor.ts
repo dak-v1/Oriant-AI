@@ -115,6 +115,12 @@
  *     A metric named differently from the collection it describes is simply
  *     unverifiable.
  *
+ * `StepSpec.emptyBatch` (the batch-empty skip in runAct) leans on this same
+ * boundary from its SAFE side: the declared batch metric is usually
+ * model-asserted, so a model could understate it to zero — but a zero can only
+ * suppress that step's own action, never cause one. Anything that actually
+ * performs still walks the full six-step order.
+ *
  * So: the limits are NOT airtight. Where a number cannot be corroborated,
  * enforcement rests on the model reporting honestly, and the prompt rules in
  * llm.ts are defence in depth, not a control. Closing this properly needs the
@@ -1295,6 +1301,43 @@ async function runAct(
     metrics: audit.metrics,
   };
 
+  /*
+   * THE EMPTY-BATCH SKIP (StepSpec.emptyBatch, lib/plan/types.ts): a step that
+   * acts on a batch, whose declared batch metric measured EXACTLY ZERO, has no
+   * action to gate. Record that on the run and complete the step — do not call
+   * the tool, and do not consult policy, because policy answers "may this
+   * invocation be performed" and there is no invocation to perform. Consulting
+   * it anyway is what filled the approvals queue with "Send an email to the
+   * customer" cards whose approval would send nothing.
+   *
+   * Placed AFTER auditMetrics on purpose: the check reads the AUDITED figures,
+   * so where a fetch-side record can vouch for the count, a tool-attested
+   * nonzero beats a model claiming zero — the one direction the trust boundary
+   * can be tightened here. Where nothing can corroborate it (the usual case
+   * for per_run counts, per the module header) the count is model-asserted,
+   * and that is safe for exactly one reason: an understated count can only
+   * SUPPRESS this step's own action, never cause one. Every path that performs
+   * the action still walks the full six-step order below.
+   *
+   * `=== 0` and nothing looser. An ABSENT metric falls through to the normal
+   * path — an unmeasured batch is not an empty one, and it must escalate the
+   * same way an unmeasured limit does (fail closed, mirroring evaluateLimits).
+   * NaN and negatives fall through too; neither is a batch anybody counted.
+   */
+  const emptyBatch = declaredEmptyBatch(step);
+  if (emptyBatch !== null && invocation.metrics[emptyBatch.metric] === 0) {
+    emit(state, {
+      kind: "batch_empty",
+      at: iso(deps),
+      stepId: step.id,
+      metric: emptyBatch.metric,
+      summary:
+        `batch empty: ${emptyBatch.metric} = 0, nothing to send — ` +
+        `step completed without acting`,
+    });
+    return null;
+  }
+
   const decision = resolveAct({
     invocation,
     policy,
@@ -1341,6 +1384,29 @@ async function runAct(
   }
   state.context[step.id] = result.data;
   return null;
+}
+
+/**
+ * The step's emptyBatch declaration, or null when there is none it can trust.
+ *
+ * Validated rather than believed, for the same reason `resolveStepArguments`
+ * validates: a plan crosses the seam as JSON, so `StepSpec.emptyBatch`'s type
+ * is a promise, not a guarantee. But the fail-closed direction here is the
+ * OPPOSITE of argumentSource's, and deliberately so: there, the permissive
+ * fallback was the silent empty send the field exists to remove, so a
+ * malformed declaration refuses. Here the permissive arm is the SKIP — the
+ * path that bypasses the pause — so failing closed means NOT skipping. A
+ * malformed declaration therefore reads as absent and the step proceeds into
+ * the normal policy path, where the worst outcome is the pre-existing noise:
+ * an approval card too many, never an action too few. Validator rule 0
+ * reports the malformed shape at the gate, which is where a typo gets fixed.
+ */
+function declaredEmptyBatch(step: StepSpec): { metric: string } | null {
+  const declared: unknown = step.emptyBatch;
+  if (!isRecord(declared)) return null;
+  const metric = declared["metric"];
+  if (typeof metric !== "string" || metric.trim().length === 0) return null;
+  return { metric };
 }
 
 /* ═══════════════════ Metric provenance (trust boundary) ═══════════════════ */

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
 import { useAutopilot } from "@/lib/mock/autopilot";
+import type { ShellLane } from "@/components/live/route-lane";
 import {
   PROGRESS_PHASES,
   homeRouteFor,
@@ -38,7 +39,14 @@ const FAST_FORWARD_TARGETS: { label: string; state: JourneyState }[] = [
   { label: "Active workspace", state: "active_workspace" },
 ];
 
-export default function TopBar({ ready }: { ready: boolean }) {
+export default function TopBar({
+  ready,
+  lane,
+}: {
+  ready: boolean;
+  /** Null while the shell has not resolved the lane yet — claim nothing. */
+  lane: ShellLane | null;
+}) {
   const journey = useDemoStore((s) => s.journey);
   const resetDemo = useDemoStore((s) => s.resetDemo);
   const fastForwardTo = useDemoStore((s) => s.fastForwardTo);
@@ -88,7 +96,11 @@ export default function TopBar({ ready }: { ready: boolean }) {
 
       <div className={styles.topActions}>
         <AutopilotButton variant="chip" />
-        <span className="oa-demo-badge">Interactive demo</span>
+        {/* Same rule as the sidebar footer: the chrome may only claim the lane
+            the screen was actually resolved to. A refused lane gets no badge —
+            the page itself is explaining that neither screen was chosen. */}
+        {lane === "demo" && <span className="oa-demo-badge">Interactive demo</span>}
+        {lane === "live" && <span className="oa-tag oa-tag--amber">Live runtime</span>}
 
         <Link
           href="/#faq"

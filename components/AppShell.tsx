@@ -19,7 +19,10 @@ export default function AppShell() {
   const s = useApp();
   const journey = journeyVals(s);
   const [topKicker, topTitle] = META[s.screen] ?? ["", ""];
-  const org = s.server?.org ?? { name: "Overtone Coffee", owner: "Nadia O.", initials: "NO" };
+  // Identity comes from server state only. The old fallback named the legacy
+  // Overtone prototype org while every report on screen was the server org's;
+  // before hydration the slots render blank rather than claim a company.
+  const org = s.server?.org ?? { name: "", owner: "", initials: "" };
   const savedAt = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
   return (
@@ -33,7 +36,7 @@ export default function AppShell() {
         <div style={sx({ padding: "16px 22px", borderBottom: "1px solid var(--line)" })}>
           <div style={sx({ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)" })}>Workspace</div>
           <div style={sx({ display: "flex", alignItems: "center", gap: 9, marginTop: 7 })}>
-            <span style={sx({ width: 24, height: 24, borderRadius: 6, background: "var(--ink)", color: "var(--paper)", fontFamily: "var(--disp)", fontWeight: 700, fontSize: 13, display: "grid", placeItems: "center" })}>{org.name[0]}</span>
+            <span style={sx({ width: 24, height: 24, borderRadius: 6, background: "var(--ink)", color: "var(--paper)", fontFamily: "var(--disp)", fontWeight: 700, fontSize: 13, display: "grid", placeItems: "center" })}>{org.name.charAt(0)}</span>
             <span style={sx({ fontWeight: 600, fontSize: 14.5 })}>{org.name}</span>
           </div>
         </div>

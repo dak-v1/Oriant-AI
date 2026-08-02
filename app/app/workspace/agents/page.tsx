@@ -39,6 +39,7 @@ import Link from "next/link";
 import LiveAgentRoster from "@/components/live/agents/LiveAgentRoster";
 import { AGENTS_LANE_ENV, resolveAgentsLane } from "@/components/live/agents/lane";
 import type { AgentsLane } from "@/components/live/agents/lane";
+import { OPERATE_LANE_ENV, RUNTIME_MODE_ENV } from "@/components/live/lane";
 import styles from "@/components/live/agents/live-agents.module.css";
 import AgentRoster from "@/components/mock/workspace/AgentRoster";
 
@@ -53,6 +54,8 @@ export default async function WorkspaceAgentsPage({
   const lane = resolveAgentsLane({
     live: params.live,
     env: process.env[AGENTS_LANE_ENV],
+    operateEnv: process.env[OPERATE_LANE_ENV],
+    runtimeModeEnv: process.env[RUNTIME_MODE_ENV],
   });
 
   if (lane.lane === "refused") return <LaneRefused lane={lane} />;

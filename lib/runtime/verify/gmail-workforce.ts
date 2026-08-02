@@ -27,7 +27,11 @@
  *                       `runPipeline` to a live deployment, the deployed
  *                       packages are then driven through the real executor, and
  *                       the configured plan is put through the same three
- *                       activation gates.
+ *                       activation gates. GW-9 and GW-10 then drive the
+ *                       empty-batch contract (`StepSpec.emptyBatch`) in both
+ *                       directions: a sweep that prepared nothing completes
+ *                       with the batch-empty record and no approval card, and
+ *                       a sweep with one prepared reply still pauses its send.
  *
  * NOTHING HERE TOUCHES COMPOSIO, and that is a property of the wiring rather
  * than a promise: every pass builds its own `StubIntegrationProvider`,
@@ -48,7 +52,11 @@
  * Run it with: node scripts/verify.mjs gmailworkforce
  */
 
-import { MERIDIAN_HANDOFF, MERIDIAN_PLAN } from "../../plan/fixtures/meridian";
+import {
+  MERIDIAN_HANDOFF,
+  MERIDIAN_HELPDESK,
+  MERIDIAN_PLAN,
+} from "../../plan/fixtures/meridian";
 import { isReadOnly } from "../../plan/operations";
 import type { AgentSpec, ApprovedPlan } from "../../plan/types";
 import { validateApprovedPlan } from "../../plan/validate";
@@ -557,6 +565,125 @@ export async function runGMAILWORKFORCEVerification(): Promise<Check[]> {
       fa === fb && a.completed && b.completed,
       `equal=${fa === fb} completed=${a.completed}/${b.completed}`,
     );
+  }
+
+  /* 9 & 10. THE EMPTY-BATCH CONTRACT, both directions, on the stored packages.
+        The live defect this pins: the five-minute sweep often prepares ZERO
+        replies, and the send — alwaysApprove — paused anyway, so the approvals
+        queue filled with "Send an email to the customer" cards whose approval
+        would send nothing (~12/hour on the armed server). `StepSpec.emptyBatch`
+        on sweep-3 declares the batch; these two checks prove the executor
+        honours BOTH sides of it, because either alone has no teeth. A runtime
+        that skipped every sweep would pass GW-9; one that never skipped would
+        pass GW-10; only the pair says the skip fires on exactly `= 0`.
+
+        Driven through the SAME stored packages GW-6 proved, with a scripted
+        reasoner whose only variable is the reported `replies.per_run` — so the
+        two runs differ in one number and nothing else. The reasoner's `data`
+        carries no string values, deliberately: auditMetrics matches string
+        arguments against fetched record ids, and a match would escalate for a
+        metric dispute instead of the branch under test (the same reason the
+        generated sweep's NEUTRAL_ACTION exists). */
+  {
+    const helpdeskBundle = await loadBundle(MERIDIAN_HELPDESK, configured.build);
+
+    const sweepRun = async (label: string, replies: number) => {
+      if (helpdeskBundle === null) return null;
+      const provider = new StubIntegrationProvider();
+      const exec: ExecutorOptions = {
+        store: new InMemoryRunStore(),
+        tools: provider,
+        reasoner: new FixtureReasoner({
+          __default: {
+            summary: `Swept the inbox and prepared ${replies} reply(ies).`,
+            data: { generated: true, prepared: replies },
+            metrics: { "replies.per_run": replies },
+          },
+        }),
+        clock: new FixedClock(NOW),
+        newId: createIdFactory(`gmail-empty-${label}`),
+        sleep: async () => {},
+        globalPolicy: MERIDIAN_PLAN.globalPolicy,
+      };
+      const trigger: TriggerEvent = {
+        kind: "schedule",
+        workflowId: "inbox-sweep",
+        agentId: HELPDESK_AGENT,
+        firedAt: NOW,
+        payload: {},
+        idempotencyKey: `gmail-empty:${label}`,
+      };
+      const outcome = await startRun(helpdeskBundle, trigger, exec);
+      return {
+        outcome,
+        pending: await exec.store.listPendingApprovals(),
+        calls: provider.client.calls,
+      };
+    };
+
+    const empty = await sweepRun("zero", 0);
+    const single = await sweepRun("one", 1);
+
+    {
+      const name =
+        "GW-9 a sweep that prepared nothing completes with the batch-empty record and no approval card";
+      if (empty === null) {
+        add(name, false, "helpdesk-agent has no stored package to run");
+      } else {
+        const record = empty.outcome.run.events.find(
+          (event) => event.kind === "batch_empty",
+        );
+        // The read must have happened: a run that died before sweeping would
+        // also raise no approval, and that pass would be about the wrong thing.
+        const swept = empty.calls.some((c) => c.operation === "gmail.threads.read");
+        const sends = empty.calls.filter((c) => c.operation === "gmail.messages.send");
+        add(
+          name,
+          empty.outcome.status === "completed" &&
+            empty.outcome.approvalId === null &&
+            empty.pending.length === 0 &&
+            record !== undefined &&
+            record.stepId === "sweep-3" &&
+            record.metric === "replies.per_run" &&
+            swept &&
+            sends.length === 0,
+          `status=${empty.outcome.status} approvalId=${String(empty.outcome.approvalId)} ` +
+            `pending=${empty.pending.length}; batch_empty=` +
+            (record ? `{step=${record.stepId} metric=${record.metric}}` : "MISSING") +
+            `; swept=${swept} sends=${sends.length}; ` +
+            `events=[${empty.outcome.run.events.map((e) => e.kind).join(",")}]`,
+        );
+      }
+    }
+
+    {
+      const name =
+        "GW-10 a sweep with one prepared reply still pauses its send behind the owner";
+      if (single === null) {
+        add(name, false, "helpdesk-agent has no stored package to run");
+      } else {
+        const card = single.pending[0];
+        const skipped = single.outcome.run.events.some(
+          (event) => event.kind === "batch_empty",
+        );
+        const sends = single.calls.filter((c) => c.operation === "gmail.messages.send");
+        add(
+          name,
+          single.outcome.status === "awaiting_approval" &&
+            single.outcome.approvalId !== null &&
+            single.pending.length === 1 &&
+            card !== undefined &&
+            card.stepId === "sweep-3" &&
+            card.invocation.operation === "gmail.messages.send" &&
+            !skipped &&
+            sends.length === 0,
+          `status=${single.outcome.status} pending=${single.pending.length}` +
+            (card ? ` at ${card.stepId} proposing ${card.invocation.operation}` : "") +
+            `; batch_empty event present=${skipped} (must be false); ` +
+            `sends performed=${sends.length} (the pause holds the send, it does not make it)`,
+        );
+      }
+    }
   }
 
   return checks;

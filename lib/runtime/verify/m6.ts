@@ -1103,9 +1103,14 @@ export async function runM6Verification(): Promise<Check[]> {
           // (`searchParams.get("focus")`). It is not exported, so the name is
           // restated here; everything downstream of it is the screen's own code.
           const focus = url.searchParams.get("focus");
+          // Environment inputs deliberately undefined: the check is about the
+          // URL alone, and `live=1` must select the live lane regardless of
+          // what any deployment's env would default to.
           const lane = resolveApprovalsLane({
             live: url.searchParams.get("live") ?? undefined,
             env: undefined,
+            operateEnv: undefined,
+            runtimeModeEnv: undefined,
           });
 
           const pointsAtTheInbox =

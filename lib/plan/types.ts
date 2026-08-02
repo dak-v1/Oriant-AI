@@ -210,6 +210,57 @@ export interface StepSpec {
    * See `StepArgumentSource`.
    */
   argumentSource?: StepArgumentSource;
+  /**
+   * `act` steps only, optional. Declares that this step acts on a BATCH,
+   * counted by `metric` — and that a batch of exactly zero is a COMPLETED
+   * step, not one to gate.
+   *
+   * WHY THE CONTRACT NEEDS THIS. The live failure was observed on the armed
+   * server: the helpdesk's five-minute inbox sweep often finds nothing to
+   * answer, the reason step honestly reports `replies.per_run = 0` — and the
+   * send still pauses, because `gmail.messages.send` is on alwaysApprove. The
+   * approvals queue grew by a card every five minutes, each labelled "Send an
+   * email to the customer", each one an approval whose grant would send
+   * NOTHING. The noise buries the approvals that gate something real, and
+   * every one of those pauses is a lie about what is at stake. "Skip the gate
+   * when there is nothing to send" cannot live in prose (§1 at the top of
+   * this file): it is a rule about when policy applies, so it is structure.
+   *
+   * SEMANTICS, precisely, enforced in lib/runtime/executor.ts (`runAct`):
+   *
+   *   metric present and === 0  the executor records a `batch_empty` event on
+   *                             the run and completes the step WITHOUT calling
+   *                             the tool and WITHOUT consulting policy — there
+   *                             is no action to approve, so asking would
+   *                             answer the wrong question. The run continues.
+   *   metric ABSENT             fail closed: the normal policy path, exactly
+   *                             as today. An unmeasured batch is not an empty
+   *                             one, and it must not skip — this mirrors the
+   *                             six-step order, which treats a missing metric
+   *                             as a breach, never as licence.
+   *   metric > 0                the normal path, untouched.
+   *
+   * THE SKIP CANNOT BE ABUSED, and that asymmetry is why it is safe to trust
+   * a model-asserted count here at all: a model that understates the batch to
+   * zero can only SUPPRESS this step's own action — it sends nothing. It can
+   * never cause a send: every path that actually performs the action still
+   * walks the full resolution order, alwaysApprove included.
+   *
+   * REJECTED: inferring emptiness from the proposal's shape (`{replies: []}`).
+   * The contract defines no proposal schema, so the runtime would be trusting
+   * a shape the model invents per run — and an inference is exactly the kind
+   * of silent behaviour this field exists to replace with a declaration.
+   * Also REJECTED: consulting policy first and skipping only the pause. The
+   * refuse-class outcomes (forbidden, ungranted) would then fail whole runs
+   * over an action nobody proposed, and the approval-class outcomes are
+   * precisely the noise being removed.
+   *
+   * The validator checks the declaration's shape (rule 0) and warns when
+   * `metric` names a metric no limit on the agent measures — a typo here
+   * silently disables the skip (lib/plan/validate.ts says why that is a
+   * warning rather than an error).
+   */
+  emptyBatch?: { metric: string };
   /** `act` steps only. Baseline risk; policy may escalate it further. */
   risk?: RiskLevel;
 }

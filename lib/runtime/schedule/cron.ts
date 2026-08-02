@@ -196,6 +196,22 @@ const MINUTES_PER_DAY = 1_440;
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
 function formatterFor(timezone: string): Intl.DateTimeFormat {
+  // Checked despite the declared type: the zone arrives off STORED trigger
+  // specs, and a row written by older code can carry no timezone at all. The
+  // trap is that `Intl.DateTimeFormat` accepts `timeZone: undefined` WITHOUT
+  // throwing and quietly resolves the HOST's zone — a nine-o'clock sweep
+  // scheduled in whatever country the server happens to be in, which is the
+  // one failure nobody reports. The catch below cannot save us because
+  // undefined never reaches it, so the refusal has to happen here, by name.
+  if (typeof timezone !== "string" || timezone.trim() === "") {
+    throw new CronError(
+      `The trigger's timezone is ${JSON.stringify(timezone)}, not an IANA zone name — the ` +
+        `stored spec predates the current shape or was assembled around the handoff gate. ` +
+        `Without the owner's zone a wall-clock cron cannot be placed on the timeline, and ` +
+        `falling back to the server's own zone would fire at the wrong hour without a word.`,
+    );
+  }
+
   const cached = formatters.get(timezone);
   if (cached) return cached;
 

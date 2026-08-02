@@ -361,9 +361,13 @@ export default function DiscoveryWorkspace() {
               <WandSparkles size={14} aria-hidden />
               Prefill mock data
             </button>
-            <span className="oa-micro">
-              {answeredCount} of {total || 0} answered
-            </span>
+            {/* No counter until the question set has loaded: "0 of 0 answered"
+                mid-load read as the interview losing its answers. */}
+            {total > 0 ? (
+              <span className="oa-micro">
+                {answeredCount} of {total} answered
+              </span>
+            ) : null}
           </div>
         )}
       </header>

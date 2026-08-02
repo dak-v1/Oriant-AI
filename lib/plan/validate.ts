@@ -450,6 +450,22 @@ function checkWorkflow(workflow: WorkflowSpec, scope: Scope, fail: Fail): void {
         stepScope,
       );
     }
+
+    // emptyBatch is shape-checked here (rule 0's job); whether its metric is
+    // one anything measures is semantic and lives with the rules below. The
+    // executor IGNORES a declaration it cannot read — the fail-closed
+    // direction there is "do not skip" — so a malformed one is structure the
+    // plan states and the runtime silently drops, which is exactly the class
+    // of drift the gate exists to stop before it ships.
+    const emptyBatch: unknown = step.emptyBatch;
+    if (emptyBatch !== undefined) {
+      if (!isObject(emptyBatch) || !isNonEmptyString(emptyBatch.metric)) {
+        fail(
+          `Step "${stepLabel}" in workflow "${label}" declares an emptyBatch the runtime cannot read. Expected { metric: <non-empty string> }; the executor ignores anything else, so the step would pause on every empty batch as though the declaration were never written.`,
+          stepScope,
+        );
+      }
+    }
   }
 }
 
@@ -763,6 +779,15 @@ export function validateApprovedPlan(plan: ApprovedPlan): PlanValidationError[] 
     const policy = agent.policy;
     const agentForbidden = new Set(policy ? asArray<string>(policy.forbidden) : []);
 
+    /** Metrics some limit on this agent measures — what emptyBatch is checked
+        against below. A limit is today the only structure that makes a metric
+        load-bearing, so a batch metric outside this set is one nothing in the
+        plan obliges anybody to report. */
+    const limitMetrics = new Set<string>();
+    for (const limit of objectsIn<PolicyLimit>(policy ? policy.limits : [])) {
+      if (isNonEmptyString(limit.metric)) limitMetrics.add(limit.metric);
+    }
+
     // Rule 2 — operating-mode coherence, in two parts.
     //
     // The membership test comes first and is written as a membership test, not
@@ -1042,6 +1067,54 @@ export function validateApprovedPlan(plan: ApprovedPlan): PlanValidationError[] 
             stepId,
             message: `Fetch step "${stepId}" declares no tool, so its read-only status cannot be established.`,
           });
+        }
+
+        /* emptyBatch — the declared skip for an act whose batch is empty.
+           Rule 0 owns the SHAPE; these two ask whether the declaration can
+           ever fire. Both are WARNINGS, and that severity is argued rather
+           than assumed. The skip's failure mode, whichever way it is
+           misdeclared, is that it silently never fires — every empty batch
+           pauses exactly as it did before the field existed. That is noise,
+           and noise teaches owners to click through approvals, so it is worth
+           a warning; but it is never an ungated action, and a gate that
+           BLOCKS a handoff over a defect that cannot cause one is claiming
+           more authority than the risk warrants. An error was also rejected
+           because the metric vocabulary (contract §8 Q4) is still open with
+           D: a limit is currently the only structure that measures a metric,
+           but insisting a batch metric must also be a LIMITED one would force
+           plan authors to invent a ceiling purely to appease the gate — and a
+           limit that exists as decoration is worse than absent, because a
+           reader would believe it was enforced. Checked before the `!tool`
+           skip below so a declaration on a reason or approve step is not
+           silently passed over. */
+        const emptyBatch: unknown = step.emptyBatch;
+        if (isObject(emptyBatch) && isNonEmptyString(emptyBatch.metric)) {
+          const batchMetric = String(emptyBatch.metric);
+          if (step.kind !== "act") {
+            // Under rule 6, which owns what an act step must carry: the
+            // executor consults emptyBatch only where there is an action to
+            // gate, so anywhere else it is structure the runtime ignores.
+            errors.push({
+              severity: "warning",
+              rule: 6,
+              agentId,
+              workflowId,
+              stepId,
+              message: `Step "${stepId}" (kind "${String(step.kind)}") declares emptyBatch, but the runtime consults it only on act steps — there is no action to gate anywhere else — so the declaration does nothing.`,
+            });
+          } else if (!limitMetrics.has(batchMetric)) {
+            // Under rule 2, which owns limit coherence: this is the typo
+            // guard. A metric nothing measures is one no reason step is
+            // obliged to report, so the skip would silently never fire.
+            errors.push({
+              severity: "warning",
+              rule: 2,
+              agentId,
+              workflowId,
+              stepId,
+              message: `Act step "${stepId}" declares emptyBatch on metric "${batchMetric}", which no limit on agent "${agentId}" measures. Nothing in the plan obliges any step to report it, so a misspelled metric here silently disables the skip and every empty batch pauses exactly as before.`,
+            });
+          }
         }
 
         if (!tool) continue;

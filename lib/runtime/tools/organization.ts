@@ -193,7 +193,15 @@ export type ToolsOrganization =
  * invite a second criterion to creep in later.
  */
 export function resolveToolsOrganization(planOrganizationId: string): ToolsOrganization {
-  const orgId = planOrganizationId.trim();
+  // The declared type promises a string, but a stored `Deployment.plan` frozen
+  // before `organizationId` existed hands this function undefined — and the
+  // background poller once died on exactly that, because `.trim()` was the
+  // first thing done here. Folded into the empty case rather than thrown:
+  // absent and blank are the same fact — nobody named an owner — and the
+  // refusal below already states it and names the fix. A throw was rejected
+  // for the reason in the header: mid-process this is a data problem about one
+  // plan, not a wiring problem about the deployment.
+  const orgId = typeof planOrganizationId === "string" ? planOrganizationId.trim() : "";
 
   if (orgId.length === 0) {
     // Ingest refuses a handoff with no `organization.id` (lib/plan/ingest/
@@ -207,8 +215,8 @@ export function resolveToolsOrganization(planOrganizationId: string): ToolsOrgan
       reason:
         "this plan does not say which business it belongs to, so there is no way " +
         "to tell whose connected accounts its agents should act through. " +
-        "ApprovedPlan.organizationId is empty; re-ingest the handoff, which " +
-        "carries organization.id.",
+        "ApprovedPlan.organizationId is empty or missing; re-ingest the handoff, " +
+        "which carries organization.id.",
     };
   }
 

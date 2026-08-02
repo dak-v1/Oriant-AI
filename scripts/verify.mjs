@@ -182,7 +182,13 @@ const TARGETS = {
     entry: "lib/runtime/verify/gmail-workforce.ts",
     out: "lib/runtime/verify/gmail-workforce.js",
     label: "GMAIL WORKFORCE — the plan this account can actually run",
-    expectedChecks: 8,
+    // 10 since `StepSpec.emptyBatch` taught the runtime that an empty batch is
+    // a completed run, not a frozen one. The armed server's five-minute sweep
+    // was raising an approval per run to send NOTHING; GW-9 proves a sweep
+    // whose reason step reports replies.per_run = 0 completes with the
+    // batch-empty record and no approval card, and GW-10 that one prepared
+    // reply still pauses the send — both directions, or the check has no teeth.
+    expectedChecks: 10,
   },
   collect: {
     entry: "lib/runtime/verify/collect.ts",

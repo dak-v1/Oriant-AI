@@ -614,7 +614,7 @@ export default function PipelineScreen() {
                   {running
                     ? "The pass in flight has not answered, so the six rows above are still the runtime's last word rather than a report on it. Whether this server has now run one is settled by that request and not by this sentence."
                     : (noPassHint ??
-                      'Nothing has been run on this server. Press the button above, or POST {"fixture":true} to /api/runtime/pipeline.')}
+                      "Nothing has been run on this server. The button above demonstrates the gap report with the stored handoff — it blocks at Ingest by design. A pass that can go live takes a real handoff, pasted or collected from Role B.")}
                 </p>
               </div>
             )}

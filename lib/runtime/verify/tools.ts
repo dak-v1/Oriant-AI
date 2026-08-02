@@ -1312,15 +1312,22 @@ export async function runTOOLSVerification(): Promise<Check[]> {
       // Whitespace is not a name either — `resolveToolsOrganization` trims
       // before it decides, so " " must land where "" lands.
       spaces: routing.resolveToolsOrganization("  \t\n "),
+      // The shape a stored `Deployment.plan` frozen before `organizationId`
+      // existed actually hands the runtime: not "", but undefined. The live
+      // poller once crashed on exactly this — `.trim()` of undefined killed
+      // the scheduler pass — so this probe is the regression tripwire: it must
+      // land on the same refusal as "" and must not throw.
+      missing: routing.resolveToolsOrganization(undefined as unknown as string),
       blankProvider: routing.liveIntegrationProviderFor(""),
     }));
-    const { empty, spaces, blankProvider } = seen;
+    const { empty, spaces, missing, blankProvider } = seen;
     const refusal = await trySend(blankProvider);
 
     add(
       "TOOLS-11 a plan that names no organization is refused, and ORIANT_ORGANIZATION_ID does not rescue it",
       empty.kind === "unresolved" &&
         spaces.kind === "unresolved" &&
+        missing.kind === "unresolved" &&
         empty.reason.includes("ApprovedPlan.organizationId is empty") &&
         // The borrowed value appears nowhere in the answer: not as the
         // organization, and not quoted into the reason as a suggestion.
@@ -1329,6 +1336,7 @@ export async function runTOOLSVerification(): Promise<Check[]> {
         refusal?.ok === false &&
         SDK_CLIENTS.length === sdkBefore,
       `"" -> ${describeOrganization(empty)}; "  \\t\\n " -> ${describeOrganization(spaces)}; ` +
+        `undefined (a pre-organizationId deployment row) -> ${describeOrganization(missing)}; ` +
         `with ORIANT_ORGANIZATION_ID=${ELSEWHERE} the value appears in the answer: ` +
         `${JSON.stringify(seen).includes(ELSEWHERE) ? "YES (it was borrowed)" : "no"}; ` +
         `${SEND.operation} -> ${refusal?.ok === false ? "refused" : "ACCEPTED"}; ` +

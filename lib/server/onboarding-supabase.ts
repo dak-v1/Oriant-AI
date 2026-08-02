@@ -573,6 +573,11 @@ export async function hydrateDiscoveryFromSupabase(db: Db): Promise<"live" | "fi
     systems: (discoverySessionRow.data?.systems as Record<string, boolean> | null) ?? {},
     canvasUploaded: (discoverySessionRow.data?.canvas_uploaded as boolean | null) ?? false,
     completedAt: (discoverySessionRow.data?.completed_at as string | null) ?? undefined,
+    // Carried across the rebuild, not read from Supabase: the generated
+    // interview lives only in this process (no discovery_sessions column), and
+    // a hydrate that dropped it would force the next /api/discovery/questions
+    // read back through the 15–20s LLM generation it exists to prevent.
+    interviewQuestions: db.call.interviewQuestions,
     clarificationQuestions: (discoverySessionRow.data?.clarification_questions as Db["call"]["clarificationQuestions"] | null) ?? [],
     clarificationAnswers: (discoverySessionRow.data?.clarification_answers as Record<string, string> | null) ?? {},
     clarificationCompletedAt: (discoverySessionRow.data?.clarification_completed_at as string | null) ?? undefined,

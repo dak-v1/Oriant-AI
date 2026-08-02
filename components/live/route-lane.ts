@@ -36,7 +36,7 @@ import { AGENTS_LANE_ENV } from "./agents/lane";
 import { APPROVALS_LANE_ENV } from "./approvals/lane";
 import { CALENDAR_LANE_ENV } from "./calendar/lane";
 import { INTEGRATIONS_LANE_ENV } from "./integrations/lane";
-import { type LaneSurface, resolveLane } from "./lane";
+import { type LaneSurface, OPERATE_LANE_ENV, RUNTIME_MODE_ENV, resolveLane } from "./lane";
 import { WORKSPACE_LANE_ENV } from "./workspace/lane";
 
 /**
@@ -93,13 +93,22 @@ const RUNTIME_ONLY_PREFIXES: readonly string[] = [
 /** The lane env values the server layout hands to the shell, keyed by var name. */
 export type LaneEnvDefaults = Readonly<Record<string, string | undefined>>;
 
-/** Every lane variable, so the layout enumerates them once. */
+/**
+ * Every variable the lane resolution reads, so the layout enumerates them once.
+ * The last two are not per-route overrides: `ORIANT_OPERATE_LANE` is the
+ * surface-wide default and `ORIANT_RUNTIME_MODE` decides the unconfigured
+ * default — both are configuration words ("live"/"demo"/"fixture"), never
+ * secrets, and they must reach the client-side guard or it would resolve a
+ * different lane than the server-rendered page it is guarding.
+ */
 export const LANE_ENV_VARS: readonly string[] = [
   APPROVALS_LANE_ENV,
   CALENDAR_LANE_ENV,
   AGENTS_LANE_ENV,
   INTEGRATIONS_LANE_ENV,
   WORKSPACE_LANE_ENV,
+  OPERATE_LANE_ENV,
+  RUNTIME_MODE_ENV,
 ];
 
 /**
@@ -134,5 +143,50 @@ export function demoJourneyGuardApplies(
 
   const match = ROUTE_SURFACES.find((entry) => pathname.startsWith(entry.prefix));
   if (!match) return true;
-  return resolveLane(match.surface, { live, env: env[match.surface.envVar] }).lane === "demo";
+  return resolveLane(match.surface, laneInput(match.surface, live, env)).lane === "demo";
+}
+
+/** One place builds the input, so the guard and the shell cannot drift. */
+function laneInput(
+  surface: LaneSurface,
+  live: string | string[] | undefined,
+  env: LaneEnvDefaults,
+) {
+  return {
+    live,
+    env: env[surface.envVar],
+    operateEnv: env[OPERATE_LANE_ENV],
+    runtimeModeEnv: env[RUNTIME_MODE_ENV],
+  };
+}
+
+/** What the shell chrome may claim about the screen at this URL. */
+export type ShellLane = "demo" | "live" | "refused";
+
+/**
+ * Which lane the shell is currently wrapped around, for the chrome's own labels
+ * — the sidebar's "Interactive demo" disclaimer and the top bar badge.
+ *
+ * This exists because the shell used to assert "Every screen uses prepared demo
+ * data. No live systems are connected." unconditionally, on the same pages that
+ * displayed a real deployment and real approvals. A claim about the screen has
+ * to be resolved the way the screen itself was resolved:
+ *
+ *   - the runtime-only routes have no scripted lane at all, so they are live;
+ *   - the dual-lane Operate routes answer whatever `resolveLane` answers;
+ *   - everything else is the scripted journey, so it is the demo.
+ *
+ * `refused` is kept distinct rather than folded into either: a refusal screen
+ * is neither prepared demo data nor a live runtime read, and the chrome saying
+ * either would contradict the page explaining the refusal beside it.
+ */
+export function shellLaneFor(
+  pathname: string,
+  live: string | string[] | undefined,
+  env: LaneEnvDefaults,
+): ShellLane {
+  if (RUNTIME_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return "live";
+  const match = ROUTE_SURFACES.find((entry) => pathname.startsWith(entry.prefix));
+  if (!match) return "demo";
+  return resolveLane(match.surface, laneInput(match.surface, live, env)).lane;
 }

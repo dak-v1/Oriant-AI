@@ -20,6 +20,10 @@ function Sec({ id, n, title, chip }: { id: string; n: string; title: string; chi
 export default function ReportScreen() {
   const s = useApp();
   const v = reportVals(s);
+  // The report masthead names the org from server state, never a constant: the
+  // header used to hardcode the legacy Overtone prototype fixture above a body
+  // written entirely about the server org.
+  const orgName = s.server?.org.name;
 
   if (!v.onReport) return null;
 
@@ -47,7 +51,7 @@ export default function ReportScreen() {
       <div style={sx({ display: "grid", gridTemplateColumns: "1fr 288px", gap: 24, alignItems: "start" })}>
         <div contentEditable suppressContentEditableWarning style={sx({ background: "var(--card)", border: "1px solid var(--line)", borderRadius: 16, padding: "38px 44px", outline: "none" })}>
           <div style={sx({ display: "flex", alignItems: "center", gap: 8, background: "var(--paper2)", border: "1px solid var(--line)", borderRadius: 9, padding: "9px 13px", marginBottom: 20, fontSize: 12.5, color: "var(--ink2)" })}><span style={sx({ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ember)" })}>✎ LIVE</span>Every line here is editable — click any text to change it, then approve.</div>
-          <div style={sx({ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)", display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--line)", paddingBottom: 14 })}><span>Overtone Coffee — Company Report</span><span>{v.repVersion}</span></div>
+          <div style={sx({ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink3)", display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--line)", paddingBottom: 14 })}><span>{orgName ? `${orgName} — Company Report` : "Company Report"}</span><span>{v.repVersion}</span></div>
 
           <Sec id="rep-01" n="01" title="Executive summary" chip="Owner + call" />
           <p

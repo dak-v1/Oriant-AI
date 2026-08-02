@@ -98,6 +98,12 @@
   border-bottom: 1px solid var(--oa-border);
   background: color-mix(in srgb, var(--oa-bg) 88%, transparent);
   backdrop-filter: blur(10px);
+  /* Belt and braces for narrow phones: the actions cluster bottoms out a hair
+     wider than a 375px viewport (sub-pixel), and a header that is allowed to
+     overflow stretches document scrollWidth to 376 — a permanent 1px horizontal
+     page scroll. Clip horizontally only; the demo-controls dropdown still
+     overflows downward. */
+  overflow-x: clip;
 }
 
 .company {
@@ -369,6 +375,16 @@
 }
 
 @media (max-width: 480px) {
-  /* Keep the Interactive Demo badge; Help moves behind the demo menu's FAQ link. */
+  /* Keep the lane badge; Help moves behind the demo menu's FAQ link. */
   .topActions a[title="Help"] { display: none; }
+}
+
+@media (max-width: 420px) {
+  /* The lane badge is the widest flexible item in the actions cluster; below
+     ~404px of viewport the cluster's min-content pushed the avatar past the
+     right edge. The same disclosure remains on screen in the page content and
+     (on wider viewports) the sidebar footer, so it is dropped here rather than
+     squeezed into an ellipsis nobody can read. */
+  .topActions :global(.oa-demo-badge),
+  .topActions :global(.oa-tag) { display: none; }
 }

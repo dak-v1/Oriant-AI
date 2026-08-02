@@ -40,6 +40,7 @@ import { Suspense } from "react";
 import LaneRefusal from "@/components/live/approvals/LaneRefusal";
 import LiveApprovalsScreen from "@/components/live/approvals/LiveApprovalsScreen";
 import { APPROVALS_LANE_ENV, resolveApprovalsLane } from "@/components/live/approvals/lane";
+import { OPERATE_LANE_ENV, RUNTIME_MODE_ENV } from "@/components/live/lane";
 import ApprovalsScreen from "@/components/mock/approvals/ApprovalsScreen";
 
 export default async function ApprovalsPage({
@@ -51,6 +52,8 @@ export default async function ApprovalsPage({
   const lane = resolveApprovalsLane({
     live: params.live,
     env: process.env[APPROVALS_LANE_ENV],
+    operateEnv: process.env[OPERATE_LANE_ENV],
+    runtimeModeEnv: process.env[RUNTIME_MODE_ENV],
   });
 
   if (lane.lane === "refused") {

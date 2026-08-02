@@ -161,6 +161,17 @@ export type RunEvent =
   | { kind: "step_started"; at: string; stepId: string; stepKind: StepKind; instruction: string }
   | { kind: "tool_call"; at: string; stepId: string; integrationId: string; operation: string; ok: boolean; summary: string }
   | { kind: "reasoning"; at: string; stepId: string; summary: string }
+  /**
+   * An `act` step whose declared batch metric (`StepSpec.emptyBatch`) measured
+   * exactly zero: nothing was sent, no policy was consulted, and the step
+   * completed without acting. Its own kind because no existing one is honest —
+   * `tool_call` claims a call that never left, `error` puts a failure mark on
+   * a step that did its job, and silence would leave a completed run with no
+   * explanation for the send that is not there. `summary` carries the sentence
+   * a timeline shows (the approvals UI already renders unknown kinds by their
+   * text, so older readers of this union degrade to exactly that).
+   */
+  | { kind: "batch_empty"; at: string; stepId: string; metric: string; summary: string }
   | { kind: "needs_approval"; at: string; stepId: string; approvalId: string; reason: string; risk: RiskLevel; breachedLimits: string[] }
   | { kind: "approval_resolved"; at: string; stepId: string; approvalId: string; decision: ApprovalDecision["decision"] }
   | { kind: "refused"; at: string; stepId: string; reason: string }

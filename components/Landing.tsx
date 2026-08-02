@@ -37,10 +37,14 @@ const pillars = [
   { t: "Every move is on the record", b: "Who changed what, who approved it, and which version shipped: all logged." },
 ];
 
+/* `href` marks a CTA that leaves the page instead of entering the demo. "Talk
+   to us" is a conversation, not an app screen — it opens mail to the address
+   the footer already publishes, rather than silently running the same
+   enterApp handler as every other button. */
 const prices = [
-  { name: "Solo", price: "$0", unit: "/ 14 days", badge: "Trial", blurb: "Meet Margo, build the brief, see your drafted team and price.", features: ["Full onboarding & interview", "Company brief + plan", "No card required"], cta: "Start free", border: "var(--line2)", bg: "var(--card)", fg: "var(--ink)", ctaBg: "var(--ink)", ctaFg: "var(--paper)" },
-  { name: "Studio", price: "$490", unit: "/ mo + agents", badge: "Most shops", blurb: "The platform desk plus your active crew, billed per running agent.", features: ["Up to 6 active agents", "Sandbox validation", "Approvals + calendar", "WhatsApp & email alerts"], cta: "Build my team", border: "var(--ink)", bg: "var(--ink)", fg: "var(--paper)", ctaBg: "var(--paper)", ctaFg: "var(--ink)" },
-  { name: "Warehouse", price: "Custom", unit: "managed", badge: "Scaling", blurb: "Unlimited agents, priority sandboxes and a human on our side.", features: ["Unlimited agents", "Batch overnight rebuilds", "Managed onboarding", "SSO & audit export"], cta: "Talk to us", border: "var(--line2)", bg: "var(--card)", fg: "var(--ink)", ctaBg: "var(--ink)", ctaFg: "var(--paper)" },
+  { name: "Solo", price: "$0", unit: "/ 14 days", badge: "Trial", blurb: "Meet Margo, build the brief, see your drafted team and price.", features: ["Full onboarding & interview", "Company brief + plan", "No card required"], cta: "Start free", href: null, border: "var(--line2)", bg: "var(--card)", fg: "var(--ink)", ctaBg: "var(--ink)", ctaFg: "var(--paper)" },
+  { name: "Studio", price: "$490", unit: "/ mo + agents", badge: "Most shops", blurb: "The platform desk plus your active crew, billed per running agent.", features: ["Up to 6 active agents", "Sandbox validation", "Approvals + calendar", "WhatsApp & email alerts"], cta: "Build my team", href: null, border: "var(--ink)", bg: "var(--ink)", fg: "var(--paper)", ctaBg: "var(--paper)", ctaFg: "var(--ink)" },
+  { name: "Warehouse", price: "Custom", unit: "managed", badge: "Scaling", blurb: "Unlimited agents, priority sandboxes and a human on our side.", features: ["Unlimited agents", "Batch overnight rebuilds", "Managed onboarding", "SSO & audit export"], cta: "Talk to us", href: "mailto:hello@margo.work", border: "var(--line2)", bg: "var(--card)", fg: "var(--ink)", ctaBg: "var(--ink)", ctaFg: "var(--paper)" },
 ];
 
 const faqs = [
@@ -100,12 +104,15 @@ export default function Landing() {
               >
                 Show me my team →
               </button>
+              {/* Labelled for what the click actually does — it enters the same
+                  interactive demo as the primary button. The old "Watch the
+                  2-min tour" promised a video that exists nowhere in the app. */}
               <button
                 onClick={s.enterApp}
                 className="hv-bd hv-tf"
                 style={sx({ background: "transparent", color: "var(--ink)", border: "1px solid var(--line2)", borderRadius: 999, padding: "16px 26px", fontSize: 15.5, fontWeight: 600, cursor: "pointer", transition: "transform .22s,border-color .22s", "--hv-bd": "var(--ink)", "--hv-tf": "translateY(-3px)" })}
               >
-                Watch the 2-min tour
+                Explore the interactive demo
               </button>
             </div>
             <div style={sx({ display: "flex", gap: 34, marginTop: 34, paddingTop: 22, borderTop: "1px solid var(--line)" })}>
@@ -227,12 +234,21 @@ export default function Landing() {
                   <div key={f} style={sx({ display: "flex", gap: 9, fontSize: 13.5, alignItems: "baseline" })}><span style={sx({ opacity: 0.5 })}>→</span>{f}</div>
                 ))}
               </div>
-              <button
-                onClick={s.enterApp}
-                style={sx({ marginTop: 22, border: "none", borderRadius: 999, padding: 13, fontSize: 14, fontWeight: 600, cursor: "pointer", background: p.ctaBg, color: p.ctaFg })}
-              >
-                {p.cta}
-              </button>
+              {p.href ? (
+                <a
+                  href={p.href}
+                  style={sx({ marginTop: 22, border: "none", borderRadius: 999, padding: 13, fontSize: 14, fontWeight: 600, cursor: "pointer", background: p.ctaBg, color: p.ctaFg, textAlign: "center", textDecoration: "none", display: "block" })}
+                >
+                  {p.cta}
+                </a>
+              ) : (
+                <button
+                  onClick={s.enterApp}
+                  style={sx({ marginTop: 22, border: "none", borderRadius: 999, padding: 13, fontSize: 14, fontWeight: 600, cursor: "pointer", background: p.ctaBg, color: p.ctaFg })}
+                >
+                  {p.cta}
+                </button>
+              )}
             </div>
           ))}
         </div>

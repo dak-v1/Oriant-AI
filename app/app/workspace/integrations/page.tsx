@@ -42,6 +42,7 @@ import {
   INTEGRATIONS_LANE_ENV,
   resolveIntegrationsLane,
 } from "@/components/live/integrations/lane";
+import { OPERATE_LANE_ENV, RUNTIME_MODE_ENV } from "@/components/live/lane";
 import IntegrationsBody from "@/components/mock/integrations/IntegrationsBody";
 // `IntegrationsBody` reads useSearchParams, so it needs a boundary. This
 // came from the Role B side of the merge and is kept: without it Next
@@ -57,6 +58,8 @@ export default async function WorkspaceIntegrationsPage({
   const lane = resolveIntegrationsLane({
     live: params.live,
     env: process.env[INTEGRATIONS_LANE_ENV],
+    operateEnv: process.env[OPERATE_LANE_ENV],
+    runtimeModeEnv: process.env[RUNTIME_MODE_ENV],
   });
 
   if (lane.lane === "refused") {

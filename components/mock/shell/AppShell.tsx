@@ -12,8 +12,13 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useDemoStore } from "@/lib/mock/store";
 import { useAutopilot } from "@/lib/mock/autopilot";
-import { guardRoute, atLeast } from "@/lib/mock/state-machine";
-import { demoJourneyGuardApplies, type LaneEnvDefaults } from "@/components/live/route-lane";
+import { guardRoute, atLeast, isJourneyState } from "@/lib/mock/state-machine";
+import {
+  demoJourneyGuardApplies,
+  shellLaneFor,
+  type LaneEnvDefaults,
+  type ShellLane,
+} from "@/components/live/route-lane";
 import SideNav from "./SideNav";
 import TopBar from "./TopBar";
 import ProgressTracker from "./ProgressTracker";
@@ -23,6 +28,14 @@ import Toaster from "@/components/mock/ui/Toaster";
 import AutopilotController from "@/components/mock/autopilot/AutopilotController";
 import { MessageSquareText } from "lucide-react";
 import styles from "./shell.module.css";
+
+/**
+ * Where this tab keeps its demo journey between page loads. sessionStorage, not
+ * localStorage, on purpose: the journey is one tab's walk through a scripted
+ * narrative, and a stale journey from last week's demo leaking into a fresh
+ * browser session would deep-link a new viewer past the story.
+ */
+const JOURNEY_STORAGE_KEY = "oriant-demo-journey";
 
 export default function AppShell({
   children,
@@ -34,6 +47,13 @@ export default function AppShell({
 }) {
   const [mounted, setMounted] = useState(false);
   const [serverSynced, setServerSynced] = useState(false);
+  /* Which lane the chrome's own labels may describe. Null until mounted — the
+     pre-hydration render must match the server's, which cannot read the query
+     string, so until the client has resolved the lane the chrome claims
+     NOTHING. A moment with no badge beats a moment with the wrong one: this
+     shell used to stamp "Interactive demo" over screens reading the live
+     runtime. */
+  const [shellLane, setShellLane] = useState<ShellLane | null>(null);
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const journey = useDemoStore((s) => s.journey);
@@ -44,6 +64,32 @@ export default function AppShell({
   const router = useRouter();
 
   useEffect(() => setMounted(true), []);
+
+  /* Resume this tab's journey before anything judges it. The store is created
+     fresh on every page load (`create()` with no persist), so a mid-demo F5
+     used to restart the journey UI at "not_started" — and the route guard below
+     then bounced every deep link to onboarding. The saved value only ever moves
+     the journey FORWARD (`atLeast`), so a slow /api/state response cannot be
+     beaten to a downgrade, and an unrecognised stored value is dropped rather
+     than ranked. The subscription keeps the copy current from then on,
+     including Reset Demo, which persists "not_started" like any other step. */
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(JOURNEY_STORAGE_KEY);
+      if (isJourneyState(saved) && !atLeast(useDemoStore.getState().journey, saved)) {
+        setJourney(saved);
+      }
+    } catch {
+      // Storage can be unavailable (privacy modes); the server sync still runs.
+    }
+    return useDemoStore.subscribe((state) => {
+      try {
+        sessionStorage.setItem(JOURNEY_STORAGE_KEY, state.journey);
+      } catch {
+        // Same: a tab that cannot persist simply falls back to server sync.
+      }
+    });
+  }, [setJourney]);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +161,15 @@ export default function AppShell({
      CSR bailout) to answer a question this effect only asks after mount. */
   useEffect(() => {
     if (!mounted) return;
+    /* NOT BEFORE THE SERVER HAS ANSWERED. The journey starts at "not_started"
+       in every fresh tab, and /api/state is what lifts it to where the demo
+       actually is. Judging a deep link against the placeholder bounced every
+       refresh past onboarding back to step 1 — the redirect had already
+       happened by the time hydration arrived seconds later and silently proved
+       it wrong. `serverSynced` is set in that request's `finally`, so a failed
+       sync still lets the guard run (against whatever the sessionStorage resume
+       above restored) rather than disabling it. */
+    if (!serverSynced) return;
     /* THE LINE THE COMMENT ABOVE HAS ALWAYS DESCRIBED, AND WHICH WAS MISSING.
        `demoJourneyGuardApplies` was imported at the top of this file and never
        called, so the exemption it exists to provide was inert: every
@@ -126,7 +181,18 @@ export default function AppShell({
     if (!demoJourneyGuardApplies(pathname, query, laneEnv)) return;
     const redirect = guardRoute(pathname, journey);
     if (redirect && redirect !== pathname) router.replace(redirect);
-  }, [mounted, pathname, journey, router, laneEnv]);
+  }, [mounted, serverSynced, pathname, journey, router, laneEnv]);
+
+  /* The shell's own honesty label. Resolved with the same inputs as the pages
+     and the guard — pathname, `?live`, the server's lane env — so the sidebar
+     can no longer claim "prepared demo data" around a screen that is reading
+     the live runtime. Window.location is read here for the same prerendering
+     reason as the guard above. */
+  useEffect(() => {
+    if (!mounted) return;
+    const query = new URLSearchParams(window.location.search).get("live") ?? undefined;
+    setShellLane(shellLaneFor(pathname, query, laneEnv));
+  }, [mounted, pathname, laneEnv]);
 
   /* ⌘K / Ctrl+K opens the universal command palette (spec §19.1). */
   useEffect(() => {
@@ -160,9 +226,9 @@ export default function AppShell({
   return (
     <div className={`oa${mounted && presentation ? " oa-clean" : ""}`}>
       <div className={styles.shell}>
-        <SideNav ready={mounted} />
+        <SideNav ready={mounted} lane={shellLane} />
         <div className={styles.main}>
-          <TopBar ready={mounted} />
+          <TopBar ready={mounted} lane={shellLane} />
           <ProgressTracker ready={mounted} />
           <div className={styles.content}>{mounted ? children : null}</div>
           <MobileNav ready={mounted} />

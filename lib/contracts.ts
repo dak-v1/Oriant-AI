@@ -383,6 +383,14 @@ export interface Db {
     systems: Record<string, boolean>;
     canvasUploaded: boolean;
     completedAt?: string;
+    /**
+     * The generated interview, kept for the life of the onboarding session it
+     * was written for. `answers` above is keyed by these question ids, so the
+     * set must stay stable once anything references it — regenerating on a
+     * revisit produced a different set (different ids, another 15–20s LLM
+     * wait) and orphaned every saved answer.
+     */
+    interviewQuestions?: DiscoveryInterviewQuestionSet;
     clarificationQuestions?: DiscoveryClarificationQuestion[];
     clarificationAnswers?: Record<string, string>;
     clarificationCompletedAt?: string;
@@ -409,6 +417,18 @@ export interface DiscoveryClarificationQuestion {
   reason: string;
   helperText: string;
   examples: string[];
+}
+
+/** One generated interview, bound to the session whose onboarding shaped it. */
+export interface DiscoveryInterviewQuestionSet {
+  /** The onboarding session id; a new session regenerates, nothing else does. */
+  sessionId: string;
+  /** Whether AI& wrote the set or the workflow-specific backup stood in. */
+  mode: "live" | "fixture";
+  /** Same shape as the clarification cards — id, question, reason, helper, examples. */
+  questions: DiscoveryClarificationQuestion[];
+  /** The provider notice shown when the backup stood in. */
+  error?: string;
 }
 
 /** Everything the browser is allowed to see (never secrets). */

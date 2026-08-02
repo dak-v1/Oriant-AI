@@ -63,7 +63,7 @@ import type { BuildDeps } from "../build/types";
 import type { ExecutorOptions } from "../executor";
 import { startRun } from "../executor";
 import { resolveRunStart } from "../policy";
-import type { AgentBundle, RunState, RunStatus } from "../types";
+import type { AgentBundle, RunState, RunStatus, TriggerEvent } from "../types";
 import { enqueueFiring, markFailed, markSkipped, markSucceeded } from "./queue";
 import {
   advanceScheduleTrigger,
@@ -442,6 +442,23 @@ interface PassState {
  * human anywhere in the sequence.
  */
 export async function runDueWork(deps: WorkerDeps): Promise<WorkSummary> {
+  // The plan is a stored row (`Deployment.plan`, frozen at activation), so the
+  // field is checked rather than trusted — the store may hold a deployment
+  // written by older code. `dueScheduleTriggers` and `fireDependencies` both
+  // filter triggers by this id, and both DROP the filter when it is undefined,
+  // so a plan that cannot name itself would run every plan's triggers: the
+  // fail-open direction. Refused by name instead, at the one entry every pass
+  // shares, rather than left to fire schedules nobody activated together.
+  if (typeof deps.plan.planId !== "string" || deps.plan.planId.trim() === "") {
+    throw new Error(
+      `This pass's plan has planId ${JSON.stringify(deps.plan.planId)}, which is not a ` +
+        `non-empty string — the stored deployment predates the current plan shape. Due ` +
+        `triggers are matched by planId, and an absent filter matches EVERY plan's ` +
+        `triggers, so the pass refuses to run. Re-activate the plan to rebuild its ` +
+        `deployment record.`,
+    );
+  }
+
   const startedAt = nowFrom(deps);
   const concurrency = positiveInt(deps.concurrency, DEFAULT_CONCURRENCY);
   const budget = positiveInt(deps.maxJobs, DEFAULT_JOB_BUDGET);
@@ -557,6 +574,28 @@ async function processJob(
     const standDown = await standDownReason(job, spec, deps);
     if (standDown) {
       return describeOutcome(await markSkipped(job, standDown, deps.scheduler), null, standDown);
+    }
+
+    // A claimed row is stored data, not proof. `enqueueTriggerEvent` refuses a
+    // job without an idempotency key on the way IN, but the queue may hold rows
+    // written before that guard existed, and the executor's exactly-once claim
+    // is built on this key — running without it could start a second run for a
+    // firing that already ran. Failed here BY NAME rather than left to die as
+    // "Cannot read properties of undefined" inside the executor: the throw
+    // lands in `settleFailure`, so one old row retries into dead_letter and the
+    // rest of the pass continues.
+    const trigger = job.trigger as TriggerEvent | null | undefined;
+    if (
+      !trigger ||
+      typeof trigger.idempotencyKey !== "string" ||
+      trigger.idempotencyKey.length === 0
+    ) {
+      throw new Error(
+        `Job ${job.jobId} (${job.agentId}/${job.workflowId}) carries no readable trigger ` +
+          `event: QueuedJob.trigger.idempotencyKey is missing from the stored row, which ` +
+          `predates the current queue shape. Without the key the executor cannot make the ` +
+          `run exactly-once, so the job is failed rather than run.`,
+      );
     }
 
     const bundle = await loadBundle(spec, deps.build);
@@ -698,7 +737,13 @@ async function standDownReason(
 
   const state = await deps.scheduler.store.getAgentState(spec.id);
   if (state && state.state !== "active") {
-    const detail = state.detail.length > 0 ? ` ${state.detail}` : "";
+    // `detail` comes off a stored row and is checked rather than trusted: a
+    // record written before the field existed would otherwise turn a routine
+    // stand-down into "Cannot read properties of undefined (reading 'length')".
+    // The absence degrades to no suffix — the sentence before it already
+    // carries everything load-bearing.
+    const detailText = typeof state.detail === "string" ? state.detail : "";
+    const detail = detailText.length > 0 ? ` ${detailText}` : "";
     return `${spec.name} is ${state.state}, not active, so this run was not started.${detail}`;
   }
 

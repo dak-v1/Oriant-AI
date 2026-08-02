@@ -322,10 +322,16 @@ export default function LiveIntegrationsScreen() {
         />
       )}
 
-      {/* Shown for anything that is not a named external registry, so a `kind`
-          this build does not recognise still carries its caveat rather than
-          quietly reading as a real connection. */}
-      {view !== null && view.provider.kind !== "external" && (
+      {/* The provider disclosure renders in EVERY state, external included.
+          It used to be skipped for an external registry, which read as "these
+          are your workspace connections" on the one deployment where they are
+          not: the BrightPath fixture borrows whichever real organization
+          ORIANT_ORGANIZATION_ID nominates, the API's provider.detail says so in
+          as many words, and this screen was the only reader dropping the
+          sentence. The route is the sole author of the attribution (see
+          describeProvider there); this quotes it rather than re-deriving whose
+          accounts they are. */}
+      {view !== null && (
         <div className={styles.callout}>
           <span className={styles.calloutIcon} aria-hidden>
             <Info size={17} />
@@ -334,7 +340,9 @@ export default function LiveIntegrationsScreen() {
             <p className={styles.calloutTitle}>
               {view.provider.kind === "stub"
                 ? "These connection states are stubbed, not authorised"
-                : "This build cannot identify where these connection states came from"}
+                : view.provider.kind === "external"
+                  ? "Whose connected accounts these are"
+                  : "This build cannot identify where these connection states came from"}
             </p>
             <p className="oa-sub">{view.provider.detail}</p>
           </div>

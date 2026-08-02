@@ -35,6 +35,7 @@
  */
 import Link from "next/link";
 import LiveWorkspace from "@/components/live/workspace/LiveWorkspace";
+import { OPERATE_LANE_ENV, RUNTIME_MODE_ENV } from "@/components/live/lane";
 import { WORKSPACE_LANE_ENV, resolveWorkspaceLane } from "@/components/live/workspace/lane";
 import type { WorkspaceLane } from "@/components/live/workspace/lane";
 import { planFacts } from "@/components/live/workspace/plan-facts";
@@ -53,6 +54,8 @@ export default async function WorkspacePage({
   const lane = resolveWorkspaceLane({
     live: params.live,
     env: process.env[WORKSPACE_LANE_ENV],
+    operateEnv: process.env[OPERATE_LANE_ENV],
+    runtimeModeEnv: process.env[RUNTIME_MODE_ENV],
   });
 
   if (lane.lane === "refused") return <LaneRefused lane={lane} />;

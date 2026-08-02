@@ -209,7 +209,16 @@ export async function findJobByIdempotencyKey(
   idempotencyKey: string,
 ): Promise<QueuedJob | null> {
   for (const job of await store.listJobs({ agentId })) {
-    if (job.trigger.idempotencyKey === idempotencyKey) return job;
+    // Read off a stored row, so checked rather than trusted: a job written by
+    // older code may carry no trigger at all, and this scan walks the agent's
+    // WHOLE history — one corrupt historical row must not cost every future
+    // enqueue its duplicate check (or, unguarded, kill the pass with "Cannot
+    // read properties of undefined"). A row with no readable key cannot BE
+    // "the job already holding this key"; and if it secretly was, the
+    // executor's `claimIdempotencyKey` still refuses the second run, which is
+    // the layer the promise actually rests on (see the module header).
+    const trigger = job.trigger as TriggerEvent | null | undefined;
+    if (trigger && trigger.idempotencyKey === idempotencyKey) return job;
   }
   return null;
 }

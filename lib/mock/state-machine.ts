@@ -30,6 +30,15 @@ export function journeyIndex(s: JourneyState): number {
   return JOURNEY_ORDER.indexOf(s);
 }
 
+/**
+ * Is this value a journey state at all? For readers of persisted storage, where
+ * the value may be from an older build (or hand-edited) and must be dropped
+ * rather than fed to `atLeast`, which would silently rank an unknown at -1.
+ */
+export function isJourneyState(value: unknown): value is JourneyState {
+  return typeof value === "string" && JOURNEY_ORDER.includes(value as JourneyState);
+}
+
 /** True if `state` is at or past `min`. */
 export function atLeast(state: JourneyState, min: JourneyState): boolean {
   return journeyIndex(state) >= journeyIndex(min);

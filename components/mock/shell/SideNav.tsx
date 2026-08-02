@@ -9,10 +9,18 @@ import { usePathname, useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
 import { NAV_SECTIONS, atLeast } from "@/lib/mock/state-machine";
+import type { ShellLane } from "@/components/live/route-lane";
 import BrandLogo from "@/components/brand/BrandLogo";
 import styles from "./shell.module.css";
 
-export default function SideNav({ ready }: { ready: boolean }) {
+export default function SideNav({
+  ready,
+  lane,
+}: {
+  ready: boolean;
+  /** Null while the shell has not resolved the lane yet — claim nothing. */
+  lane: ShellLane | null;
+}) {
   const journey = useDemoStore((s) => s.journey);
   const callInProgress = useDemoStore((s) => s.onboarding.callInProgress);
   const pathname = usePathname();
@@ -100,12 +108,29 @@ export default function SideNav({ ready }: { ready: boolean }) {
         );
       })}
 
-      <div className={styles.navFoot} data-demo-label>
-        <span className="oa-demo-badge">Interactive demo</span>
-        <p className="oa-sub" style={{ fontSize: 11.5 }}>
-          Every screen uses prepared demo data. No live systems are connected.
-        </p>
-      </div>
+      {/* Lane-aware, because this footer used to assert "No live systems are
+          connected" unconditionally — around /app/build showing a real
+          deployment and around Operate screens reading the real runtime. Each
+          lane gets only the sentence that is true of it, and a refused lane
+          gets neither: the page beside it is explaining that no screen was
+          chosen at all. */}
+      {lane === "demo" && (
+        <div className={styles.navFoot} data-demo-label>
+          <span className="oa-demo-badge">Interactive demo</span>
+          <p className="oa-sub" style={{ fontSize: 11.5 }}>
+            This screen is a scripted walkthrough on prepared demo data. Screens
+            marked &ldquo;Live runtime&rdquo; read the real workforce.
+          </p>
+        </div>
+      )}
+      {lane === "live" && (
+        <div className={styles.navFoot}>
+          <span className="oa-tag oa-tag--amber">Live runtime</span>
+          <p className="oa-sub" style={{ fontSize: 11.5 }}>
+            This screen reads the live agent runtime. Calls are real.
+          </p>
+        </div>
+      )}
     </nav>
   );
 }

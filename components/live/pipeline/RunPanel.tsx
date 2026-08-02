@@ -1,7 +1,7 @@
 "use client";
 /**
- * components/live/pipeline/RunPanel.tsx — the button that runs the whole chain,
- * and the sentence that says what pressing it costs.
+ * components/live/pipeline/RunPanel.tsx — the buttons that run a pass, and the
+ * sentences that say what pressing each of them costs and delivers.
  *
  * THIS IS NOT A DRY RUN AND THE PANEL SAYS SO IN WORDS. A pass that reaches the
  * end builds packages, runs the sandbox, registers triggers and records a
@@ -10,14 +10,22 @@
  * reading that this is a preview, and the one place that reading is expensive is
  * the last stage, so it is stated next to the control rather than in a tooltip.
  *
- * THE FIXTURE IS THE PRIMARY ACTION, deliberately. `POST {"fixture":true}` runs
- * the stored Role B handoff, which means this screen demonstrates the entire
- * pipeline on a machine with no Role B backend, no seeded database and nothing
- * pasted — and the pass it produces is the real orchestrator against the real
- * stores, not a rehearsal of one.
+ * THE FIXTURE IS THE PRIMARY ACTION, AND IT IS LABELLED AS A DEMONSTRATION OF
+ * THE GAP REPORT — never as a way to go live. `POST {"fixture":true}` runs the
+ * stored Role B handoff, which is kept deliberately as received: plan v1
+ * against a current v2, `stale: true`, an approval owner this runtime cannot
+ * resolve. Every one of those trips a gap, so the pass blocks at Ingest every
+ * time — the real orchestrator refusing for real reasons, which is exactly
+ * what it exists to show on a machine with no Role B backend, no seeded
+ * database and nothing pasted. It keeps the primary slot because it is the one
+ * press that works on that machine. An earlier label ("Run the stored Role B
+ * handoff") was rejected in place: beside banners saying "run a handoff to
+ * replace the demo", it read as the advertised remedy, and it is the one
+ * handoff that can never deliver it.
  *
- * PASTING A HANDOFF IS THE SECOND PATH, because the fixture is the demo and a
- * real handoff is the job. It is validated as JSON in the browser before
+ * PASTING A HANDOFF IS THE SECOND PATH AND THE ONLY ONE THAT CAN GO LIVE,
+ * because the fixture is the demonstration and a real handoff — pasted here,
+ * or collected from Role B — is the job. It is validated as JSON in the browser before
  * anything is sent — not to second-guess the route, which does its own far
  * stricter check and answers 400 with a sentence, but because a trailing comma
  * should cost a message under the textarea rather than a round trip and a red
@@ -94,11 +102,15 @@ export default function RunPanel({
           ) : (
             <Play size={14} aria-hidden />
           )}
+          {/* "Demonstrate", not "Run … handoff": the verb is the label's whole
+              job. The stored handoff blocks at Ingest by design, so a label
+              that reads as running a handoff promises the go-live this button
+              cannot produce. */}
           {busy
             ? "Running the pass…"
             : hasResult
-              ? "Run the stored Role B handoff again"
-              : "Run the stored Role B handoff"}
+              ? "Demonstrate the gap report again"
+              : "Demonstrate the gap report (stored Role B handoff)"}
         </button>
 
         <button
@@ -114,9 +126,12 @@ export default function RunPanel({
 
       <p className={styles.runNote}>
         The stored handoff is the fixture in <code>lib/plan/fixtures/role-b-handoff.ts</code>,
-        sent as <code>{'{"fixture": true}'}</code>. It exists so the whole chain is
-        demonstrable with no Role B backend running. Nothing on this screen names who is
-        activating, so the endpoint records its own default owner on the deployment.
+        sent as <code>{'{"fixture": true}'}</code> — Role B&apos;s real payload, kept
+        deliberately stale, so the pass blocks at Ingest and shows the gap report doing its
+        work. It is a demonstration, not a route to live, and it never replaces the demo
+        workforce. Going live takes a real handoff: pasted below, or collected from Role B.
+        Nothing on this screen names who is activating, so a pass that reaches the end
+        records the endpoint&apos;s own default owner on the deployment.
       </p>
 
       {showPayload && (

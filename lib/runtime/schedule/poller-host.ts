@@ -190,6 +190,22 @@ function messageOf(error: unknown): string {
 }
 
 /**
+ * The stack when there is one, the message when there is not. A V8 stack's
+ * first line IS `name: message`, so preferring it loses nothing — and a pass
+ * that throws is scheduled work that silently did not run, so its one report
+ * must name the line it died on. The alternative (message only) already
+ * shipped, and the one crash it ever reported — "Cannot read properties of
+ * undefined (reading 'trim')" — named no file, no record and no field, which
+ * made it undiagnosable by construction.
+ */
+function stackOf(error: unknown): string {
+  if (error instanceof Error && typeof error.stack === "string" && error.stack.length > 0) {
+    return error.stack;
+  }
+  return messageOf(error);
+}
+
+/**
  * Whether a pass is worth a line.
  *
  * An idle tick is the overwhelmingly common case — a poller on a 30s interval
@@ -376,6 +392,33 @@ async function resolveDeps(): Promise<WorkerDeps | null> {
   const session = getRuntimeSession();
   const plan = await session.deployedPlan();
   if (plan === null) return null;
+
+  // THE DEPLOYED PLAN IS A STORED ROW, NOT PROOF. `Deployment.plan` is frozen
+  // at activation, so a deployment that went live before `ApprovedPlan` gained
+  // `organizationId` replays a plan without one on every pass — and undefined
+  // here is precisely the TypeError this poller once died on: `executorFor`
+  // below resolves the plan's hands through `resolveToolsOrganization`
+  // (lib/runtime/tools/organization.ts), whose first act is `.trim()`. Guarded
+  // at this read because this is where the stored record enters the pass.
+  //
+  // A THROW, NOT `return null`. Null is this resolver's word for "nothing is
+  // deployed — a quiet tick", and using it here would stand the whole schedule
+  // down silently, which is exactly the failure `enqueueDueSchedules` is
+  // written to avoid. A throw lands in `onError` every pass: loud, repeated,
+  // and naming the record. Branching on `session.toolsLive` was rejected too —
+  // the stub ignores the organization, so that branch would let the same row
+  // pass in rehearsal and die in production.
+  if (typeof plan.organizationId !== "string" || plan.organizationId.trim() === "") {
+    throw new Error(
+      `The deployed plan ("${String(plan.planId)}" v${String(plan.version)}) does not name ` +
+        `its owning organization: Deployment.plan.organizationId is ` +
+        `${JSON.stringify(plan.organizationId)}. The deployment record was frozen by a build ` +
+        `that predates the field, and the organization decides whose connected accounts every ` +
+        `run acts through, so no pass may run against it. Re-activate the plan so the new ` +
+        `deployment record carries its owner.`,
+    );
+  }
+
   return {
     plan,
     scheduler: session.scheduler,
@@ -457,10 +500,12 @@ export async function startPollerHost(
     onPass: reportPass,
     onError: (error: unknown) => {
       // A pass that throws outright is rare — `runDueWork` settles a failing job
-      // rather than propagating it — so this is the store or the clock, and the
-      // next pass will hit the same thing. Reported every time rather than
-      // deduplicated: a repeated line is how "still broken" looks.
-      complain(`a scheduler pass failed: ${messageOf(error)}`);
+      // rather than propagating it — so this is the store, the clock, or a
+      // stored record this build cannot read, and the next pass will hit the
+      // same thing. Reported every time rather than deduplicated: a repeated
+      // line is how "still broken" looks. The stack, not just the message —
+      // see `stackOf` for the crash that taught this.
+      complain(`a scheduler pass failed: ${stackOf(error)}`);
     },
   });
 
