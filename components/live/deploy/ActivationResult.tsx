@@ -27,12 +27,25 @@
  * gates authorised this go-live and which sandbox verdict did — not that one
  * existed, WHICH one. It is the answer to "what exactly was live, and on what
  * proof" on the day somebody asks, and it costs three lines to surface.
+ *
+ * THE ANATOMY IS THE DEMO'S, AND WHAT WAS NOT TAKEN FROM IT IS THE POINT. This
+ * card wears components/mock/deploy/ActivationPanel.tsx — the panel head, the
+ * numbered agent rows, the handoff row at the foot — from the same imported,
+ * read-only stylesheet the gate rows wear, so a real go-live looks like the
+ * product the demo promised. What was refused: the sequential Ready →
+ * Activating → Active animation (the runtime answers once, when the write has
+ * finished; nothing here invents an order it never reported), the progress bar
+ * (no number exists for it to draw), and the auto-redirect to the workspace
+ * (this report is the thing worth reading, and nothing navigates away from it
+ * on its own).
  */
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, CircleAlert, Info } from "lucide-react";
+import { ArrowRight, CircleAlert } from "lucide-react";
+import StatusBadge from "@/components/mock/ui/StatusBadge";
 import type { ActivatedView } from "./api";
 import { formatInstant, plural } from "./format";
+import shell from "@/components/mock/deploy/deploy.module.css";
 import styles from "./deploy.module.css";
 
 /** The one outcome that wrote nothing at all. */
@@ -61,15 +74,25 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
   const deployment = result.deployment;
   const evidence = deployment.evidence;
 
+  /* The demo panel's one-word state above its headline. `unchanged` is kept
+     deliberately un-celebratory: a green "workforce online" over a write that
+     wrote nothing is the reassuring lie this screen exists to stop. */
+  const micro = unchanged
+    ? "Nothing was written"
+    : known
+      ? "Workforce online"
+      : "Outcome not recognised";
+
   return (
-    <section
-      className={`${styles.liveCard} ${unchanged ? styles.liveCardQuiet : ""}`}
-      aria-labelledby="oa-deploy-result"
-    >
-      <h2 className={styles.liveTitle} id="oa-deploy-result">
-        {unchanged ? <Info size={18} aria-hidden /> : <CheckCircle2 size={18} aria-hidden />}
-        {headline(result.outcome)}
-      </h2>
+    <section className={`oa-card ${shell.panel}`} aria-labelledby="oa-deploy-result">
+      <header className={shell.panelHead}>
+        <div style={{ display: "grid", gap: 4 }}>
+          <p className="oa-micro">{micro}</p>
+          <h2 className="oa-h2" id="oa-deploy-result">
+            {headline(result.outcome)}
+          </h2>
+        </div>
+      </header>
 
       {!known && (
         <p className="oa-sub">
@@ -176,16 +199,31 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
       )}
 
       {result.agents.length > 0 && (
-        <ul className={styles.recordList}>
-          {result.agents.map((agent) => (
-            <li key={agent.agentId} className={styles.recordItem}>
-              <span className={styles.recordHead}>
-                {agent.agentId} v{agent.agentVersion}
-                <span className="oa-status oa-status--active">{agent.state}</span>
+        /* The demo's roster rows — index chip, name, status pill — carrying the
+           runtime records this call wrote. `rowActive` (the teal tint) goes only
+           to the one state that means running; the other four keep the neutral
+           row, so the tint never says more than the word on the pill. */
+        <ul className={shell.agentList}>
+          {result.agents.map((agent, index) => (
+            <li
+              key={agent.agentId}
+              className={`${shell.agentRow} ${agent.state === "active" ? shell.rowActive : ""}`}
+            >
+              <span className={shell.agentIdx} aria-hidden>
+                {index + 1}
               </span>
-              {/* The runtime's sentence for this agent's go-live, which names any
-                  workflow of its own that got no trigger. */}
-              <span>{agent.detail}</span>
+              <div className={shell.agentInfo}>
+                <p className={shell.agentName}>
+                  {agent.agentId} v{agent.agentVersion}
+                </p>
+                {/* The runtime's sentence for this agent's go-live, which names
+                    any workflow of its own that got no trigger. The demo clamps
+                    this slot to one ellipsized line; a runtime sentence is
+                    evidence and is never truncated, so `.wraps` undoes the
+                    clamp while keeping the type ramp. */}
+                <p className={`${shell.agentRole} ${styles.wraps}`}>{agent.detail}</p>
+              </div>
+              <StatusBadge status={agent.state} />
             </li>
           ))}
         </ul>
@@ -213,15 +251,20 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
         </p>
       )}
 
-      <div className={styles.linkRow}>
-        <Link href="/app/workspace/agents?live=1" className="oa-btn oa-btn--ghost oa-btn--sm">
-          Live agent roster
-          <ArrowRight size={13} aria-hidden />
-        </Link>
-        <Link href="/app/workspace?live=1" className="oa-btn oa-btn--ghost oa-btn--sm">
-          Workspace
-          <ArrowRight size={13} aria-hidden />
-        </Link>
+      {/* The demo's handoff row, minus its auto-redirect: nothing navigates on
+          its own, because this report is the thing worth reading. */}
+      <div className={shell.handoff}>
+        <p className="oa-sub">The roster is where what is actually running is confirmed.</p>
+        <div className={styles.linkRow}>
+          <Link href="/app/workspace/agents?live=1" className="oa-btn oa-btn--primary">
+            Live agent roster
+            <ArrowRight size={15} aria-hidden />
+          </Link>
+          <Link href="/app/workspace?live=1" className="oa-btn oa-btn--ghost oa-btn--sm">
+            Workspace
+            <ArrowRight size={13} aria-hidden />
+          </Link>
+        </div>
       </div>
     </section>
   );

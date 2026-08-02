@@ -1,5 +1,17 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   components/live/deploy/deploy.module.css — layout for the go-live screen.
+   components/live/deploy/deploy.module.css — the go-live screen's delta over
+   the demo checklist's stylesheet.
+
+   Deliberately smaller than it was. The checklist-item anatomy, the amber
+   blocker panels, the activate card and the activation panel are IMPORTED
+   from components/mock/deploy/deploy.module.css rather than restated here, so
+   the runtime-backed go-live is visibly the same product as the demo one
+   instead of a near-miss of it. That file is read-only from this lane: it
+   belongs to the scripted screens, and editing it would change the demo,
+   which must not move. What lives here is only what the live lane genuinely
+   adds — the split and rail, the plan-source disclosure, the actor field, the
+   four page-level refusal/failure states and the lifecycle rows.
+
    Everything visual comes from app/app/app.css (the `.oa` scope): surfaces,
    type scale, buttons, `.oa-status--*` badges, focus rings. Nothing below
    invents a colour, a radius or a font.
@@ -165,20 +177,11 @@
   overflow-wrap: anywhere;
 }
 
-/* ── The go-live panel ─────────────────────────────────────────────────── */
-
-.goLive {
-  display: grid;
-  gap: 14px;
-  padding: 18px 20px;
-}
-
-.goLiveRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-end;
-}
+/* ── The activate card's live additions ────────────────────────────────────
+   The card itself is the demo's (`activateCard` and friends in the imported
+   stylesheet); these are the two things the demo card never needed — a field
+   naming who authorised the go-live, and a button that refuses without
+   disabling itself. */
 
 .actorField {
   display: grid;
@@ -219,91 +222,10 @@
   max-width: 92ch;
 }
 
-/* ── The gates ─────────────────────────────────────────────────────────── */
-
-.gateList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 12px;
-}
-
-.gate {
-  display: grid;
-  gap: 8px;
-  padding: 14px 16px;
-  border: 1px solid var(--oa-border);
-  border-left-width: 4px;
-  border-radius: var(--oa-r-inner);
-  background: var(--oa-surface);
-  min-width: 0;
-}
-
-.gateOpen {
-  border-left-color: var(--oa-teal-deep);
-}
-
-/* Shut on purpose. Amber and outlined AND carrying the word "Blocked" in the
-   badge — the tint is the third signal, never the first. */
-.gateShut {
-  border-color: var(--oa-amber-border);
-  border-left-color: var(--oa-amber-border);
-  background: linear-gradient(0deg, var(--oa-soft-amber) 0%, var(--oa-surface) 62%);
-}
-
-.gateHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 10px;
-  min-width: 0;
-}
-
-.gateTitle {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 780;
-  letter-spacing: -0.01em;
-}
-
-.gateDetail {
-  margin: 0;
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: var(--oa-ink);
-  overflow-wrap: anywhere;
-}
-
-.gateWhat {
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: var(--oa-muted);
-}
-
-.blockerList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 8px;
-}
-
-/* A blocker is the runtime's own sentence and the runtime's own link. It gets a
-   surface of its own so it cannot read as a continuation of the gate's detail. */
-.blocker {
-  display: grid;
-  gap: 6px;
-  padding: 10px 12px;
-  border: 1px solid var(--oa-border);
-  border-radius: 10px;
-  background: var(--oa-surface);
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--oa-ink);
-  overflow-wrap: anywhere;
-}
+/* ── The gates' live additions ─────────────────────────────────────────────
+   The rows themselves are the demo checklist's items and the blockers sit in
+   its amber warning panels; what the demo never had is a blocker that names a
+   runtime id and carries the runtime's own route to the fix. */
 
 .blockerMeta {
   display: flex;
@@ -322,34 +244,10 @@
   overflow-wrap: anywhere;
 }
 
-/* ── What is live ──────────────────────────────────────────────────────── */
-
-.liveCard {
-  display: grid;
-  gap: 14px;
-  padding: 18px 20px;
-  border: 1px solid var(--oa-teal-deep);
-  border-radius: var(--oa-r-card);
-  background: var(--oa-soft-teal);
-}
-
-/* The same card when the answer is "nothing was written" — an idempotent
-   re-activation. Not green: nothing happened, and a green card claiming a
-   go-live that wrote nothing is the reassuring lie this screen exists to stop. */
-.liveCardQuiet {
-  border-color: var(--oa-border-strong);
-  background: var(--oa-bg-alt);
-}
-
-.liveTitle {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-}
+/* ── What is live ──────────────────────────────────────────────────────────
+   The result card's frame is the demo activation panel (`panel` in the
+   imported stylesheet); the stat tiles below are the live addition, because
+   the demo never had a deployment record to quote. */
 
 .liveGrid {
   display: grid;
@@ -432,34 +330,13 @@
   overflow-wrap: anywhere;
 }
 
-.recordList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.recordItem {
-  display: grid;
-  gap: 3px;
-  padding: 9px 11px;
-  border-radius: 10px;
-  border: 1px solid var(--oa-border);
-  background: var(--oa-surface);
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: var(--oa-muted-strong);
-  overflow-wrap: anywhere;
-}
-
-.recordHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  color: var(--oa-ink);
+/* The runtime's per-agent sentence, in the demo roster row's role slot. The
+   demo clamps that slot to one ellipsized line; a runtime sentence is evidence
+   and is never truncated, so this undoes the clamp and keeps the type ramp. */
+.wraps {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 /* ── Lifecycle ─────────────────────────────────────────────────────────── */
@@ -663,32 +540,6 @@
   border-color: var(--oa-border-strong);
   border-left: 4px solid var(--oa-border-strong);
   background: var(--oa-bg-alt);
-}
-
-.runningBox {
-  display: grid;
-  gap: 8px;
-  padding: 15px 17px;
-  border: 1px solid var(--oa-blue);
-  border-radius: var(--oa-r-card);
-  background: var(--oa-soft-blue);
-  color: var(--oa-blue-dark);
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.runningBox p {
-  margin: 0;
-  max-width: 96ch;
-}
-
-.runningTitle {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14.5px;
-  font-weight: 800;
 }
 
 /* The previous answer, still on screen while a newer request runs. Dimmed and

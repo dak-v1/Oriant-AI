@@ -18,7 +18,9 @@
  * at 60% meant "0.6 of a number in a table" and nothing whatever about the
  * runtime. `buildPlan` reports no progress — it compiles the whole plan inside
  * one request and answers at the end — so the only honest thing to show is the
- * state it last recorded and how long the job took once it has one.
+ * state it last recorded and how long the job took once it has one. (The bar
+ * the screen draws is that state at a fixed per-stage position, and the mapping
+ * lives in ui/stage.ts, not here, precisely so this file stays percentage-free.)
  *
  * The status map is total by type, so a word added to `BuildJobStatus` is a
  * compile error here rather than a nameless badge on a card.

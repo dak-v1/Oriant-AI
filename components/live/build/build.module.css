@@ -1,28 +1,22 @@
 /* ══════════════════════════════════════════════════════════════════════════
-   components/live/build/build.module.css — layout for the live Agent Factory.
+   components/live/build/build.module.css — the live Agent Factory's own layout.
    Everything visual comes from app/app/app.css (`.oa` scope): surfaces, type
    scale, buttons, `.oa-status--*` badges, focus rings, easing. Nothing below
    invents a colour, a radius or a font.
 
-   THREE RULES SHAPE THIS FILE.
+   THIS FILE SHRANK ON PURPOSE. The job cards, terminal, progress bars and
+   drawer now come from components/live/build/ui/build.module.css — the mock's
+   stylesheet, copied verbatim, because the owner asked for the mock's look on
+   the live screen. What remains here is the layout the mock never had a reason
+   to draw: the plan-source notice, the change-stream line, the failure and
+   unheard boxes, the last-build report, and the stray-jobs list. Colour is
+   never the signal in any of them — every tinted surface sits beside a word
+   that says the same thing, so a build read in greyscale is exactly as legible.
 
-   There is no progress bar in it, and that is a decision rather than an
-   omission. The screen this replaces drew one out of a fixture's `duration`
-   field. `buildPlan` publishes no progress at all, so the vocabulary here is
-   states and stored evidence — a badge, a checksum, a reason — and there is
-   deliberately no rule in this stylesheet that could animate a width.
-
-   Colour is never the signal. Every tinted surface sits beside a word that says
-   the same thing: the badge on a card, the title on a notice, the level on a log
-   line. A build read in greyscale has to be exactly as legible, because the
-   difference between `skipped` and `completed` is the difference between "your
-   package is current" and "your package was compiled just now", and both are
-   green.
-
-   The plan-source notice is sized like a headline, not a footnote. It is the one
-   thing somebody looking at four freshly built agents must not miss, and the
-   whole reason it is stated so loudly is that a demo plan and a real one look
-   identical everywhere else on the page.
+   The plan-source notice is sized like a headline, not a footnote. It is the
+   one thing somebody looking at four freshly built agents must not miss, and
+   the whole reason it is stated so loudly is that a demo plan and a real one
+   look identical everywhere else on the page.
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Header ────────────────────────────────────────────────────────────── */
@@ -38,13 +32,36 @@
   max-width: 64ch;
 }
 
-.headSide {
+.headTags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  justify-content: flex-end;
-  max-width: 420px;
+}
+
+/* The header's action column: the mock's button row on top, then the force
+   checkbox and the one-line "building writes" reminder beneath it. */
+.headActions {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  max-width: 380px;
+}
+
+.forceLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--oa-muted-strong);
+  cursor: pointer;
+  max-width: 46ch;
+}
+
+.forceLabel input {
+  margin-top: 2px;
+  flex: none;
 }
 
 /* ── The plan-source notice ────────────────────────────────────────────────
@@ -174,45 +191,6 @@
   flex: none;
 }
 
-/* ── The build control ─────────────────────────────────────────────────── */
-
-.runPanel {
-  display: grid;
-  gap: 12px;
-  margin-bottom: 18px;
-}
-
-.runRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
-.forceLabel {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--oa-muted-strong);
-  cursor: pointer;
-  max-width: 46ch;
-}
-
-.forceLabel input {
-  margin-top: 2px;
-  flex: none;
-}
-
-.runNote {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--oa-muted-strong);
-  max-width: 82ch;
-}
-
 /* ── The last build's own numbers ──────────────────────────────────────── */
 
 .reportBox {
@@ -223,9 +201,7 @@
 
 /* There is deliberately no "superseded" treatment for this panel. Dimming it
    once a read answers past it was the first shape, and it was wrong: the cards
-   go stale, these numbers do not. They are the record of what one build did, and
-   a later read of the store is a different fact rather than a newer version of
-   this one. A sentence inside the panel carries the relationship instead. */
+   go stale, these numbers do not. They are the record of what one build did. */
 
 .reportTitle {
   display: flex;
@@ -333,295 +309,18 @@
   word-break: break-word;
 }
 
-/* ── Split: the agents on the left, the standing facts on the right ────── */
+/* ── Jobs outside the plan ─────────────────────────────────────────────── */
 
-.split {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 1.35fr);
-  gap: 22px;
-  align-items: start;
-}
-
-.mainPane {
-  display: grid;
-  gap: 24px;
-  min-width: 0;
-  align-content: start;
-}
-
-.railPane {
-  display: grid;
-  gap: 14px;
-  min-width: 0;
-}
-
-@media (min-width: 1024px) {
-  .railPane {
-    position: sticky;
-    top: calc(var(--oa-topbar-h) + 20px);
-  }
-}
-
-@media (max-width: 1023px) {
-  .split {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/* ── Sections ──────────────────────────────────────────────────────────── */
-
-.agentsSection,
 .straySection {
   display: grid;
   gap: 12px;
   min-width: 0;
-}
-
-.sectionHead {
-  display: grid;
-  gap: 4px;
-  max-width: 74ch;
+  margin-top: 24px;
 }
 
 .sectionTitle {
   margin: 0;
 }
-
-.cardGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 14px;
-}
-
-/* ── One agent ─────────────────────────────────────────────────────────── */
-
-.card {
-  display: grid;
-  gap: 12px;
-  align-content: start;
-  min-width: 0;
-}
-
-.cardHead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.cardTitles {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.cardName {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-}
-
-.cardMeta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  font-size: 12px;
-  color: var(--oa-muted-strong);
-}
-
-.cardSection {
-  display: grid;
-  gap: 7px;
-  padding-top: 11px;
-  border-top: 1px solid var(--oa-border);
-  min-width: 0;
-}
-
-.cardLabel {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--oa-muted-strong);
-}
-
-.cardBody {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-/* Three tinted lines, each one carrying an icon AND a word — never a tint on
-   its own. `cardOk` is the quiet one on purpose: "nothing is wrong" should not
-   be the loudest thing on a card. */
-.cardWarn,
-.cardNote,
-.cardError,
-.cardOk {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  margin: 0;
-  padding: 8px 10px;
-  border-radius: var(--oa-r-inner);
-  font-size: 12.5px;
-  line-height: 1.5;
-}
-
-.cardWarn svg,
-.cardNote svg,
-.cardError svg {
-  flex: none;
-  margin-top: 3px;
-}
-
-.cardWarn {
-  background: var(--oa-soft-amber);
-  color: var(--oa-amber-ink);
-}
-
-.cardNote {
-  background: var(--oa-soft-blue);
-  color: var(--oa-blue-dark);
-}
-
-.cardError {
-  background: var(--oa-soft-red);
-  color: var(--oa-red-ink);
-}
-
-.cardOk {
-  padding: 0;
-  color: var(--oa-muted-strong);
-}
-
-.checksum {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 0;
-  padding: 8px 10px;
-  border-radius: var(--oa-r-inner);
-  background: var(--oa-bg-alt);
-  min-width: 0;
-}
-
-.checksum code {
-  min-width: 0;
-  word-break: break-all;
-}
-
-.factRows {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-}
-
-.factRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 12.5px;
-}
-
-.factLabel {
-  color: var(--oa-muted);
-  flex: none;
-}
-
-.factValue {
-  color: var(--oa-ink);
-  text-align: right;
-  min-width: 0;
-  word-break: break-word;
-  margin: 0;
-}
-
-.mono {
-  font-family: var(--oa-mono);
-  font-size: 0.94em;
-}
-
-/* ── The runner's log ──────────────────────────────────────────────────────
-   A disclosure, not a stream. Every line is written before the request answers,
-   so revealing them one at a time would be theatre with a real transcript as
-   its script — which is exactly what the screen before this one did. */
-
-.logBox {
-  border: 1px solid var(--oa-border);
-  border-radius: var(--oa-r-inner);
-  background: var(--oa-bg-alt);
-  padding: 8px 10px;
-}
-
-.logSummary {
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--oa-muted-strong);
-}
-
-.logList {
-  display: grid;
-  gap: 5px;
-  margin: 9px 0 0;
-  padding: 0;
-  list-style: none;
-  max-height: 260px;
-  overflow-y: auto;
-}
-
-.logLine {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  gap: 8px;
-  align-items: baseline;
-  font-size: 11.5px;
-  line-height: 1.45;
-}
-
-.logAt {
-  font-family: var(--oa-mono);
-  color: var(--oa-muted);
-  white-space: nowrap;
-}
-
-.logLevel {
-  font-weight: 800;
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: 0.05em;
-}
-
-.info {
-  color: var(--oa-muted-strong);
-}
-
-.warn {
-  color: var(--oa-amber-ink);
-}
-
-.error {
-  color: var(--oa-red-ink);
-}
-
-/* A level this build has never heard of. Rendered as the runtime spelled it,
-   with no tint, rather than being folded into "info" — see the api header. */
-.other {
-  color: var(--oa-ink);
-}
-
-.logMessage {
-  min-width: 0;
-  word-break: break-word;
-}
-
-/* ── Jobs outside the plan ─────────────────────────────────────────────── */
 
 .strayList {
   display: grid;
@@ -643,71 +342,7 @@
   font-size: 13px;
 }
 
-/* ── The rail ──────────────────────────────────────────────────────────── */
-
-.railCard {
-  display: grid;
-  gap: 10px;
-  align-content: start;
-}
-
-.railRows {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-}
-
-.railRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 13px;
-}
-
-.railLabel {
-  color: var(--oa-muted);
-  flex: none;
-}
-
-.railValue {
-  font-weight: 700;
-  text-align: right;
-  min-width: 0;
-  word-break: break-word;
-}
-
-.legendRow {
-  display: grid;
-  gap: 4px;
-  padding-top: 9px;
-  border-top: 1px solid var(--oa-border);
-  font-size: 12.5px;
-  line-height: 1.5;
-}
-
-.legendRow:first-child {
-  padding-top: 0;
-  border-top: none;
-}
-
-.legendRow dd {
-  margin: 0;
-  color: var(--oa-muted-strong);
-}
-
-.steps {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding-left: 18px;
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: var(--oa-muted-strong);
-}
-
-.railLinks {
-  display: grid;
-  gap: 8px;
-  justify-items: start;
+.mono {
+  font-family: var(--oa-mono);
+  font-size: 0.94em;
 }

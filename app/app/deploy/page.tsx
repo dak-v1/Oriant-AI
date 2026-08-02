@@ -8,7 +8,11 @@
  * gates, a real 409 and a real deployment record for weeks, reachable only by
  * somebody who already knew the endpoint and what its fields meant. The runtime
  * worked; the screen was the lie. Every import of the demo store, the autopilot
- * script and `components/mock/deploy/**` is gone from this file.
+ * script and `components/mock/deploy/**` is gone from this file. One thing from
+ * that directory is back in the lane on purpose: components/live/deploy/ui/*
+ * imports the mock checklist's STYLESHEET, read-only, so the real gates wear the
+ * demo's anatomy — the owner asked for that look — while the store, the scripted
+ * activation animation and the auto-redirect stay gone.
  *
  * A THIN SERVER COMPONENT OVER A CLIENT SCREEN, the same shape `/app/pipeline`
  * uses. There is no lane switch here, unlike `/app/workspace/*`: those screens

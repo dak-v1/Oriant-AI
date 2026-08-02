@@ -12,8 +12,12 @@
  *
  * So this target takes the fixture in lib/plan/fixtures/meridian.ts, whose whole
  * tool surface is Gmail and Google Calendar — the two toolkits this account
- * holds live ACTIVE Composio connections for — and asks two different questions
- * about it:
+ * holds live ACTIVE Composio connections for. The workforce under test is the
+ * pair the owner actually asked for: `helpdesk-agent` (Gmail only — polls the
+ * shared inbox every five minutes and pauses every send behind alwaysApprove,
+ * the decided draft-and-approve flow) and `marketing-agent` (Gmail plus Google
+ * Calendar — reads the campaign schedule, composes the ad, and its send pauses
+ * the same way). It asks two different questions about them:
  *
  *   Could it execute?   GW-2 walks every granted operation through
  *                       `resolveCapability` and requires a real published tool
@@ -83,9 +87,32 @@ const NOW = "2026-08-01T01:00:00.000Z";
  * guards against is silent: a third integration added to a grant would still
  * validate, still build and still pass the sandbox against the stub — and would
  * only surface as a shut activation gate on a machine where that toolkit is not
- * connected, which is every machine this account owns.
+ * connected, which is every machine this account owns. Keeping the demand at
+ * exactly these two is the entire point of the fixture: they are what the
+ * owner can connect, so an integrations gate asking for anything else is a
+ * gate the owner can never open.
  */
 const CONNECTED_INTEGRATIONS: readonly string[] = ["gmail", "google-calendar"];
+
+/**
+ * The exact operation surface the plan may grant, sorted. Asserted as a SET in
+ * GW-2, not just routed one by one, because the two failures it pins are both
+ * quiet: an operation dropped from a grant still routes everything that
+ * remains, and an operation added (a calendar write, say) still routes too —
+ * the roster only stops being "the five mapped capabilities the owner signed
+ * off" when somebody compares it to the signed-off list.
+ */
+const GRANTED_SURFACE: readonly string[] = [
+  "gmail.drafts.create",
+  "gmail.messages.read",
+  "gmail.messages.send",
+  "gmail.threads.read",
+  "google-calendar.events.list",
+];
+
+/** The two agents the owner asked for, by the ids both plan versions carry. */
+const HELPDESK_AGENT = "helpdesk-agent";
+const MARKETING_AGENT = "marketing-agent";
 
 /** Whoever pressed go-live. `activate` refuses a blank one, and rightly. */
 const CLINIC_ACTIVATOR = "user_sarah_chen";
@@ -208,12 +235,25 @@ export async function runGMAILWORKFORCEVerification(): Promise<Check[]> {
       toolkitSlugFor("gmail") === "gmail" &&
       toolkitSlugFor("google-calendar") === "googlecalendar";
 
+    // The surface is pinned as a set, both directions: nothing missing (the
+    // helpdesk lost its send, say) and nothing extra (a calendar write crept
+    // in). Routing alone proves neither — see GRANTED_SURFACE.
+    const surface = [...operations].sort();
+    const surfaceExact =
+      surface.length === GRANTED_SURFACE.length &&
+      surface.every((operation, index) => operation === GRANTED_SURFACE[index]);
+
     add(
-      "GW-2 every granted operation maps to a published Composio tool in a connected toolkit",
-      problems.length === 0 && routed.length === operations.length && slugsAgree,
+      "GW-2 the plan grants exactly the five mapped operations, each routed to a published tool in a connected toolkit",
+      problems.length === 0 &&
+        routed.length === operations.length &&
+        slugsAgree &&
+        surfaceExact,
       problems.length > 0
         ? problems.join(" | ")
         : `${routed.length}/${operations.length} routed: ${routed.join(", ")}; ` +
+            `surface=[${surface.join(", ")}] ` +
+            `${surfaceExact ? "matches" : "DOES NOT match"} the signed-off set; ` +
             `toolkit slugs gmail->${String(toolkitSlugFor("gmail"))}, ` +
             `google-calendar->${String(toolkitSlugFor("google-calendar"))}`,
     );
@@ -225,9 +265,16 @@ export async function runGMAILWORKFORCEVerification(): Promise<Check[]> {
         `workflows.find(w => w.enabled)`, which is invisible on a plan whose
         agents carry one workflow each — every fixture in the repository until
         this one. So the property is asserted here against the plan that can
-        actually catch it, together with the boundary the sweep needs to be
-        worth running: a limit it lands both sides of, and an act step to
-        interrupt.
+        actually catch it: the helpdesk carries BOTH enabled workflows (the
+        five-minute inbox sweep ending in a gated send, and the twice-daily
+        nudge ending in an unattended-within-limits draft), and the sweep must
+        cover the marketing agent's campaign-send as well. The multi-workflow
+        agent and the enabled roster are pinned BY NAME, because "some agent
+        has two workflows" would stay green while the workforce quietly became
+        a different one. The boundary the sweep needs to be worth running is
+        asserted too: a limit it lands both sides of (the nudge's draft acts
+        within `replies.per_run` and its floor, and pauses over them), and an
+        act step to interrupt.
 
         `dropped` is asserted empty as well. It names cases the plan implies and
         the sweep's own ceilings refused to emit, and a fixture big enough to be
@@ -275,17 +322,29 @@ export async function runGMAILWORKFORCEVerification(): Promise<Check[]> {
     const breaches = tally.get("awaiting_approval") ?? 0;
     const withins = tally.get("completed") ?? 0;
 
+    // Pinned by name — see the block comment. The helpdesk is the agent whose
+    // second workflow makes GW-3 able to catch a one-workflow sweep at all,
+    // and the enabled roster is the three workflows the owner configured.
+    const helpdeskIsMulti = multiWorkflow.some((agent) => agent.id === HELPDESK_AGENT);
+    const expectedEnabled = ["campaign-send", "inbox-sweep", "unanswered-nudge"];
+    const sortedEnabled = [...enabledWorkflowIds].sort();
+    const rosterExact =
+      sortedEnabled.length === expectedEnabled.length &&
+      sortedEnabled.every((id, index) => id === expectedEnabled[index]);
+
     add(
-      "GW-3 every enabled workflow is swept, and the sweep lands both sides of a limit",
-      multiWorkflow.length > 0 &&
+      "GW-3 every enabled workflow of both agents is swept, and the sweep lands both sides of the helpdesk's limits",
+      helpdeskIsMulti &&
+        rosterExact &&
         acts.length > 0 &&
         unswept.length === 0 &&
         breaches > 0 &&
         withins > 0 &&
         sweep.dropped.length === 0,
       `agents with >1 enabled workflow: ${multiWorkflow.map((a) => `${a.id}(${a.workflows.filter((w) => w.enabled).length})`).join(", ") || "none"}; ` +
+        `enabled=[${sortedEnabled.join(", ")}] ${rosterExact ? "as configured" : "NOT the configured roster"}; ` +
         `act steps writing to a tool: ${acts.length}; ` +
-        `enabled workflows ${enabledWorkflowIds.length}, swept ${swept.size}, unswept=${JSON.stringify(unswept)}; ` +
+        `swept ${swept.size}, unswept=${JSON.stringify(unswept)}; ` +
         `${sweep.scenarios.length} scenario(s) [${[...tally].map(([k, v]) => `${k}:${v}`).join(" ")}] ` +
         `+ ${sweep.runGates.length} run-gate case(s); dropped=${JSON.stringify(sweep.dropped)}`,
     );
@@ -322,15 +381,22 @@ export async function runGMAILWORKFORCEVerification(): Promise<Check[]> {
   }
 
   /* 5. MONITORING, AND THE OFFLINE CLAIM. The deployed packages are loaded back
-        out of the build store and driven through the real executor. Two things
-        have to hold at once: every agent stops at its first action having
-        written nothing, and every tool call it did make went to Gmail or Google
-        Calendar. Reading `operatingMode` would prove the first and none of the
-        second — only the call log can say what was actually reached. */
+        out of the build store and driven through the real executor. Three
+        things have to hold at once: the deployed roster is exactly
+        helpdesk-agent and marketing-agent (the ingested plan derives the same
+        ids the configured plan carries, which is what lets the two versions be
+        read as one story), every agent stops at its first action having
+        written nothing — the ingested form of the draft-and-approve promise —
+        and every tool call it did make went to Gmail or Google Calendar.
+        Reading `operatingMode` would prove the pause and none of the rest;
+        only the roster and the call log can say what was actually deployed
+        and reached. */
   {
     const plan = live.plan;
+    const gwFiveName =
+      "GW-5 helpdesk-agent and marketing-agent both pause at their action, write nothing, and reach only the two connected tools";
     if (plan === null) {
-      add("GW-5 the live workforce pauses, writes nothing, and reaches only the two connected tools", false, "no live plan");
+      add(gwFiveName, false, "no live plan");
     } else {
       const provider = new StubIntegrationProvider();
       const exec: ExecutorOptions = {
@@ -369,13 +435,20 @@ export async function runGMAILWORKFORCEVerification(): Promise<Check[]> {
         .map((c) => c.integrationId)
         .filter((id) => !CONNECTED_INTEGRATIONS.includes(id));
 
+      // Sorted so the assertion is about membership, not about the order Role
+      // B happened to list the agents in.
+      const roster = plan.agents.map((agent) => agent.id).sort();
+      const rosterExact =
+        roster.length === 2 && roster[0] === HELPDESK_AGENT && roster[1] === MARKETING_AGENT;
+
       add(
-        "GW-5 the live workforce pauses, writes nothing, and reaches only the two connected tools",
-        plan.agents.length > 0 &&
+        gwFiveName,
+        rosterExact &&
           statuses.every((s) => s.endsWith(":awaiting_approval")) &&
           writes.length === 0 &&
           foreign.length === 0,
-        `${statuses.join(" ")}; ${calls.length} tool call(s) ` +
+        `deployed roster=[${roster.join(", ")}]; ${statuses.join(" ")}; ` +
+          `${calls.length} tool call(s) ` +
           `[${[...new Set(calls.map((c) => c.operation))].join(", ")}]; ` +
           `writes=${JSON.stringify(writes)} foreignIntegrations=${JSON.stringify([...new Set(foreign)])}`,
       );
@@ -426,10 +499,12 @@ export async function runGMAILWORKFORCEVerification(): Promise<Check[]> {
   }
 
   /* 7. Go-live for the configured plan: three gates open, one trigger per
-        enabled workflow, and the disabled one still switched off. A workflow
-        the owner believes is live and which nothing will ever start is the
-        worst outcome the scheduler can produce, so `rejected` is asserted
-        empty rather than reported. */
+        enabled workflow — the helpdesk's five-minute sweep and twice-daily
+        nudge, the marketing agent's daily campaign-send — and the disabled
+        campaign-recap still switched off. A workflow the owner believes is
+        live and which nothing will ever start is the worst outcome the
+        scheduler can produce, so `rejected` is asserted empty rather than
+        reported. */
   {
     const activationDeps: ActivationDeps = {
       scheduler: configured.scheduler,

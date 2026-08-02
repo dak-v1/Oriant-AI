@@ -59,6 +59,15 @@
  *    about what is running now, and the sequence check below is what makes
  *    "after" mean after.
  *
+ * THE ANATOMY IS THE DEMO'S; THE WORDS STAY THE RUNTIME'S. The gate rows, the
+ * activate card and the result panel wear components/mock/deploy/deploy.module.css
+ * — imported read-only, the way the approvals and integrations lanes wear their
+ * demo shells — because the owner asked for the product the demo promised, not a
+ * second design invented beside it. The reskin moved no data and removed no
+ * state: every verbatim sentence, every latch and every refusal below survives
+ * it, and the demo's scripted parts (the store, the activation animation, the
+ * auto-redirect) were left where they were. See components/live/deploy/ui/*.
+ *
  * WHAT IS AND IS NOT AUTOMATIC. The checklist GET runs once on mount and
  * otherwise only when somebody asks: it re-derives every gate, and the sandbox
  * gate runs the whole scenario library and the stress sweep before it can answer.
@@ -95,13 +104,14 @@ import type {
 import { goLive, readChecklist, readRoster } from "./api";
 import { formatInstant, plural } from "./format";
 import ActivationResult from "./ActivationResult";
-import GateList from "./GateList";
-import GoLivePanel from "./GoLivePanel";
-import type { GoLivePermission } from "./GoLivePanel";
+import ActivateCard from "./ui/ActivateCard";
+import type { GoLivePermission } from "./ui/ActivateCard";
+import GateChecklist from "./ui/GateChecklist";
 import LifecycleList from "./LifecycleList";
 import type { LifecycleSource } from "./LifecycleList";
 import OrganizationRefusal from "./OrganizationRefusal";
 import PlanSourceNotice from "./PlanSourceNotice";
+import shell from "@/components/mock/deploy/deploy.module.css";
 import styles from "./deploy.module.css";
 
 /**
@@ -600,8 +610,6 @@ export default function LiveDeployScreen() {
 
       <div className={styles.split}>
         <div className={styles.mainPane}>
-          <GoLivePanel permission={permission} onGoLive={(by) => void activate(by)} />
-
           {forbidden !== null && (
             <OrganizationRefusal refusal={forbidden.refusal} attempt={forbidden.phase} />
           )}
@@ -627,17 +635,30 @@ export default function LiveDeployScreen() {
           )}
 
           {activating && (
-            <div className={styles.runningBox} aria-busy="true">
-              <p className={styles.runningTitle}>
-                <Loader2 size={16} className="oa-spin" aria-hidden />
-                Activating
-              </p>
-              <p>
+            /* The demo activation panel's head, without its body: the mock
+               animated agents switching on one by one, and the runtime reports
+               nothing per-agent until the POST answers — so there is no row to
+               draw and no bar to fill, and saying so is the content. */
+            <section
+              className={`oa-card ${shell.panel}`}
+              aria-busy="true"
+              aria-label="Workforce activation"
+            >
+              <header className={shell.panelHead}>
+                <div style={{ display: "grid", gap: 4 }}>
+                  <p className="oa-micro">Activation in progress</p>
+                  <h2 className="oa-h2">Bringing your workforce online</h2>
+                </div>
+                <Loader2 size={18} className="oa-spin" aria-hidden />
+              </header>
+              <p className="oa-sub">
                 The three gates are being re-derived inside this request before anything is
                 written — the sandbox suite and the stress sweep run again, against the plan
-                as it is right now. Nothing below reports on this request.
+                as it is right now. There is no per-agent progress to draw: the runtime
+                answers once, when the go-live has finished or refused. Nothing below
+                reports on this request.
               </p>
-            </div>
+            </section>
           )}
 
           {refusedBlockers !== null && (
@@ -712,7 +733,13 @@ export default function LiveDeployScreen() {
                 )}
               </div>
             ) : (
-              <GateList checklist={checklist} superseded={activating || reading} />
+              /* A newer request in flight dims the PREVIOUS answer rather than
+                 blanking it — an empty checklist mid-request reads as "no gate
+                 is shut", which is the reassuring version of a state nobody has
+                 confirmed. */
+              <div className={activating || reading ? styles.superseded : undefined}>
+                <GateChecklist checklist={checklist} />
+              </div>
             )}
 
             {checklist !== null && checklist.activeDeployment !== null && (
@@ -724,6 +751,17 @@ export default function LiveDeployScreen() {
                 writes nothing while the plan and every agent version still match.
               </p>
             )}
+
+            {/* The button sits after the gates, where the demo checklist put
+                its activate card: the review reads top to bottom and the one
+                primary action is at the end of it. Its permission is derived
+                above, from an answer the runtime actually gave — moving the
+                card moved nothing about when it opens. */}
+            <ActivateCard
+              permission={permission}
+              checklist={checklist}
+              onGoLive={(by) => void activate(by)}
+            />
           </section>
 
           <section aria-labelledby="oa-deploy-lifecycle" className={styles.section}>

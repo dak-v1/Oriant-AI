@@ -9,8 +9,11 @@
  * hit an early return in `runJob` and stayed at "Queued, waiting for a build
  * slot…" indefinitely. The owner read that as a broken product. The build was
  * fine; this screen was the defect, and none of that machinery is imported any
- * more. `components/mock/build/**` stays on disk and is now referenced by
- * nothing here.
+ * more. What IS imported from the mock again — deliberately, at the owner's
+ * request — is the LOOK: components/live/build/ui/** carries the mock's card
+ * grid, dark terminal and progress bar (its CSS copied verbatim, its shells
+ * adapted), while the data underneath stays the runtime's own. The mock's
+ * STORE and fixtures remain referenced by nothing here.
  *
  * A THIN SERVER COMPONENT OVER A CLIENT SCREEN, the same shape /app/pipeline
  * uses. There is no `?live=` lane switch, and that is the point rather than an
