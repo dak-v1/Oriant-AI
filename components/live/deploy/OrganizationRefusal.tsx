@@ -40,48 +40,53 @@ export default function OrganizationRefusal({
     <section className={styles.refusalBox} role="alert">
       <p className={styles.errorTitle}>
         <ShieldX size={17} aria-hidden />
-        This deployment is not permitted to act for this plan&apos;s organization
+        This workspace is not permitted to act for this business yet
       </p>
 
       <p>
         {attempt === "go-live"
-          ? "The go-live was refused before anything was activated. This is not a gate " +
-            "shutting and not a fault in the workforce — the request was refused for " +
-            "want of authority, and the same bytes are accepted the moment an operator " +
-            "permits the organization."
-          : "The checklist could not be read for this reason, so nothing below reports " +
-            "on the state of the workforce. This is not a gate shutting and not a fault " +
-            "in the workforce."}
+          ? "Nothing was switched on. This is not a check failing and not a fault in your " +
+            "workforce — the request was turned down because this workspace has not been " +
+            "given permission to act for this business. The same request goes through the " +
+            "moment somebody grants it."
+          : "The checks could not be run for this reason, so nothing below reports on the " +
+            "state of your workforce. This is not a check failing and not a fault in your " +
+            "workforce."}
       </p>
 
-      {/* The deployment's own words. Everything above and below is framing. */}
+      {/* WHAT TO DO, ADDRESSED TO A PERSON. The refusal arrives with two long
+          sentences written for whoever administers the server — they name the
+          setting to change and the id to add — and printing them here left an
+          owner reading configuration advice they cannot act on. The one thing
+          they have to know is preserved: who to ask, and for what. */}
       <div className={styles.refusalQuote}>
-        <p>{refusal.error}</p>
-        <p>{refusal.hint}</p>
+        <p>
+          Ask your administrator to give this workspace permission to act for this
+          business. Until they do, every action that would touch this business&apos;s
+          connected tools is refused the same way — nothing is half-done and nothing is
+          left behind.
+        </p>
+        {refusal.allowlist !== null && (
+          <p>
+            {refusal.allowlist.configured
+              ? `${refusal.allowlist.permitted} ${
+                  refusal.allowlist.permitted === 1 ? "business is" : "businesses are"
+                } permitted at the moment, and this one is not among them.`
+              : "No business has been permitted yet, so nothing can act for anyone until " +
+                "somebody sets that up."}
+          </p>
+        )}
       </div>
 
-      {(refusal.organizationId !== null || refusal.allowlist !== null || refusal.code !== null) && (
+      {/* THE ONE IDENTIFIER WORTH KEEPING, framed as something to hand over
+          rather than as content. The administrator being sent for cannot act
+          without knowing which business was refused, and this is the only place
+          it appears. */}
+      {refusal.organizationId !== null && (
         <div className={styles.refusalFacts}>
-          {refusal.organizationId !== null && (
-            <span>organization refused: {refusal.organizationId}</span>
-          )}
-          {refusal.allowlist !== null && (
-            <>
-              <span>variable: {refusal.allowlist.variable}</span>
-              <span>
-                configured: {refusal.allowlist.configured ? "yes" : "no"} · organizations
-                permitted: {refusal.allowlist.permitted}
-              </span>
-            </>
-          )}
-          {refusal.code !== null && <span>code: {refusal.code}</span>}
+          <span>Reference to give them: {refusal.organizationId}</span>
         </div>
       )}
-
-      {/* The standing note that this whole mechanism is temporary. Shown because
-          the refusal chose to send it, not because this screen has an opinion
-          about it. */}
-      {refusal.stopgap !== null && <p>{refusal.stopgap}</p>}
     </section>
   );
 }

@@ -61,7 +61,7 @@ const INTEGRATION_LABEL: Record<string, string> = {
   // Not an integration: the runtime's own id for an `approve` step, which pauses
   // with no tool call behind it. Named here so the drawer does not present an
   // explicit checkpoint as a call to a product called "oriant".
-  oriant: "Oriant runtime",
+  oriant: "Oriant itself",
 };
 
 /**
@@ -88,6 +88,71 @@ export function describeAction(proposed: ProposedInvocation): ActionPhrase {
     integration: INTEGRATION_LABEL[proposed.integrationId] ?? proposed.integrationId,
     named: phrase !== undefined,
   };
+}
+
+/**
+ * The same phrasebook, for the screens that hold an operation id and nothing
+ * else — a tool grant, a queued approval on the Workspace.
+ *
+ * Null rather than the id, so each caller decides what to fall back to and none
+ * of them can mistake an untranslated identifier for a description.
+ */
+export function operationPhrase(operation: string): string | null {
+  return OPERATION_PHRASE[operation] ?? null;
+}
+
+/** A run's stored status, as the word the rest of the product uses for it. */
+const RUN_STATE_WORD: Record<string, string> = {
+  running: "Running",
+  awaiting_approval: "Waiting on you",
+  completed: "Completed",
+  failed: "Failed",
+  refused: "Blocked by your rules",
+  cancelled: "Cancelled",
+};
+
+export function runStateWord(status: string): string {
+  return RUN_STATE_WORD[status] ?? status;
+}
+
+/** What started a run, in the owner's words rather than the stored one. */
+const TRIGGER_WORD: Record<string, string> = {
+  schedule: "A schedule",
+  event: "Something happening in a connected tool",
+  threshold: "A number crossing a line",
+  dependency: "Another workflow finishing",
+  manual: "Someone starting it by hand",
+};
+
+export function triggerWord(kind: string): string {
+  return TRIGGER_WORD[kind] ?? kind;
+}
+
+/**
+ * One line of a run's timeline, named.
+ *
+ * Known steps get a written phrase; anything else is de-underscored and
+ * sentence-cased rather than printed as the stored word. A timeline is the
+ * evidence an owner reads before approving, and it has to read as English.
+ */
+const EVENT_WORD: Record<string, string> = {
+  run_started: "Run started",
+  run_completed: "Run finished",
+  run_failed: "Run failed",
+  step_started: "Step started",
+  step_completed: "Step finished",
+  approval_raised: "Sent to you for a decision",
+  approval_decided: "Your decision recorded",
+  policy_refused: "Blocked by your rules",
+  tool_called: "Tool used",
+  reasoned: "Worked out what to do",
+};
+
+export function eventWord(kind: string): string {
+  const known = EVENT_WORD[kind];
+  if (known !== undefined) return known;
+  const spaced = kind.replace(/[_.]+/g, " ").trim();
+  return spaced === "" ? kind : spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 /* ═══════════════════════════ Risk and deadlines ═══════════════════════════ */
@@ -168,12 +233,12 @@ export function runStatusMeta(
             sentence: "The run stopped without acting, which is exactly what your rejection asked for.",
           }
         : {
-            label: "Run refused",
+            label: "Run blocked",
             badge: "failed",
             tone: "bad",
             sentence:
-              "The run resumed and was then refused by policy at a later step, so it stopped. " +
-              "The reason is on the run below.",
+              "The run carried on and was then blocked by your rules at a later step, so it " +
+              "stopped. The reason is on the run below.",
           };
     case "awaiting_approval":
       return {
@@ -209,12 +274,12 @@ export function runStatusMeta(
       };
     default:
       return {
-        label: status === null ? "Status not reported" : `Unrecognised status: ${status}`,
+        label: status === null ? "Outcome not reported" : "Outcome not recognised",
         badge: "neutral",
         tone: "unknown",
         sentence:
-          "Your decision was recorded, but this screen does not recognise the status the " +
-          "runtime reported for the run. Open the run to see what happened.",
+          "Your decision was recorded, but this screen does not recognise how the run ended, " +
+          "so it cannot tell you what happened next.",
       };
   }
 }

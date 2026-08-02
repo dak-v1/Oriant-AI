@@ -104,15 +104,15 @@ export default function ActivateCard({
     if (busy.current) return;
     if (permission.kind !== "open") {
       setRefused(
-        "Nothing was sent. This button only sends when the runtime has answered that " +
-          "every gate is satisfied, and it has not.",
+        "Nothing was sent. This button only sends once every check has come back passed, " +
+          "and they have not.",
       );
       return;
     }
     if (actor === "") {
       setRefused(
-        "Nothing was sent. The deployment record has to name whoever authorised this " +
-          "go-live, and this screen will not invent one.",
+        "Nothing was sent. The record has to name whoever authorised this go-live, and " +
+          "this screen will not invent one.",
       );
       return;
     }
@@ -137,14 +137,14 @@ export default function ActivateCard({
             tag saying so, never a zero pretending to be a count. */}
         <div className={shell.activateMeta}>
           {checklist === null ? (
-            <span className="oa-tag oa-tag--neutral">Gates not read</span>
+            <span className="oa-tag oa-tag--neutral">Checks not run yet</span>
           ) : (
             <>
               <span>
                 <strong>
                   {satisfied} of {checklist.gates.length}
                 </strong>{" "}
-                gates satisfied
+                checks passed
               </span>
               <span aria-hidden>·</span>
               <span>
@@ -157,10 +157,11 @@ export default function ActivateCard({
                     <strong>
                       {plural(
                         shut.reduce((count, gate) => count + gate.blockers.length, 0),
-                        "blocker",
-                        "blockers",
+                        "thing",
+                        "things",
                       )}
-                    </strong>
+                    </strong>{" "}
+                    to fix
                   </span>
                 </>
               )}
@@ -169,9 +170,9 @@ export default function ActivateCard({
         </div>
 
         <p className={live.note} id="oa-deploy-actor-note">
-          Recorded on the deployment as <code>activatedBy</code> and kept for audit. The
-          runtime refuses a go-live that cannot say who authorised it, so this is not a
-          formality and nothing here fills it in for you.
+          Recorded against this go-live and kept for your records. A go-live that cannot say
+          who authorised it is refused, so this is not a formality and nothing here fills it
+          in for you.
         </p>
 
         {/* The demo's "before you can activate" list, pointing at the gate rows
@@ -184,7 +185,7 @@ export default function ActivateCard({
               <li key={gate.id}>
                 <span className={shell.missingDot} aria-hidden />
                 <a href={`#gate-${gate.id}`}>{gate.label}</a>
-                <span>— {plural(gate.blockers.length, "blocker", "blockers")} above</span>
+                <span>— {plural(gate.blockers.length, "thing", "things")} to fix above</span>
               </li>
             ))}
           </ul>
@@ -196,19 +197,18 @@ export default function ActivateCard({
         {!open && (
           <p className={live.whyNot}>
             {permission.kind === "unknown"
-              ? "The gates have not been read, so this screen does not know whether this workforce may go live. It is not saying that it may not — it is saying nobody has been told."
+              ? "The checks have not run, so this screen does not know whether this workforce may go live. It is not saying that it may not — it is saying nobody has been told."
               : permission.kind === "blocked"
-                ? `${permission.blockers === 1 ? "One gate is" : `${permission.blockers} blockers are`} standing between this plan and go-live. Each one is listed above in the runtime's own words, with a link to where it is fixed. There is no override on this screen and none in the endpoint.`
+                ? `${permission.blockers === 1 ? "One thing is" : `${permission.blockers} things are`} standing between this plan and going live. Each one is listed above, with a link to where it is fixed. There is no way to override this.`
                 : permission.kind === "empty"
-                  ? "The checklist came back with no gates in it. An empty list satisfies “every gate passed” without anything having been checked, so this button stays shut whatever the response's own ready flag says."
-                  : "A go-live is already in flight. Nothing is sent twice from here."}
+                  ? "The list came back with no checks in it at all. An empty list counts as “everything passed” without anything having been checked, so this button stays shut whatever it claims."
+                  : "Going live is already under way. Nothing is sent twice from here."}
           </p>
         )}
 
         {open && actor === "" && (
           <p className={live.whyNot}>
-            Every gate is satisfied. Fill in who is authorising this and the button will
-            send.
+            Every check has passed. Fill in who is authorising this and the button will send.
           </p>
         )}
 
@@ -228,7 +228,7 @@ export default function ActivateCard({
             value={activatedBy}
             spellCheck={false}
             autoComplete="off"
-            placeholder="your user id"
+            placeholder="your name"
             onChange={(event) => setActivatedBy(event.target.value)}
             aria-describedby="oa-deploy-actor-note"
           />

@@ -212,12 +212,17 @@ export default function AppShell({
     return (
       <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "var(--oa-bg)" }}>
         <section className="oa-card" role="alert" style={{ maxWidth: 560, display: "grid", gap: 12 }}>
-          <p className="oa-eyebrow" style={{ color: "var(--oa-red-ink)" }}>Supabase required</p>
-          <h1 className="oa-h2" style={{ margin: 0 }}>Connect Supabase to continue</h1>
+          <p className="oa-eyebrow" style={{ color: "var(--oa-red-ink)" }}>Workspace unavailable</p>
+          <h1 className="oa-h2" style={{ margin: 0 }}>We can&rsquo;t load your workspace right now</h1>
           <p className="oa-sub" style={{ margin: 0 }}>
-            Oriant does not use local storage for product data. Add the Supabase URL and server service-role key to <code>.env.local</code>, then restart the dev server.
+            Oriant can&rsquo;t reach the service that keeps your workspace, so it
+            is showing you nothing at all rather than a blank workspace you might
+            mistake for an empty one. Nothing has been changed or lost.
           </p>
-          <p className="oa-micro" style={{ margin: 0 }}>{supabaseError}</p>
+          <p className="oa-micro" style={{ margin: 0 }}>
+            Whoever set this up needs to finish connecting it. Reload this page
+            once they have.
+          </p>
         </section>
       </main>
     );

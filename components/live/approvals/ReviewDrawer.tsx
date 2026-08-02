@@ -63,15 +63,18 @@ import type {
   PlanContext,
   RunView,
 } from "./api";
-import { fetchApprovalRecord, fetchRun, submitDecision } from "./api";
+import { ApprovalsApiError, fetchApprovalRecord, fetchRun, submitDecision } from "./api";
 import {
   RISK_TAG,
   deadlineTone,
   describeAction,
+  eventWord,
   formatInstant,
   previewValue,
+  runStateWord,
   runStatusMeta,
   safeStringify,
+  triggerWord,
 } from "./format";
 import ArgsEditor, { useArgDraft } from "./ArgsEditor";
 import LiveDrawer from "./LiveDrawer";
@@ -327,7 +330,7 @@ export default function ReviewDrawer({
           <p className={styles.errorDetail}>{loadError}</p>
           <p>
             Nothing has been decided. Close this panel and refresh the inbox — if the approval has
-            already been decided elsewhere it will no longer be pending.
+            already been decided elsewhere it will no longer be waiting.
           </p>
         </div>
       )}
@@ -360,15 +363,15 @@ export default function ReviewDrawer({
                 </span>
               </div>
               <p className={styles.outcomeSentence}>
-                This approval has already been decided, so nothing on it can change. Its arguments
-                below are read-only.
+                This has already been decided, so nothing on it can change. Its details below are
+                read-only.
               </p>
               {alreadyDecided.reason && (
                 <p className={styles.outcomeNote}>Reason given: {alreadyDecided.reason}</p>
               )}
               {record.edited && (
                 <p className={styles.outcomeNote}>
-                  The owner edited the arguments before approving — see the version history below.
+                  The details were edited before this was approved — see the version history below.
                 </p>
               )}
             </div>
@@ -397,8 +400,8 @@ export default function ReviewDrawer({
             {!action.named && (
               <p className={styles.unnamedOp}>
                 <FileWarning size={13} aria-hidden />
-                This build has no plain-language description for{" "}
-                <code>{approval.proposed.operation}</code>. Read the arguments below before
+                There is no plain description of{" "}
+                <strong>{approval.proposed.operation}</strong>. Read its details below before
                 deciding.
               </p>
             )}
@@ -416,11 +419,10 @@ export default function ReviewDrawer({
                     : `${agentLabel} (${approval.agentId})`
                 }
               />
-              <SourceRow label="Workflow" value={approval.workflowId} mono />
-              <SourceRow label="Step" value={approval.stepId} mono />
-              <SourceRow label="Run" value={approval.runId} mono />
-              <SourceRow label="Integration" value={action.integration} />
-              <SourceRow label="Operation" value={approval.proposed.operation} mono />
+              <SourceRow label="Workflow" value={approval.workflowId} />
+              <SourceRow label="Step" value={approval.stepId} />
+              <SourceRow label="Tool" value={action.integration} />
+              <SourceRow label="Action" value={approval.proposed.operation} />
               <SourceRow label="Decision owner" value={approval.approvalOwner} />
               <SourceRow label="Raised" value={formatInstant(approval.createdAt)} />
               <SourceRow
@@ -431,21 +433,21 @@ export default function ReviewDrawer({
           </section>
 
           {/* ── The proposed invocation ── */}
-          <section className={shell.section} aria-label="Proposed arguments">
+          <section className={shell.section} aria-label="What will be sent">
             <div className={shell.proposedHead}>
               <p className="oa-micro">
-                {editable ? "Arguments — edit before you decide" : "Arguments"}
+                {editable ? "What will be sent — edit it before you decide" : "What will be sent"}
               </p>
               <span className={shell.proposedMeta}>
-                {approval.proposed.operation} · {action.integration}
+                {action.integration} · {approval.proposed.operation}
               </span>
             </div>
             <ArgsEditor draft={draft} disabled={!editable} idPrefix={fieldPrefix} />
           </section>
 
           {Object.keys(approval.proposed.metrics).length > 0 && (
-            <section className={shell.section} aria-label="Measured facts">
-              <p className="oa-micro">Facts policy judged this against</p>
+            <section className={shell.section} aria-label="What your limits were checked against">
+              <p className="oa-micro">What your limits were checked against</p>
               <div className={shell.srcRows}>
                 {Object.keys(approval.proposed.metrics)
                   .sort()
@@ -459,8 +461,8 @@ export default function ReviewDrawer({
                   ))}
               </div>
               <p className="oa-sub">
-                These were frozen when the approval was raised and are not recalculated from your
-                edits. Changing an amount here does not re-run the limit check that stopped the
+                These were recorded when this was sent to you and are not recalculated from your
+                edits. Changing an amount above does not re-run the limit check that stopped the
                 agent.
               </p>
             </section>
@@ -487,7 +489,7 @@ export default function ReviewDrawer({
                 ))}
               </ul>
               <p style={{ margin: 0, fontSize: 12.5 }}>
-                Approving sends the merged arguments, not the agent&apos;s proposal. The change is
+                Approving sends your edited version, not what the agent proposed. The change is
                 recorded against this approval as a second version.
               </p>
               <details>
@@ -504,13 +506,13 @@ export default function ReviewDrawer({
               <p className={styles.errorTitle}>
                 <AlertTriangle size={15} aria-hidden />
                 {draft.invalidKeys.length === 1
-                  ? "One argument cannot be read"
-                  : `${draft.invalidKeys.length} arguments cannot be read`}
+                  ? "One field cannot be read"
+                  : `${draft.invalidKeys.length} fields cannot be read`}
               </p>
               <p>
-                Approving is blocked while {draft.invalidKeys.join(", ")} cannot be parsed. Sending
-                the approval without them would run the agent&apos;s original values while showing
-                you yours.
+                Approving is blocked while {draft.invalidKeys.join(", ")} cannot be read. Sending
+                this without them would run the agent&apos;s original values while showing you
+                yours.
               </p>
             </div>
           )}
@@ -531,8 +533,8 @@ export default function ReviewDrawer({
                 onChange={(event) => setRejectReason(event.target.value)}
               />
               <p className="oa-sub">
-                The reason is stored on the decision and ends the run — the agent will not act. Any
-                edits you made above are discarded, because a rejected action never executes.
+                The reason is kept with your decision and ends the run — the agent will not act.
+                Any edits you made above are discarded, because a rejected action never happens.
               </p>
             </div>
           )}
@@ -542,18 +544,23 @@ export default function ReviewDrawer({
             <p className="oa-micro">Evidence — the run behind this proposal</p>
             {runError && (
               <p className="oa-sub">
-                The run could not be loaded ({runError}). The proposal above is complete and can
-                still be decided; only its context is missing.
+                The run behind this could not be loaded ({runError}) — so the background to it
+                is missing. What the agent proposes, above, is complete and can still be
+                decided.
               </p>
             )}
             {run && (
               <>
                 <div className={shell.srcRows}>
-                  <SourceRow label="Status" value={run.status} />
+                  <SourceRow label="Status" value={runStateWord(run.status)} />
                   <SourceRow label="Started" value={formatInstant(run.startedAt)} />
                   <SourceRow
-                    label="Triggered by"
-                    value={run.trigger ? `${run.trigger.kind} · ${formatInstant(run.trigger.firedAt)}` : "—"}
+                    label="Started by"
+                    value={
+                      run.trigger
+                        ? `${triggerWord(run.trigger.kind)} · ${formatInstant(run.trigger.firedAt)}`
+                        : "—"
+                    }
                   />
                 </div>
                 <ul className={styles.timeline}>
@@ -565,7 +572,7 @@ export default function ReviewDrawer({
                       }`}
                     >
                       <span className={styles.eventKind}>
-                        {event.kind}
+                        {eventWord(event.kind)}
                         <span className={styles.eventAt}>{formatInstant(event.at)}</span>
                       </span>
                       <span className={styles.eventText}>
@@ -593,7 +600,7 @@ export default function ReviewDrawer({
           </section>
 
           {/* ── Versions ── */}
-          <section className={shell.section} aria-label="Argument versions">
+          <section className={shell.section} aria-label="Version history">
             <p className="oa-micro">Version history</p>
             <div className={shell.versions}>
               {(result?.outcome.versions.length ? result.outcome.versions : record.versions).map(
@@ -607,7 +614,7 @@ export default function ReviewDrawer({
                     <div className={styles.versionHeadRow}>
                       <span className={shell.versionTag}>v{version.version}</span>
                       <span className={shell.versionNote}>
-                        {version.author === "agent" ? "Proposed by the agent" : "Edited by the owner"}{" "}
+                        {version.author === "agent" ? "Proposed by the agent" : "Edited before approval"}{" "}
                         · {version.authoredBy}
                       </span>
                       <span className={shell.versionAt}>{formatInstant(version.authoredAt)}</span>
@@ -637,9 +644,9 @@ export default function ReviewDrawer({
               )}
             </div>
             <p className="oa-sub">
-              Version 1 is always the agent&apos;s frozen proposal. A second version exists only
-              when an approving owner changed something — it is derived from the stored decision,
-              not kept separately, so what an audit reads is what ran.
+              Version 1 is always exactly what the agent proposed. A second version exists only
+              when whoever approved it changed something — it comes from the decision itself
+              rather than being kept alongside it, so what an audit reads is what actually ran.
             </p>
           </section>
         </div>
@@ -702,11 +709,6 @@ function OutcomePanel({
       {outcome.unreadable && <p className={styles.outcomeNote}>{outcome.unreadable}</p>}
 
       <div className={styles.outcomeRows}>
-        {outcome.runId && (
-          <span>
-            Run <span className={styles.mono}>{outcome.runId}</span>
-          </span>
-        )}
         {outcome.dependentsQueued !== null && outcome.dependentsQueued > 0 && (
           <span>
             {outcome.dependentsQueued} dependent workflow
@@ -717,8 +719,8 @@ function OutcomePanel({
 
       {outcome.dependencyError && (
         <p className={styles.outcomeNote}>
-          <AlertTriangle size={13} aria-hidden /> The run settled correctly, but the workflows
-          chained behind it were not queued: {outcome.dependencyError}
+          <AlertTriangle size={13} aria-hidden /> The run itself finished correctly, but the
+          workflows that follow it were not started: {outcome.dependencyError}
         </p>
       )}
 
@@ -747,11 +749,10 @@ function FailurePanel({ failure }: { failure: DecisionFailure }) {
       <p>
         {unknown
           ? "Do not decide again from here. Close this panel, refresh the inbox, and check whether " +
-            "the approval is still pending — approving twice would run the action twice."
+            "the approval is still waiting — approving twice would carry the action out twice."
           : "Nothing was recorded and the run is still paused, so you can correct this and decide " +
             "again."}
       </p>
-      {failure.kind === "refused" && <p className={styles.errorDetail}>HTTP {failure.status}</p>}
     </div>
   );
 }
@@ -787,7 +788,7 @@ function ModeNote({ plan }: { plan: PlanContext | null }) {
     return (
       <>
         <AlertTriangle size={12} aria-hidden />
-        Still reading the runtime&apos;s mode — until it answers, assume this acts for real.
+        Still checking whether this acts for real — until it answers, assume it does.
       </>
     );
   }
@@ -795,7 +796,7 @@ function ModeNote({ plan }: { plan: PlanContext | null }) {
     return (
       <>
         <ShieldCheck size={12} aria-hidden />
-        Live runtime: approving performs this action for real.
+        Approving carries this action out for real.
       </>
     );
   }
@@ -803,14 +804,14 @@ function ModeNote({ plan }: { plan: PlanContext | null }) {
     return (
       <>
         <ShieldCheck size={12} aria-hidden />
-        Fixture runtime: the run is real, the tool call is stubbed.
+        Practice mode: the run is real, but nothing is actually sent.
       </>
     );
   }
   return (
     <>
       <AlertTriangle size={12} aria-hidden />
-      The runtime&apos;s mode could not be read — assume this acts for real.
+      This screen could not check whether this acts for real — assume it does.
     </>
   );
 }
@@ -910,6 +911,22 @@ function Footer({
   );
 }
 
+/**
+ * The sentence to put in front of the reader.
+ *
+ * A malformed answer's own message names the field that was wrong, which is
+ * written for whoever has to fix the mismatch and is meaningless to the person
+ * holding the decision. The fact they need — that nothing could be read, so
+ * nothing is being shown — is said instead, and nothing is quietly rendered
+ * from a half-read record.
+ */
 function messageOf(error: unknown): string {
+  if (error instanceof ApprovalsApiError && error.kind === "malformed") {
+    return (
+      "The answer came back in a form this screen could not read, so nothing was shown " +
+      "from it. A half-read approval is worse than none, because you cannot see what is " +
+      "missing from it."
+    );
+  }
   return error instanceof Error ? error.message : String(error);
 }

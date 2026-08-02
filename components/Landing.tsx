@@ -112,7 +112,7 @@ export default function Landing() {
                 className="hv-bd hv-tf"
                 style={sx({ background: "transparent", color: "var(--ink)", border: "1px solid var(--line2)", borderRadius: 999, padding: "16px 26px", fontSize: 15.5, fontWeight: 600, cursor: "pointer", transition: "transform .22s,border-color .22s", "--hv-bd": "var(--ink)", "--hv-tf": "translateY(-3px)" })}
               >
-                Explore the interactive demo
+                Look around a sample workspace
               </button>
             </div>
             <div style={sx({ display: "flex", gap: 34, marginTop: 34, paddingTop: 22, borderTop: "1px solid var(--line)" })}>

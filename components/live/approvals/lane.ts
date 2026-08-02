@@ -24,8 +24,8 @@ export type { LaneInput };
 
 const SURFACE = {
   envVar: APPROVALS_LANE_ENV,
-  liveLabel: "the live inbox",
-  demoLabel: "the demo",
+  liveLabel: "your own approvals",
+  demoLabel: "the sample approvals",
 } as const;
 
 export function resolveApprovalsLane(input: LaneInput): ApprovalsLane {

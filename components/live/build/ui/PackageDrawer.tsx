@@ -45,7 +45,7 @@ export default function PackageDrawer({
       open={open && agent !== null && pkg !== null}
       onClose={onClose}
       title={agent?.name ?? ""}
-      eyebrow="Stored package"
+      eyebrow="What was built"
       wide
       footer={
         <button type="button" className="oa-btn oa-btn--ghost" onClick={onClose}>
@@ -56,23 +56,19 @@ export default function PackageDrawer({
       {agent !== null && pkg !== null && (
         <div style={{ display: "grid", gap: 20 }}>
           <p className="oa-sub">
-            The record the runtime holds for <code>{pkg.agentId}</code> at version{" "}
-            {pkg.agentVersion} — read from <code>GET /api/runtime/build</code>, stored only
-            after the package validated against its spec. This is what Activation gates on.
+            What was built for this agent, at version {pkg.agentVersion}. It was saved only
+            after it passed its checks, and it is what going live depends on.
           </p>
 
-          <section style={{ display: "grid", gap: 10 }} aria-label="Stored package record">
+          <section style={{ display: "grid", gap: 10 }} aria-label="What was built">
             <h3 className="oa-h3">
               <Package size={14} aria-hidden style={{ marginRight: 6, verticalAlign: -2 }} />
-              Package record
+              Summary
             </h3>
             <div className={styles.manifestList}>
               <div className={`oa-panel ${styles.manifestRow}`}>
-                <div style={{ display: "grid", gap: 2, minWidth: 0 }}>
-                  <p className={styles.manifestName}>Checksum</p>
-                  <p className={styles.manifestSub}>{pkg.checksum}</p>
-                </div>
-                <span className="oa-tag oa-tag--teal">validated</span>
+                <p className={styles.manifestName}>Status</p>
+                <span className="oa-tag oa-tag--teal">Passed its checks</span>
               </div>
               <div className={`oa-panel ${styles.manifestRow}`}>
                 <p className={styles.manifestName}>Built</p>
@@ -86,28 +82,28 @@ export default function PackageDrawer({
               </div>
               <div className={`oa-panel ${styles.manifestRow}`}>
                 <div style={{ display: "grid", gap: 2, minWidth: 0 }}>
-                  <p className={styles.manifestName}>Permitted operations</p>
+                  <p className={styles.manifestName}>Permitted actions</p>
                   <p className={styles.manifestSub}>
-                    the only tool calls the executor will make for this agent
+                    the only things this agent is allowed to do
                   </p>
                 </div>
                 <span className="oa-tag oa-tag--neutral">
-                  {plural(pkg.allowedOperations, "operation", "operations")}
+                  {plural(pkg.allowedOperations, "action", "actions")}
                 </span>
               </div>
             </div>
           </section>
 
-          <section style={{ display: "grid", gap: 6 }} aria-label="How this package is used">
+          <section style={{ display: "grid", gap: 6 }} aria-label="How this is used">
             <h3 className="oa-h3">
               <Plug2 size={14} aria-hidden style={{ marginRight: 6, verticalAlign: -2 }} />
-              What happens with it
+              How this is used
             </h3>
             <p className="oa-sub">
-              The executor runs this stored, validated package — never a fresh compile. If
-              the spec changes, the checksum stops matching, the runtime lists the agent as
-              missing a current package, and this drawer&apos;s record stays as the history
-              of what was built.
+              This saved version is exactly what runs — nothing is rebuilt on the fly. If
+              you change this agent&apos;s settings, what is saved here stops matching, the
+              agent is listed as not ready until you build again, and this stays as the
+              record of what was built.
             </p>
           </section>
         </div>

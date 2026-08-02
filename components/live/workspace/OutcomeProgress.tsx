@@ -80,14 +80,14 @@ export default function OutcomeProgress({
         </h2>
       </div>
       <p className="oa-lead">
-        What this workforce was approved to achieve, from the plan&apos;s business
-        outcomes. Targets and baselines are what the plan states; current values
-        are not shown because nothing in the runtime measures them yet.
+        What this workforce was approved to achieve. Targets and starting figures
+        are what your plan states; where things stand now is not shown, because
+        nothing here measures it yet.
       </p>
 
       {plan.outcomes.length === 0 ? (
         <EmptyNote>
-          The approved plan carries no business outcomes, so there is nothing to
+          Your approved plan sets no business outcomes, so there is nothing to
           report against.
         </EmptyNote>
       ) : (
@@ -107,10 +107,10 @@ export default function OutcomeProgress({
       )}
 
       <p className={styles.footNote}>
-        Making these move requires a measurement source: a metric the runtime can
-        sample, or the figures from the approved company report fed back in. Until
-        one exists, this section reports the goal and the work attributed to it,
-        and says plainly that the middle number is unknown.
+        Making these move needs something that measures them: a figure this app can
+        read for itself, or the numbers from your approved report fed back in. Until
+        one exists, this section reports the goal and the work put against it, and
+        says plainly that the middle number is unknown.
       </p>
     </section>
   );
@@ -169,7 +169,7 @@ function OutcomeCard({
       )}
 
       <div className={styles.attribution}>
-        <p className={styles.factTerm}>Agents attributed to this outcome</p>
+        <p className={styles.factTerm}>Agents working towards this</p>
         {assigned.length === 0 ? (
           <p className={styles.attributionFacts}>
             No agent is assigned to this outcome, so nothing in the workforce is
@@ -180,7 +180,7 @@ function OutcomeCard({
             <div key={agent.agentId} className={styles.attributionRow}>
               <span className={styles.attributionName}>{agent.name}</span>
               <span className={styles.attributionFacts}>
-                {agent.inPlan ? describeWork(agent) : "not in the approved plan"}
+                {agent.inPlan ? describeWork(agent) : "no longer in your approved plan"}
               </span>
             </div>
           ))
@@ -198,9 +198,9 @@ function describeWork(agent: {
 }): string {
   const parts: string[] = [];
 
-  if (agent.liveTriggers === null) parts.push("triggers unknown");
-  else if (agent.liveTriggers === 0) parts.push("no live triggers");
-  else parts.push(`${agent.liveTriggers} live ${plural(agent.liveTriggers, "trigger")}`);
+  if (agent.liveTriggers === null) parts.push("schedule unknown");
+  else if (agent.liveTriggers === 0) parts.push("nothing scheduled");
+  else parts.push(`${agent.liveTriggers} scheduled ${plural(agent.liveTriggers, "workflow")}`);
 
   if (agent.runs === null) parts.push("runs unknown");
   else parts.push(`${agent.runs} ${plural(agent.runs, "run")}`);
@@ -235,9 +235,9 @@ function Metric({ metric }: { metric: OutcomeMetric }) {
 
       <dl className={styles.metricFacts}>
         <div className={styles.fact}>
-          <dt className={styles.factTerm}>Baseline</dt>
+          <dt className={styles.factTerm}>Where you started</dt>
           {reading.baseline === null ? (
-            <dd className={styles.factUnknown}>None in the plan</dd>
+            <dd className={styles.factUnknown}>Not in your plan</dd>
           ) : (
             <dd className={styles.factValue}>{reading.baseline}</dd>
           )}
@@ -262,7 +262,6 @@ function Metric({ metric }: { metric: OutcomeMetric }) {
         {reading.unmeasured}
         {reading.gap !== null && ` ${reading.gap}`}
       </p>
-      <p className={styles.metricId}>{reading.metric}</p>
     </div>
   );
 }

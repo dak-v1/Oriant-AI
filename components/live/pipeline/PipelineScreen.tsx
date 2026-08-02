@@ -128,58 +128,67 @@ type FailureKind = "refused" | "unreachable" | "malformed";
  */
 type FailurePhase = "read" | "run";
 
+/**
+ * `hint` IS DELIBERATELY NOT PART OF THIS.
+ *
+ * The route pairs its refusals with a hint, and that hint is a line of server
+ * instructions — a URL to fetch and a field to repost. It is written for
+ * whoever is driving these routes by hand, not for the person looking at this
+ * screen, and printing it left an owner reading an instruction they cannot
+ * follow. What it was FOR is carried by `FAILURE_ADVICE.run.refused`, which
+ * says the same thing in terms of the paste box on this page.
+ */
 interface Failure {
   kind: FailureKind;
   phase: FailurePhase;
   message: string;
-  hint: string | null;
 }
 
 const FAILURE_TITLE = {
   read: {
-    refused: "The runtime would not say what the last pass produced",
-    unreachable: "The runtime could not be reached",
-    malformed: "The last pass came back in a shape this screen does not understand",
+    refused: "This screen could not read what happened last time",
+    unreachable: "Your workspace could not be reached",
+    malformed: "The last result came back in a form this screen could not read",
   },
   run: {
-    refused: "The runtime refused the request",
-    unreachable: "The runtime could not be reached",
-    malformed: "The runtime answered in a shape this screen does not understand",
+    refused: "The request was turned down",
+    unreachable: "Your workspace could not be reached",
+    malformed: "The answer came back in a form this screen could not read",
   },
 } satisfies Record<FailurePhase, Record<FailureKind, string>>;
 
 const FAILURE_ADVICE = {
   read: {
     refused:
-      "This was the read on arrival, which runs nothing and changes nothing — so this is " +
-      "not a report about the workforce, it is this screen failing to ask. Whether a pass " +
-      "has ever run here, and what it did, is unknown until the read succeeds. The " +
-      "runtime's own sentence is above.",
+      "This was the question asked when the page opened, which runs nothing and changes " +
+      "nothing — so it is not a report about your workforce, it is this screen failing to " +
+      "ask. Whether anything has ever run here, and what it did, is unknown until it " +
+      "works. The reason given is above.",
     unreachable:
-      "Nothing was sent but the question, and the answer never arrived. This screen " +
-      "therefore knows nothing about this runtime — not that it is idle, not that it is " +
-      "empty, not that nothing is live. Check that the app is running and that " +
-      "/api/runtime/pipeline is reachable from this machine, then reload.",
+      "Nothing was sent but the question, and the answer never came back. So this screen " +
+      "knows nothing about your workspace — not that it is idle, not that it is empty, not " +
+      "that nothing is live. Make sure the app is running and reachable from this " +
+      "computer, then reload.",
     malformed:
-      "Nothing was rendered from it on purpose: a partly-read pass would be missing exactly " +
-      "the stage you cannot see is missing. This is a mismatch between this screen and " +
-      "/api/runtime/pipeline, and it leaves the state of the workforce unread rather than " +
-      "known to be fine.",
+      "Nothing was shown from it on purpose: a partly-read result would be missing exactly " +
+      "the step you cannot see is missing. This screen and your workspace disagree about " +
+      "the format, and it leaves the state of your workforce unread rather than known to " +
+      "be fine.",
   },
   run: {
     refused:
-      "Nothing ran. The request never got as far as the pipeline, so no package was built " +
-      "and nothing was activated. The runtime's own sentence is above.",
+      "Nothing ran. The request never got as far as starting, so nothing was built and " +
+      "nothing was put live. The reason given is above — most often it means what was " +
+      "sent was not recognised as a workforce plan.",
     unreachable:
-      "The browser never got an answer, so nothing here knows whether the pass ran. Check " +
-      "that the app is running and that /api/runtime/pipeline is reachable from this " +
-      "machine, then look at the last pass before pressing run again — a pass that landed " +
-      "and lost its reply has still activated.",
+      "The browser never got an answer, so nothing here knows whether it ran. Make sure " +
+      "the app is running and reachable from this computer, then look at the last result " +
+      "before pressing again — a run that arrived and lost its reply has still gone live.",
     malformed:
-      "Nothing was rendered from it on purpose: a partly-read pass would be missing exactly " +
-      "the stage you cannot see is missing. The request itself did land, so treat this as a " +
-      "pass whose result is unknown rather than one that did not happen — reload before " +
-      "pressing run again.",
+      "Nothing was shown from it on purpose: a partly-read result would be missing exactly " +
+      "the step you cannot see is missing. The request itself did arrive, so treat this as " +
+      "a run whose result is unknown rather than one that did not happen — reload before " +
+      "pressing again.",
   },
 } satisfies Record<FailurePhase, Record<FailureKind, string>>;
 
@@ -239,8 +248,6 @@ export default function PipelineScreen() {
   const [reading, setReading] = useState(true);
   const [running, setRunning] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
-  /** The route's own line when it has never run a pass. Shown in the idle state. */
-  const [noPassHint, setNoPassHint] = useState<string | null>(null);
 
   const abort = useRef<AbortController | null>(null);
   /* Read by the guard rather than `running`, so a second press is refused on the
@@ -261,21 +268,15 @@ export default function PipelineScreen() {
         setPass(outcome.pass);
         setHeardFrom(true);
       } else if (outcome.kind === "none") {
-        setNoPassHint(outcome.hint);
-        // "No pass on record" is an ANSWER, and the only thing that ever
+        // "Nothing has run here" is an ANSWER, and the only thing that ever
         // entitles this screen to say so. See `heardFrom`.
         setHeardFrom(true);
       } else if (outcome.kind === "refused") {
-        setFailure({
-          kind: "refused",
-          phase: "read",
-          message: outcome.message,
-          hint: outcome.hint,
-        });
+        setFailure({ kind: "refused", phase: "read", message: outcome.message });
       } else if (outcome.kind === "unreachable") {
-        setFailure({ kind: "unreachable", phase: "read", message: outcome.message, hint: null });
+        setFailure({ kind: "unreachable", phase: "read", message: outcome.message });
       } else {
-        setFailure({ kind: "malformed", phase: "read", message: outcome.message, hint: null });
+        setFailure({ kind: "malformed", phase: "read", message: outcome.message });
       }
       setReading(false);
     })();
@@ -319,26 +320,20 @@ export default function PipelineScreen() {
 
     if (outcome.kind === "pass") {
       setPass(outcome.pass);
-      setNoPassHint(null);
       setHeardFrom(true);
     } else if (outcome.kind === "refused") {
       /* Deliberately does NOT clear `pass`; see rule 4 in the header. And
          deliberately does not set `wroteBlind` either: a 400 is refused in front
          of the pipeline, so nothing was activated and nothing this screen was
          previously told has stopped being true. */
-      setFailure({
-        kind: "refused",
-        phase: "run",
-        message: outcome.message,
-        hint: outcome.hint,
-      });
+      setFailure({ kind: "refused", phase: "run", message: outcome.message });
     } else if (outcome.kind === "unreachable") {
       // The other two both mean a write may have landed unseen. See `wroteBlind`.
       setWroteBlind(true);
-      setFailure({ kind: "unreachable", phase: "run", message: outcome.message, hint: null });
+      setFailure({ kind: "unreachable", phase: "run", message: outcome.message });
     } else {
       setWroteBlind(true);
-      setFailure({ kind: "malformed", phase: "run", message: outcome.message, hint: null });
+      setFailure({ kind: "malformed", phase: "run", message: outcome.message });
     }
 
     setRunning(false);
@@ -374,15 +369,15 @@ export default function PipelineScreen() {
   const outcomeWord: string =
     pass !== null
       ? pass.completed
-        ? "completed"
-        : "blocked"
+        ? "finished"
+        : "stopped early"
       : unheard
         ? reading
-          ? "reading…"
+          ? "checking…"
           : "not known"
         : running
-          ? "running…"
-          : "no pass yet";
+          ? "under way"
+          : "nothing yet";
 
   const blocked = pass !== null && !pass.completed;
   const stopped = pass?.stoppedAt ?? null;
@@ -395,19 +390,19 @@ export default function PipelineScreen() {
     <main className="oa-page">
       <header className={`oa-between ${styles.head}`}>
         <div className={styles.headTitles}>
-          <p className="oa-eyebrow">Runtime · Pipeline</p>
+          <p className="oa-eyebrow">Your plan</p>
           <h1 className="oa-h1">
-            Handoff to <span className="oa-serif">live</span>, in one pass
+            Your plan to <span className="oa-serif">live</span>, in one step
           </h1>
           <p className="oa-lead">
-            Six stages take Role B&apos;s workforce handoff and either put it live or stop
-            at the first gate that refuses. Every stage reports in the same six rows
-            whatever happens, and every assumption the ingest had to make about the
-            business is listed underneath with what would settle it.
+            Six steps take your workforce plan and either put it live or stop at the first
+            thing that is not ready. Every step reports in the same six rows whatever
+            happens, and every assumption that had to be made about your business is listed
+            underneath with what would settle it.
           </p>
         </div>
         <div className={styles.headSide}>
-          <span className="oa-tag oa-tag--amber">Every agent draft_only</span>
+          <span className="oa-tag oa-tag--amber">Every agent waits for you</span>
           {pass === null ? (
             /* Four tags, not two. "No pass on record" is a fact the runtime told
                us: it must never be what a silent runtime looks like, and it must
@@ -418,17 +413,18 @@ export default function PipelineScreen() {
             <span className="oa-tag oa-tag--neutral">
               {unheard
                 ? reading
-                  ? "Reading the last pass"
-                  : "Last pass unknown"
+                  ? "Reading the last run"
+                  : "Last run unknown"
                 : running
-                  ? "A pass is running now"
-                  : "No pass on record"}
+                  ? "A run is under way"
+                  : "Nothing has run yet"}
             </span>
           ) : pass.completed ? (
-            <span className="oa-tag oa-tag--teal">Last pass completed</span>
+            <span className="oa-tag oa-tag--teal">Last run finished</span>
           ) : (
             <span className="oa-tag oa-tag--neutral">
-              Last pass blocked{stopped === null ? "" : ` at ${STAGE_META[stopped].title}`}
+              Last run stopped
+              {stopped === null ? "" : ` at ${STAGE_META[stopped].title.toLowerCase()}`}
             </span>
           )}
         </div>
@@ -450,11 +446,10 @@ export default function PipelineScreen() {
                 {FAILURE_TITLE[failure.phase][failure.kind]}
               </p>
               <p className={styles.errorDetail}>{failure.message}</p>
-              {failure.hint !== null && <p>{failure.hint}</p>}
               <p>{FAILURE_ADVICE[failure.phase][failure.kind]}</p>
               {pass !== null && (
                 <p>
-                  The pass below is the last one the runtime confirmed
+                  What is below is the last run that was confirmed
                   {pass.at === null ? "" : `, at ${formatInstant(pass.at)}`}. It is kept on
                   screen on purpose: an empty page would read as &ldquo;nothing is live and
                   nothing is wrong&rdquo;.
@@ -467,12 +462,12 @@ export default function PipelineScreen() {
             <div className={styles.runningBox} aria-busy="true">
               <p className={styles.runningTitle}>
                 <Loader2 size={16} className="oa-spin" aria-hidden />
-                A pass is running
+                A run is under way
               </p>
               <p>
-                All six stages run inside one request, so nothing is reported until the pass
-                stops or finishes. Build and prove are the slow ones — the sandbox runs the
-                whole scenario suite and a stress sweep, and none of it is cached.
+                All six steps happen in one go, so nothing is reported until it stops or
+                finishes. Building and testing are the slow ones — every scenario is run
+                again, and no earlier result is reused.
               </p>
               {/* What everything underneath this box is, in all three states it
                   can be in. None of it reports on the pass in flight, and the
@@ -480,10 +475,10 @@ export default function PipelineScreen() {
                   hardest. */}
               <p>
                 {pass !== null
-                  ? "What is shown below is the PREVIOUS pass, dimmed, until this one answers."
+                  ? "What is shown below is the PREVIOUS run, dimmed, until this one answers."
                   : unheard
-                    ? "Nothing below reports on this pass, and nothing below reports on an earlier one either: no read has answered here, so this tab does not know what this runtime had done before the button was pressed — including whether it had already put a workforce live."
-                    : "Below is what the runtime said BEFORE this pass was sent, which was that it had never run one. It is dimmed because this request is the thing that changes it."}
+                    ? "Nothing below reports on this run, and nothing below reports on an earlier one either: nothing has answered here, so this screen does not know what had been done before the button was pressed — including whether a workforce was already live."
+                    : "Below is what was reported BEFORE this run was sent, which was that nothing had ever been run. It is dimmed because this request is the thing that changes it."}
               </p>
             </div>
           )}
@@ -492,14 +487,14 @@ export default function PipelineScreen() {
             <div className={styles.blockedBox} role="alert">
               <p className={styles.blockedTitle}>
                 <ShieldAlert size={17} aria-hidden />
-                Blocked at {STAGE_META[stopped].title} — this is a normal result
+                Stopped at {STAGE_META[stopped].title.toLowerCase()} — this is a normal
+                result
               </p>
               <p>
-                A gate refused, which is the pipeline doing its job rather than failing at
-                it. The endpoint answers this with <code>422</code>: the request was fine,
-                the workforce is not live-able yet, and the stage below says who fixes what.
-                There is no force flag here or in the endpoint, so nothing on this screen
-                can wave it through.
+                Something was not ready, which is these steps doing their job rather than
+                failing at it. The request was fine, your workforce cannot go live yet, and
+                the step below says what needs fixing and by whom. There is no way to force
+                it through.
               </p>
               {stoppedStage !== null && (
                 <>
@@ -510,7 +505,7 @@ export default function PipelineScreen() {
                         href={stoppedStage.href}
                         className="oa-btn oa-btn--primary oa-btn--sm"
                       >
-                        Go to {stoppedStage.href}
+                        Take me there
                         <ArrowRight size={13} aria-hidden />
                       </Link>
                     </div>
@@ -528,13 +523,12 @@ export default function PipelineScreen() {
             <div className={styles.errorBox} role="alert">
               <p className={styles.errorTitle}>
                 <AlertTriangle size={16} aria-hidden />
-                The pass says it completed and reported nothing live
+                This run says it finished but reported nothing live
               </p>
               <p>
-                A completed pass always carries the deployment it created. This one does
-                not, so there is no evidence any workforce went live and this screen will
-                not invent a deployment id to fill the space. Treat the green stages below
-                as unproven.
+                A run that finishes always says what it put live. This one does not, so
+                there is no evidence any workforce went live and this screen will not invent
+                one to fill the space. Treat the green steps below as unproven.
               </p>
             </div>
           )}
@@ -542,12 +536,12 @@ export default function PipelineScreen() {
           <section aria-labelledby="oa-pipe-stages" className={styles.gapReport}>
             <div className={styles.gapGroupHead}>
               <h2 className={`oa-h2 ${styles.sectionTitle}`} id="oa-pipe-stages">
-                The six stages
+                The six steps
               </h2>
               <p className="oa-sub">
-                In the order the orchestrator attempts them. Each one reads the one before
-                it from storage rather than being told it went well, and the pass stops at
-                the first closed gate.
+                In the order they are attempted. Each one checks what the one before it
+                actually saved rather than taking it on trust, and everything stops at the
+                first thing that is not ready.
               </p>
             </div>
 
@@ -567,20 +561,20 @@ export default function PipelineScreen() {
                     <HelpCircle size={17} aria-hidden />
                   )}
                   {reading
-                    ? "Reading what the last pass produced…"
-                    : "What the last pass produced is not known"}
+                    ? "Reading what happened last time…"
+                    : "What happened last time is not known"}
                 </p>
                 <p>
-                  The six rows stay empty. Showing them as &ldquo;not run yet&rdquo;
-                  before the runtime has said so would be an answer, and this is the
-                  absence of one.
+                  The six rows stay empty. Showing them as &ldquo;not run yet&rdquo; before
+                  anything has said so would itself be an answer, and this is the absence of
+                  one.
                 </p>
                 {!reading && (
                   <p>
-                    A pass may have run on this server a minute ago, or never.{" "}
+                    Something may have run here a minute ago, or never.{" "}
                     {running
-                      ? "The pass now in flight cannot settle that either — it will report on itself, and the read that would have reported on what came before it is the one that went unanswered."
-                      : "The banner above says which request went unanswered, and until one answers, nothing on this tab can tell the two apart."}
+                      ? "The run now under way cannot settle that either — it will report on itself, and the question that would have reported on what came before it is the one that went unanswered."
+                      : "The message above says what went unanswered, and until something answers, nothing on this screen can tell the two apart."}
                   </p>
                 )}
               </div>
@@ -607,14 +601,13 @@ export default function PipelineScreen() {
                 <p className={styles.stateTitle}>
                   <Info size={17} aria-hidden />
                   {running
-                    ? "No pass had run here when this screen last asked."
-                    : "This runtime has not run a pass yet."}
+                    ? "Nothing had been run here when this screen last asked."
+                    : "Nothing has been run here yet."}
                 </p>
                 <p>
                   {running
-                    ? "The pass in flight has not answered, so the six rows above are still the runtime's last word rather than a report on it. Whether this server has now run one is settled by that request and not by this sentence."
-                    : (noPassHint ??
-                      "Nothing has been run on this server. The button above demonstrates the gap report with the stored handoff — it blocks at Ingest by design. A pass that can go live takes a real handoff, pasted or collected from Role B.")}
+                    ? "The run under way has not answered, so the six rows above are still the last word rather than a report on it. Whether anything has now been run is settled by that request and not by this sentence."
+                    : "Nothing has been run here. The example above is a demonstration and stops partway on purpose. Going live takes a plan of your own — pasted in, or brought over from your planning step."}
                 </p>
               </div>
             )}
@@ -629,22 +622,32 @@ export default function PipelineScreen() {
         </div>
 
         <div className={styles.railPane}>
-          <section className={`oa-card ${styles.railCard}`} aria-label="This pass">
-            <p className="oa-micro">This pass</p>
+          <section className={`oa-card ${styles.railCard}`} aria-label="This run">
+            <p className="oa-micro">This run</p>
             <div className={styles.railRows}>
-              <RailRow label="Outcome" value={outcomeWord} />
+              <RailRow label="Where this stands" value={outcomeWord} />
               <RailRow
                 label="Stopped at"
-                value={stopped === null ? (pass === null ? "—" : "ran to the end") : stopped}
+                value={
+                  stopped === null
+                    ? pass === null
+                      ? "—"
+                      : "ran to the end"
+                    : STAGE_META[stopped].title.toLowerCase()
+                }
               />
+              {/* WHICH run this describes, which is not the same question as
+                  when it happened: a result read back was answered before this
+                  screen opened, and attributing it to the press somebody just
+                  made is how a stale report gets read as a fresh one. */}
               <RailRow
-                label="Answered"
+                label="Where this came from"
                 value={
                   pass === null
                     ? "—"
                     : pass.httpStatus === null
-                      ? "on an earlier request"
-                      : String(pass.httpStatus)
+                      ? "a run made earlier"
+                      : "the run made from here"
                 }
               />
               <RailRow
@@ -652,7 +655,7 @@ export default function PipelineScreen() {
                 value={pass === null || pass.at === null ? "—" : formatInstant(pass.at)}
               />
               <RailRow
-                label="Agents ingested"
+                label="Agents imported"
                 value={
                   pass === null || pass.plan === null ? "—" : String(pass.plan.agents.length)
                 }
@@ -660,7 +663,7 @@ export default function PipelineScreen() {
               {SEVERITY_ORDER.map((severity) => (
                 <RailRow
                   key={severity}
-                  label={`Gaps · ${SEVERITY_META[severity].title.toLowerCase()}`}
+                  label={`Assumptions · ${SEVERITY_META[severity].title.toLowerCase()}`}
                   value={
                     pass === null
                       ? "—"
@@ -671,8 +674,8 @@ export default function PipelineScreen() {
             </div>
             {pass !== null && (
               <p className="oa-sub">
-                {plural(pass.stages.filter((s) => s.status === "ok").length, "stage", "stages")}{" "}
-                reported ok out of {pass.stages.length}.
+                {plural(pass.stages.filter((s) => s.status === "ok").length, "step", "steps")}{" "}
+                out of {pass.stages.length} finished cleanly.
               </p>
             )}
             {/* Every value above is a dash in this state, and a column of dashes
@@ -687,25 +690,25 @@ export default function PipelineScreen() {
               <p className="oa-sub">
                 {reading
                   ? "Being read now: every dash above is a value this screen has not been given yet."
-                  : "The runtime has not answered, so every dash above is a value this screen does not have — not a zero, and not a pass that did not happen."}
+                  : "Nothing has answered, so every dash above is a value this screen does not have — not a zero, and not a run that did not happen."}
               </p>
             ) : (
               running && (
                 <p className="oa-sub">
                   {pass === null
-                    ? "A pass is running. Every dash above is what the runtime said before it was sent, and none of them is a result from it."
-                    : "A pass is running. Every value above belongs to the previous pass until this one answers."}
+                    ? "A run is under way. Every dash above is what was reported before it was sent, and none of them is a result from it."
+                    : "A run is under way. Every value above belongs to the previous run until this one answers."}
                 </p>
               )
             )}
           </section>
 
-          <section className={`oa-card ${styles.railCard}`} aria-label="What the four words mean">
-            <p className="oa-micro">What the four words mean</p>
+          <section className={`oa-card ${styles.railCard}`} aria-label="What the four labels mean">
+            <p className="oa-micro">What the four labels mean</p>
             <p className="oa-sub">
-              The vocabulary matters more than it looks. <strong>Blocked</strong> and{" "}
-              <strong>failed</strong> are not synonyms: one is a gate shutting on purpose
-              and the other is a defect.
+              These matter more than they look. <strong>Not ready</strong> and{" "}
+              <strong>failed</strong> are not the same thing: one is a step stopping on
+              purpose, the other is a fault.
             </p>
             <dl className={styles.railRows}>
               {STATUS_LEGEND.map((status) => (
@@ -721,28 +724,25 @@ export default function PipelineScreen() {
             </dl>
           </section>
 
-          <section className={`oa-card ${styles.railCard}`} aria-label="Where this comes from">
-            <p className="oa-micro">Where this comes from</p>
+          <section className={`oa-card ${styles.railCard}`} aria-label="How this works">
+            <p className="oa-micro">How this works</p>
             <ol className={styles.steps}>
               <li>
-                One <code>POST /api/runtime/pipeline</code>. All six stages run inside that
-                request; there is no partial progress to poll for.
+                One press. All six steps happen inside it, so there is no partial progress
+                to watch.
               </li>
               <li>
-                Every stage reads the previous one from storage rather than from a variable
-                the orchestrator is holding — <code>prove</code> loads the packages{" "}
-                <code>build</code> wrote, and <code>activate</code> reads the packages and
-                the verdict rather than being told they were fine.
+                Every step checks what the previous one actually saved rather than taking it
+                on trust — testing loads the agents that were really built, and going live
+                reads what was built and how it tested rather than being told it was fine.
               </li>
               <li>
-                A blocked pass is answered <code>422</code> and carries the same six stages
-                as a completed one. This screen renders both the same way and lets the
-                stage badges say which is which.
+                A run that stops carries the same six steps as one that finishes. This
+                screen shows both the same way and lets the labels say which is which.
               </li>
               <li>
-                The gap report is the ingest&apos;s own record of what it had to assume,
-                carried through the whole pass. Nothing on this screen adds to it or
-                editorialises it.
+                The assumptions below are recorded as your plan is read in, and carried
+                through the whole run. Nothing on this screen adds to them.
               </li>
             </ol>
           </section>
@@ -750,20 +750,20 @@ export default function PipelineScreen() {
           <section className={`oa-card ${styles.railCard}`} aria-label="Where to go next">
             <p className="oa-micro">Where to go next</p>
             <p className="oa-sub">
-              A blocked stage links to the surface that owns its cause. These are the two
-              places a completed pass shows up.
+              A step that stops links to the page where its cause is fixed. These are the
+              two places a finished run shows up.
             </p>
             <div className={styles.runRow}>
               <Link href="/app/deploy" className="oa-btn oa-btn--ghost oa-btn--sm">
                 <Rocket size={13} aria-hidden />
-                Activation checklist
+                Go live
               </Link>
               <Link
                 href="/app/workspace/agents?live=1"
                 className="oa-btn oa-btn--ghost oa-btn--sm"
               >
                 <ArrowRight size={13} aria-hidden />
-                Live agent roster
+                Your agents
               </Link>
             </div>
           </section>

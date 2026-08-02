@@ -386,7 +386,7 @@ function errorMessage(body: unknown, response: Response): string {
     if (typeof error === "string" && error.trim() !== "") return error;
   }
   if (typeof body === "string" && body.trim() !== "") return body.slice(0, 400);
-  return `The runtime answered ${response.status} ${response.statusText}.`;
+  return `The server answered ${response.status} ${response.statusText}.`;
 }
 
 /**
@@ -415,7 +415,7 @@ export async function fetchCalendar(
     // Includes the abort, which the caller distinguishes by checking the signal.
     throw new CalendarApiError(
       "transport",
-      `Could not reach ${url}: ${err instanceof Error ? err.message : String(err)}`,
+      `The app could not be reached: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 

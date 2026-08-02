@@ -25,8 +25,8 @@ export type { LaneInput };
 
 const SURFACE = {
   envVar: INTEGRATIONS_LANE_ENV,
-  liveLabel: "the live connections view",
-  demoLabel: "the scripted connections screen",
+  liveLabel: "your own connections",
+  demoLabel: "the sample connections",
 } as const;
 
 export function resolveIntegrationsLane(input: LaneInput): IntegrationsLane {

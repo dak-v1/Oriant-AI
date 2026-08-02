@@ -50,24 +50,23 @@ export default function ActivationNotice({ planVersion }: { planVersion: number 
           </h2>
         </div>
         <Link href={ACTIVATION_HREF} className="oa-btn oa-btn--primary oa-btn--sm">
-          Go to activation
+          Go to the go-live checks
           <ArrowRight size={13} aria-hidden />
         </Link>
       </div>
 
       <div className={styles.noticeBody}>
         <p className="oa-lead">
-          No triggers are registered for plan version {planVersion}, which means
-          activation has not run. Nothing is scheduled, nothing will fire, and no
-          approval can appear — the workforce exists as a plan and as built
-          packages, but not as anything that starts on its own.
+          Nothing is scheduled for plan version {planVersion}, which means it has
+          never been put live. Nothing will start, and no approval can appear — the
+          workforce exists as a plan, and the agents are built, but nothing runs on
+          its own yet.
         </p>
         <p className="oa-sub">
-          Three gates stand in front of go-live and each one blocks on its own:
-          every agent&apos;s package built, the sandbox passed, and the
-          integrations the plan marks required actually connected. Activation
-          checks all three, then registers the triggers and flips the agents
-          live.
+          Three checks stand in front of going live and each one blocks on its own:
+          every agent ready, its test run passed, and the connections your plan
+          needs actually in place. Going live checks all three, then schedules the
+          work and switches the agents on.
         </p>
       </div>
 

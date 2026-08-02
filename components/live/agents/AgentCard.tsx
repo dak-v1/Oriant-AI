@@ -73,7 +73,7 @@ import { approvalsHref, createZone } from "@/components/live/workspace/read-mode
 import type { AgentAction, AgentView, TransitionResult } from "./api";
 import { submitTransition } from "./api";
 import AgentDetail from "./AgentDetail";
-import { AgentStatePill } from "./pills";
+import { AgentStatePill, agentStateLabel } from "./pills";
 import { readActivity, readCounts, readNextRun } from "./read-model";
 import styles from "./live-agents.module.css";
 
@@ -137,8 +137,8 @@ function AgentCardImpl({
             {agent.name}
           </h2>
           <p className="oa-sub">{agent.role}</p>
-          <p className={styles.mono}>
-            {agent.agentId} · plan version {agent.version}
+          <p className={styles.rowSub}>
+            Version {agent.version} in your plan
             {agent.runtime !== null && ` · running version ${agent.runtime.agentVersion}`}
           </p>
         </div>
@@ -153,8 +153,8 @@ function AgentCardImpl({
           no trigger, that missed runs are not backfilled. */}
       <p className={styles.stateDetail}>
         {agent.runtime === null
-          ? "No runtime record exists for this agent, which means it has never been through " +
-            "activation. Nothing is registered for it and nothing will start it."
+          ? "This agent has never been put live, so nothing is scheduled for it and nothing " +
+            "will start it."
           : agent.runtime.detail}
       </p>
 
@@ -162,10 +162,10 @@ function AgentCardImpl({
         <p className={`${styles.note} ${styles.noteWarn}`}>
           <AlertTriangle size={14} className={styles.noteIcon} aria-hidden />
           <span>
-            This agent went live at version {agent.runtime.agentVersion} and the plan now
-            carries version {agent.version}. Resume restarts what was proved, not what has
-            changed since, so it will refuse — re-activate the plan so the packages and
-            sandbox gates see the new version.
+            This agent went live at version {agent.runtime.agentVersion} and your plan now
+            carries version {agent.version}. Resume restarts the version that was checked, not
+            the changes made since, so it will refuse — put the plan live again so the new
+            version goes through the checks.
           </span>
         </p>
       )}
@@ -237,8 +237,8 @@ function AgentCardImpl({
         <p className={styles.note}>
           <Info size={14} className={styles.noteIcon} aria-hidden />
           <span>
-            A run could not start at the moment this was read: {agent.startGate.reason} The
-            scheduler records that as a skipped job with the reason, never as a failure.
+            A run could not have started at the moment this was loaded: {agent.startGate.reason}{" "}
+            That is recorded as a skipped run with its reason, never as a failure.
           </span>
         </p>
       )}
@@ -272,7 +272,7 @@ function AgentCardImpl({
         {agent.runtime === null && (
           <Link href="/app/deploy" className="oa-btn oa-btn--primary oa-btn--sm">
             <Rocket size={13} aria-hidden />
-            Activate the plan
+            Put the plan live
           </Link>
         )}
 
@@ -290,13 +290,14 @@ function AgentCardImpl({
           onClick={() => setOpen((current) => !current)}
         >
           {open ? <ChevronUp size={13} aria-hidden /> : <ChevronDown size={13} aria-hidden />}
-          {open ? "Hide detail" : "Workflows, runs and config"}
+          {open ? "Hide detail" : "Workflows, runs and settings"}
         </button>
 
         {!canPause && !canResume && agent.runtime !== null && (
           <span className={styles.controlNote}>
-            Resume only restarts an agent that was paused; this one reads &ldquo;{state}
-            &rdquo;. Re-activate the plan once whatever put it in that state is fixed.
+            Resume only restarts an agent that was paused; this one reads &ldquo;
+            {agentStateLabel(state)}&rdquo;. Put the plan live again once whatever left it in
+            that state is fixed.
           </span>
         )}
       </div>
@@ -363,12 +364,12 @@ function TransitionReport({ result }: { result: TransitionResult }) {
       <div className={`${styles.result} ${styles.resultRefused}`} role="alert">
         <p className={styles.resultTitle}>
           <AlertTriangle size={15} aria-hidden />
-          The runtime refused this
+          This was refused
         </p>
         <p className={styles.resultBody}>{result.message}</p>
         <p className={styles.resultBody}>
-          Nothing changed. The rule is the runtime&apos;s, not this screen&apos;s — the same
-          refusal would come back from the scheduler route.
+          Nothing changed. This is a rule your workspace enforces, not something this screen
+          decided, so the same answer would come back from anywhere else in the product.
         </p>
       </div>
     );

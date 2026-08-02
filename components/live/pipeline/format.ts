@@ -38,40 +38,40 @@ export interface StageMeta {
 
 export const STAGE_META = {
   collect: {
-    title: "Collect",
-    what: "Takes the handoff Role B left — the plan, its agents and its integrations — exactly as sent.",
+    title: "Receiving your plan",
+    what: "Takes the plan you sent — the workforce, its agents and its tools — exactly as it arrived.",
     whenBlocked:
-      "Nothing arrived that looks like a workforce handoff. That is Role B's side of the seam, not the runtime's.",
+      "Nothing arrived that looks like a workforce plan. That is a problem with what was sent, not with anything here.",
   },
   ingest: {
-    title: "Ingest",
-    what: "Turns the handoff into an approved plan, recording every assumption it had to make.",
+    title: "Reading it in",
+    what: "Turns your plan into a working setup, recording every assumption it had to make.",
     whenBlocked:
-      "The handoff is missing something no safe default can stand in for. Every blocking gap is listed below with what would answer it.",
+      "Your plan is missing something no safe default can stand in for. Everything that stops it is listed below with what would answer it.",
   },
   validate: {
-    title: "Validate",
-    what: "Checks the plan against the plan contract — limits, owners, grants, triggers.",
+    title: "Checking it",
+    what: "Checks the plan against the rules — limits, owners, permissions, schedules.",
     whenBlocked:
-      "The plan breaks a contract rule. The rule number and the agent it belongs to are in the detail; a plan that fails here would be unenforceable at run time.",
+      "The plan breaks one of the rules. Which rule, and which agent it belongs to, are in the detail; a plan that fails here could not be enforced once it was running.",
   },
   build: {
-    title: "Build",
-    what: "Compiles one runnable package per agent and stores it.",
+    title: "Building the agents",
+    what: "Builds each agent so it can actually run, and saves it.",
     whenBlocked:
-      "At least one agent has no current package. An agent without a package cannot run, so activation would put a name live with nothing behind it.",
+      "At least one agent is not built, or is out of date. An agent that has not been built cannot run, so going live would put a name live with nothing behind it.",
   },
   prove: {
-    title: "Prove",
-    what: "Runs the sandbox suite and the stress sweep, and takes the verdict.",
+    title: "Testing them",
+    what: "Runs every scenario and a heavy-load test, and takes the result.",
     whenBlocked:
-      "The sandbox will not certify this workforce. There is no override: an activation without a verdict is the exact thing every check in this repository exists to prevent.",
+      "Testing will not clear this workforce. There is no override: going live without a result is the exact thing every check here exists to prevent.",
   },
   activate: {
-    title: "Activate",
-    what: "Opens the three go-live gates, registers the triggers and puts the deployment on record.",
+    title: "Going live",
+    what: "Runs the three go-live checks, sets up the scheduled runs and records the go-live.",
     whenBlocked:
-      "A go-live gate is shut, or a workflow got no trigger and would be live in name only. Each blocker names itself in the detail.",
+      "One of the go-live checks did not pass, or a task got no schedule and would be live in name only. Each one names itself in the detail.",
   },
 } satisfies Record<StageId, StageMeta>;
 
@@ -88,24 +88,24 @@ export interface StatusMeta {
 
 export const STATUS_META = {
   ok: {
-    label: "ok",
+    label: "done",
     cls: "completed",
-    meaning: "This stage did its work.",
+    meaning: "This step did its work.",
   },
   blocked: {
-    label: "blocked",
+    label: "not ready",
     cls: "pending",
-    meaning: "This stage refused on purpose, and a person can fix the cause.",
+    meaning: "This step stopped on purpose, and a person can fix the cause.",
   },
   failed: {
     label: "failed",
     cls: "failed",
-    meaning: "This stage broke. An engineer has to look at it.",
+    meaning: "This step broke. Somebody technical has to look at it.",
   },
   skipped: {
-    label: "skipped",
+    label: "not reached",
     cls: "neutral",
-    meaning: "The pass stopped before this stage, so it was never attempted.",
+    meaning: "Everything stopped before this step, so it was never attempted.",
   },
 } satisfies Record<StageStatus, StatusMeta>;
 
@@ -124,13 +124,13 @@ export const SEVERITY_META = {
   blocking: {
     title: "Blocking",
     sentence:
-      "The workforce cannot run correctly until a human answers these. The pass stops at ingest while any of them stands.",
+      "Your workforce cannot run correctly until a person answers these. Everything stops while any of them stands.",
     tone: "blocking",
   },
   degraded: {
     title: "Degraded",
     sentence:
-      "It will run, safely, but less capably than you probably intend. Every one of these is a safe default standing in for something the handoff did not carry.",
+      "It will run, safely, but less capably than you probably intend. Every one of these is a safe default standing in for something your plan did not carry.",
     tone: "degraded",
   },
   note: {

@@ -173,7 +173,7 @@ function summarise(
 
   const what =
     count === 0
-      ? "Nothing scheduled, run or falling due."
+      ? "Nothing scheduled, nothing run, nothing falling due."
       : `${count} ${count === 1 ? "item" : "items"}.`;
   const late =
     pressing === 0

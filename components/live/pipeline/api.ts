@@ -357,7 +357,7 @@ function errorMessage(body: unknown, response: Response): string {
     if (typeof error === "string" && error.trim() !== "") return error;
   }
   if (typeof body === "string" && body.trim() !== "") return body.slice(0, 400);
-  return `The runtime answered ${response.status} ${response.statusText}.`;
+  return `The request came back as ${response.status} ${response.statusText}.`;
 }
 
 /** The route pairs its 400s with a `hint` saying where a real handoff comes from. */
@@ -369,10 +369,20 @@ function errorHint(body: unknown): string | null {
   return null;
 }
 
-function transportFailure(url: string, err: unknown): PassOutcome {
+/**
+ * The browser never got an answer.
+ *
+ * The endpoint is deliberately NOT named in the sentence: the screen already
+ * says which request failed, and a URL in the copy is the kind of thing an
+ * owner cannot act on. The underlying error is kept — it is the only clue there
+ * is about why nothing came back.
+ */
+function transportFailure(err: unknown): PassOutcome {
   return {
     kind: "unreachable",
-    message: `Could not reach ${url}: ${err instanceof Error ? err.message : String(err)}`,
+    message: `Your workspace could not be reached: ${
+      err instanceof Error ? err.message : String(err)
+    }`,
   };
 }
 
@@ -401,7 +411,7 @@ export async function runPass(
       body: JSON.stringify(request),
     });
   } catch (err) {
-    return transportFailure(URL_PIPELINE, err);
+    return transportFailure(err);
   }
 
   const body = await readBody(response);
@@ -412,7 +422,7 @@ export async function runPass(
     try {
       return {
         kind: "pass",
-        pass: pipelinePass(body, "The pipeline response", response.status),
+        pass: pipelinePass(body, "The result", response.status),
       };
     } catch (err) {
       return { kind: "malformed", message: err instanceof Error ? err.message : String(err) };
@@ -444,7 +454,7 @@ export async function readLastPass(signal?: AbortSignal): Promise<LastOutcome> {
       headers: { accept: "application/json" },
     });
   } catch (err) {
-    return transportFailure(URL_PIPELINE, err);
+    return transportFailure(err);
   }
 
   const body = await readBody(response);
@@ -458,14 +468,14 @@ export async function readLastPass(signal?: AbortSignal): Promise<LastOutcome> {
   }
 
   try {
-    const root = obj(body, "The last-pass response");
+    const root = obj(body, "The saved result");
     const last = root.last;
     if (last === null || last === undefined) {
       return { kind: "none", hint: errorHint(body) };
     }
     // No HTTP status: this pass was answered on some earlier request, and
     // inferring 200/422 from `completed` would be inventing a fact.
-    return { kind: "pass", pass: pipelinePass(last, "The last-pass response.last", null) };
+    return { kind: "pass", pass: pipelinePass(last, "The saved result", null) };
   } catch (err) {
     return { kind: "malformed", message: err instanceof Error ? err.message : String(err) };
   }

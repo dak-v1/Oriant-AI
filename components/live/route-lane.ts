@@ -83,11 +83,24 @@ const ROUTE_SURFACES: ReadonlyArray<{ prefix: string; surface: LaneSurface }> = 
  * and were redirected to /app/onboarding within the same tick. The owner who
  * reported the Factory "stuck at Queued" could not have reached the rewritten
  * screen at all, and neither could the agent sent to screenshot it.
+ *
+ * /app/sandbox JOINS THEM FOR THE SAME REASON AND WITH THE SAME URGENCY. It was
+ * the last scripted page in the Build section: a fixture script over
+ * lib/mock/fixtures/sandbox-scenarios.ts whose cases named a BrightPath customer
+ * and whose "1 of 4 passed" counters were demo state, on the screen an owner
+ * reads to decide whether a workforce is safe to activate. It now renders
+ * components/live/sandbox/SandboxScreen, which generates its suite from the plan
+ * the runtime holds — so there is no scripted lane left to guard, and
+ * `lib/mock/state-machine.ts` gates this URL at "validation_review", further
+ * along the demo journey than either of the two above. Left out of this list the
+ * rewritten screen would render and be redirected to /app/onboarding within the
+ * same tick, exactly as the Factory was.
  */
 const RUNTIME_ONLY_PREFIXES: readonly string[] = [
   "/app/build",
   "/app/deploy",
   "/app/pipeline",
+  "/app/sandbox",
 ];
 
 /** The lane env values the server layout hands to the shell, keyed by var name. */

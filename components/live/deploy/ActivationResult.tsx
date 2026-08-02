@@ -44,7 +44,7 @@ import Link from "next/link";
 import { ArrowRight, CircleAlert } from "lucide-react";
 import StatusBadge from "@/components/mock/ui/StatusBadge";
 import type { ActivatedView } from "./api";
-import { formatInstant, plural } from "./format";
+import { agentStateLabel, formatInstant, plural } from "./format";
 import shell from "@/components/mock/deploy/deploy.module.css";
 import styles from "./deploy.module.css";
 
@@ -54,16 +54,19 @@ const UNCHANGED = "unchanged";
 function headline(outcome: string): string {
   switch (outcome) {
     case "activated":
-      return "The workforce is live";
+      return "Your workforce is live";
     case "superseded":
-      return "The workforce is live, replacing the previous deployment";
+      return "Your workforce is live, replacing what was live before";
     case UNCHANGED:
-      return "Already live — nothing was written";
+      return "Already live — nothing changed";
     default:
-      // Read open, for the reason ./api.ts gives: this arrives after a write has
-      // already happened, and refusing the word would leave the screen unable to
-      // report a go-live that occurred.
-      return `The runtime reported the outcome "${outcome}"`;
+      /* Read open, for the reason ./api.ts gives: this arrives after a write has
+         already happened, and refusing the word would leave the screen unable to
+         report a go-live that occurred. The word itself is no longer printed —
+         it is an internal one and reads as a label rather than as the warning it
+         is — but the fact that this screen cannot vouch for what happened is
+         said here and again in full below. */
+      return "This go-live finished with a result this screen does not recognise";
   }
 }
 
@@ -78,10 +81,10 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
      deliberately un-celebratory: a green "workforce online" over a write that
      wrote nothing is the reassuring lie this screen exists to stop. */
   const micro = unchanged
-    ? "Nothing was written"
+    ? "Nothing changed"
     : known
       ? "Workforce online"
-      : "Outcome not recognised";
+      : "Result not recognised";
 
   return (
     <section className={`oa-card ${shell.panel}`} aria-labelledby="oa-deploy-result">
@@ -96,22 +99,15 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
 
       {!known && (
         <p className="oa-sub">
-          This build does not know what that outcome means, so nothing here interprets
-          it. The deployment below is what the runtime returned with it, and the roster
-          is the place to confirm what is actually running.
+          This screen does not recognise that result, so nothing here interprets it. The
+          details below are what came back with it, and your agent list is the place to
+          confirm what is actually running.
         </p>
       )}
 
       <div className={styles.liveGrid}>
         <div className={styles.liveStat}>
-          <span className={styles.liveLabel}>Deployment</span>
-          <span className={`${styles.liveValue} ${styles.liveValueId}`}>
-            {deployment.deploymentId}
-          </span>
-        </div>
-
-        <div className={styles.liveStat}>
-          <span className={styles.liveLabel}>Agents activated</span>
+          <span className={styles.liveLabel}>Agents switched on</span>
           {/* `result.agents` is the runtime records WRITTEN by this call, which
               is empty on `unchanged` — and that is not the same number as the
               agents the deployment covers. Both are shown rather than one
@@ -120,11 +116,11 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
         </div>
 
         <div className={styles.liveStat}>
-          <span className={styles.liveLabel}>Triggers registered</span>
+          <span className={styles.liveLabel}>Scheduled runs set up</span>
           {registration === null ? (
             <span className={styles.liveMissing}>
               {unchanged
-                ? "nothing was registered — this version was already live"
+                ? "nothing was scheduled — this version was already live"
                 : "not reported"}
             </span>
           ) : (
@@ -133,33 +129,34 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
         </div>
 
         <div className={styles.liveStat}>
-          <span className={styles.liveLabel}>Agents in this deployment</span>
+          <span className={styles.liveLabel}>Agents covered</span>
           <span className={styles.liveValue}>{deployment.agents.length}</span>
         </div>
       </div>
 
       <p className="oa-sub">
-        Plan <code>{deployment.planId}</code> at version {deployment.planVersion}, activated
-        by {deployment.activatedBy} at {formatInstant(deployment.activatedAt)}.{" "}
-        {plural(deployment.triggerIds.length, "trigger", "triggers")} are recorded against
-        it.
+        Version {deployment.planVersion} of your plan, put live by {deployment.activatedBy}{" "}
+        at {formatInstant(deployment.activatedAt)}.{" "}
+        {plural(deployment.triggerIds.length, "scheduled run is", "scheduled runs are")}{" "}
+        recorded against it.
       </p>
 
       {/* The one number on this card that can quietly mean "nothing will ever
           run". Said out loud, in both directions. */}
       {registration !== null && registration.registered === 0 && (
         <p className="oa-sub">
-          No trigger was registered by this activation. If this workforce has scheduled
-          workflows, nothing will start them on its own and it is live in name only —
-          check the roster before treating it as running.
+          Nothing was scheduled by this go-live. If any of this work is meant to run on a
+          schedule, nothing will start it and this workforce is live in name only — check
+          your agents before treating it as running.
         </p>
       )}
 
       {registration !== null && registration.retired > 0 && (
         <p className="oa-sub">
-          {plural(registration.retired, "trigger", "triggers")} previously live{" "}
-          {registration.retired === 1 ? "was" : "were"} stood down by this registration.
-          That is what a disabled workflow looks like after a plan edit.
+          {plural(registration.retired, "scheduled run", "scheduled runs")} that{" "}
+          {registration.retired === 1 ? "was" : "were"} live{" "}
+          {registration.retired === 1 ? "has" : "have"} been stopped. That is what a
+          switched-off task looks like after a change to your plan.
         </p>
       )}
 
@@ -168,18 +165,21 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
         <div className={styles.rejectedBox} role="alert">
           <p className={styles.errorTitle}>
             <CircleAlert size={16} aria-hidden />
-            {plural(registration.rejected.length, "enabled workflow", "enabled workflows")}{" "}
-            got no trigger and will never start
+            {plural(registration.rejected.length, "switched-on task", "switched-on tasks")}{" "}
+            got no schedule and will never start
           </p>
           <p>
-            These are switched on in the plan and nothing will ever fire them. The
-            activation succeeded around them; this is the part of it that did not.
+            These are switched on in your plan and nothing will ever start them. Going live
+            worked around them; this is the part of it that did not.
           </p>
           <ul className={styles.rejectedList}>
             {registration.rejected.map((row) => (
               <li key={`${row.agentId}-${row.workflowId}`} className={styles.rejectedItem}>
+                {/* Named, not labelled. These two are the only handle anyone has
+                    on WHICH task will never start, so they stay — as a sentence
+                    rather than as a run of raw values. */}
                 <strong>
-                  {row.agentId} · {row.workflowId} ({row.kind})
+                  Agent {row.agentId}, task {row.workflowId}
                 </strong>
                 {/* The runtime's own reason, verbatim. */}
                 <span>{row.reason}</span>
@@ -191,10 +191,10 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
 
       {result.supersedes !== null && (
         <p className="oa-sub">
-          This replaces deployment <code>{result.supersedes.deploymentId}</code> (plan
-          version {result.supersedes.planVersion}, activated by{" "}
-          {result.supersedes.activatedBy} at {formatInstant(result.supersedes.activatedAt)}).
-          The old record is kept rather than rewritten — deployments are an audit trail.
+          This replaces what was live before: version {result.supersedes.planVersion}, put
+          live by {result.supersedes.activatedBy} at{" "}
+          {formatInstant(result.supersedes.activatedAt)}. The old record is kept rather
+          than overwritten, so there is a history.
         </p>
       )}
 
@@ -214,7 +214,7 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
               </span>
               <div className={shell.agentInfo}>
                 <p className={shell.agentName}>
-                  {agent.agentId} v{agent.agentVersion}
+                  {agent.agentId} — version {agent.agentVersion}
                 </p>
                 {/* The runtime's sentence for this agent's go-live, which names
                     any workflow of its own that got no trigger. The demo clamps
@@ -223,7 +223,7 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
                     clamp while keeping the type ramp. */}
                 <p className={`${shell.agentRole} ${styles.wraps}`}>{agent.detail}</p>
               </div>
-              <StatusBadge status={agent.state} />
+              <StatusBadge status={agent.state} label={agentStateLabel(agent.state)} />
             </li>
           ))}
         </ul>
@@ -233,20 +233,19 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
           the absence it is rather than as three green words nobody stored. */}
       {evidence === null ? (
         <p className="oa-sub">
-          This deployment record carries no evidence block, so it cannot say which gates
-          authorised it or which sandbox verdict proved it. That is a gap in the record
-          rather than a gate that was skipped — the gates ran, this row just does not
-          remember them.
+          This record does not say which checks cleared it or which test results proved it.
+          That is a gap in the record rather than a check that was skipped — the checks did
+          run, this record just does not remember them.
         </p>
       ) : (
         <p className="oa-sub">
-          Evidence frozen on this deployment: packages{" "}
-          {evidence.packagesReady ? "ready" : "NOT ready"}, sandbox{" "}
-          {evidence.sandboxReady ? "ready" : "NOT ready"}, integrations{" "}
-          {evidence.integrationsReady ? "ready" : "NOT ready"}
+          Recorded with this go-live: agents built —{" "}
+          {evidence.packagesReady ? "yes" : "NO"}, testing passed —{" "}
+          {evidence.sandboxReady ? "yes" : "NO"}, tools connected —{" "}
+          {evidence.integrationsReady ? "yes" : "NO"}
           {evidence.sandboxFingerprint === null
-            ? ", and no sandbox verdict was recorded against it"
-            : `, proved by ${evidence.sandboxFingerprint}`}
+            ? ", and no test result was recorded against it"
+            : ", and the test results behind it were kept"}
           .
         </p>
       )}
@@ -254,10 +253,12 @@ export default function ActivationResult({ result }: { result: ActivatedView }) 
       {/* The demo's handoff row, minus its auto-redirect: nothing navigates on
           its own, because this report is the thing worth reading. */}
       <div className={shell.handoff}>
-        <p className="oa-sub">The roster is where what is actually running is confirmed.</p>
+        <p className="oa-sub">
+          Your agent list is where you confirm what is actually running.
+        </p>
         <div className={styles.linkRow}>
           <Link href="/app/workspace/agents?live=1" className="oa-btn oa-btn--primary">
-            Live agent roster
+            Your agents
             <ArrowRight size={15} aria-hidden />
           </Link>
           <Link href="/app/workspace?live=1" className="oa-btn oa-btn--ghost oa-btn--sm">

@@ -130,9 +130,9 @@ export default function StageList({
                 <span className="oa-status oa-status--failed">not reported</span>
               </div>
               <p className={styles.stageSummary}>
-                This pass did not report this stage at all. The runtime is supposed to
-                report all six every time, so treat the whole result as unproven rather
-                than reading the silence as success.
+                This run did not report this step at all. All six are supposed to be
+                reported every time, so treat the whole result as unproven rather than
+                reading the silence as success.
               </p>
             </li>
           );
@@ -151,9 +151,7 @@ export default function StageList({
               <Icon size={15} className={styles.stageIcon} aria-hidden />
               <h3 className={styles.stageTitle}>{meta.title}</h3>
               <span className={`oa-status oa-status--${status.cls}`}>{status.label}</span>
-              {stoppedAt === id && (
-                <span className={styles.stopMark}>the pass stopped here</span>
-              )}
+              {stoppedAt === id && <span className={styles.stopMark}>stopped here</span>}
             </div>
 
             <div className={styles.stageBody}>
@@ -177,7 +175,7 @@ export default function StageList({
               {result.href !== null && (
                 <div className={styles.stageActions}>
                   <Link href={result.href} className="oa-btn oa-btn--ghost oa-btn--sm">
-                    Go to {result.href}
+                    Take me there
                     <ArrowRight size={13} aria-hidden />
                   </Link>
                 </div>

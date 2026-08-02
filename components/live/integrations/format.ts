@@ -76,7 +76,7 @@ const STATUS_META: Record<ConnectionStatus, StatusMeta> = {
   connected: {
     label: "Connected",
     badge: "oa-status--connected",
-    sentence: "The registry reports this connection live, so the runtime can call it.",
+    sentence: "This connection is live, so your agents can use it.",
   },
   /* Both not-connected states carry the SAME badge on purpose. They differ only
      in what the registry thinks of the absence, and that opinion is in the
@@ -87,30 +87,28 @@ const STATUS_META: Record<ConnectionStatus, StatusMeta> = {
   required: {
     label: "Not connected",
     badge: "oa-status--neutral",
-    sentence:
-      "The registry has no connection for this tool and lists it as one that is needed.",
+    sentence: "There is no connection for this tool, and it is listed as one that is needed.",
   },
   optional: {
     label: "Not connected",
     badge: "oa-status--neutral",
-    sentence: "The registry has no connection for this tool and lists it as optional.",
+    sentence: "There is no connection for this tool, and it is listed as optional.",
   },
   needs_approval: {
     label: "Needs approval",
     badge: "oa-status--pending",
     sentence:
-      "Connected, but still waiting for someone to approve the permissions it asked " +
-      "for — so the runtime may not call it yet. This is the closest thing to a " +
-      "re-authorisation prompt that exists in this build.",
+      "Connected, but still waiting for someone to approve the permissions it asked for, " +
+      "so your agents cannot use it yet.",
   },
 };
 
-/** Null status means the registry threw, or answered a word this build lacks. */
+/** Null status means the check threw, or answered a word this build lacks. */
 export const UNREADABLE_STATUS: StatusMeta = {
   label: "Status unreadable",
   badge: "oa-status--failed",
   sentence:
-    "The connection's state could not be established. An unreadable state is not a " +
+    "This connection's state could not be established. An unreadable state is not a " +
     "connection: nothing here assumes it is live.",
 };
 
@@ -126,15 +124,15 @@ export function statusMeta(status: ConnectionStatus | null): StatusMeta {
 export function clientContradiction(row: IntegrationView): string | null {
   if (row.client === "unreadable") {
     return (
-      "Asking the registry for a client for this connection threw. Whatever the status " +
-      "above says, the runtime could not establish that it can call this tool."
+      "Checking this connection failed. Whatever the status above says, it could not be " +
+      "established that your agents can actually use this tool."
     );
   }
   if (row.status === "connected" && row.client === "unavailable") {
     return (
-      "The registry reports this connection as live but hands the runtime no client for " +
-      "it, so every step that needs it would fail. The two answers contradict each other " +
-      "and the pessimistic one is the safe reading."
+      "This reports as connected, but nothing can actually use it, so every step that needs " +
+      "it would fail. The two answers contradict each other, and the pessimistic one is the " +
+      "safe reading."
     );
   }
   return null;
@@ -184,32 +182,31 @@ export function groupOf(row: IntegrationView): GroupId {
 export const GROUPS: GroupMeta[] = [
   {
     id: "blocking",
-    title: "Blocking activation",
+    title: "Blocking go-live",
     sentence:
-      "The approved plan marks these required and the runtime cannot use them. Each " +
-      "sentence below is the activation checklist's own — the same words the go-live " +
-      "button refuses with.",
+      "Your approved plan marks these as needed and they cannot be used. Each sentence " +
+      "below comes from the go-live checks — the same words the go-live button refuses with.",
   },
   {
     id: "attention",
-    title: "Cannot be called",
+    title: "Cannot be used",
     sentence:
-      "Connected in name but unusable, or in a state that could not be read. Nothing on " +
-      "the activation checklist names them, so they are not holding up go-live — and any " +
-      "step that needs one ends its run with an error.",
+      "Connected in name but unusable, or in a state that could not be read. Nothing in the " +
+      "go-live checks names them, so they are not holding up going live — but any step that " +
+      "needs one ends its run with an error.",
   },
   {
     id: "unconnected",
     title: "Not connected",
     sentence:
-      "Not connected, and the activation checklist does not name them, so they are not " +
-      "stopping anything going live. Read the note on each card about what the agents " +
-      "using them actually do when the tool is missing.",
+      "Not connected, and the go-live checks do not name them, so they are not stopping " +
+      "anything going live. Read the note on each card about what the agents using them " +
+      "actually do when the tool is missing.",
   },
   {
     id: "connected",
     title: "Connected",
-    sentence: "Live connections the runtime can call, and what each agent may do through them.",
+    sentence: "Live connections your agents can use, and what each may do through them.",
   },
 ];
 
@@ -231,10 +228,10 @@ export const GROUPS: GroupMeta[] = [
  * and this text has to stay true for a row that reaches this group for any reason.
  */
 export const OPTIONAL_REALITY =
-  "Nothing on the activation checklist is waiting for this connection, so it will not " +
-  "hold up go-live. That is not the same as the workflows coping without it: the runtime " +
-  "has no path that skips a step whose tool is missing — the step returns an error and " +
-  "the run ends failed.";
+  "Nothing in the go-live checks is waiting for this connection, so it will not hold up " +
+  "going live. That is not the same as the workflows coping without it: there is no path " +
+  "that skips a step whose tool is missing — the step returns an error and the run ends in " +
+  "failure.";
 
 /**
  * The one distinction this screen exists to keep straight, in a sentence that is
@@ -250,11 +247,11 @@ export const OPTIONAL_REALITY =
  * about to appear in the "not connected" group might be either.
  */
 export const REQUIRED_VS_OPTIONAL =
-  "Two connections can both read “not connected” and mean opposite things. Required — the " +
-  "activation checklist names it, and go-live is refused until it is there. Optional — nothing " +
-  "is waiting for it, so it holds nothing up, though a workflow step that needs it still ends " +
-  "its run in an error. This page groups by that difference and takes it from the checklist, " +
-  "never from its own reading of the plan.";
+  "Two connections can both read “not connected” and mean opposite things. Needed — the " +
+  "go-live checks name it, and going live is refused until it is there. Optional — nothing is " +
+  "waiting for it, so it holds nothing up, though a workflow step that needs it still ends its " +
+  "run in an error. This page groups by that difference and takes it from the go-live checks, " +
+  "never from its own reading of your plan.";
 
 /* ═══════════════════════════ Agent runtime state ═══════════════════════════ */
 
@@ -265,8 +262,8 @@ export interface RuntimeStateMeta {
 }
 
 const RUNTIME_STATE_META: Record<AgentRuntimeState, RuntimeStateMeta> = {
-  building: { label: "Building", live: false },
-  validated: { label: "Validated", live: false },
+  building: { label: "Getting ready", live: false },
+  validated: { label: "Checked", live: false },
   active: { label: "Active", live: true },
   paused: { label: "Paused", live: false },
   failed: { label: "Failed", live: false },
@@ -278,7 +275,7 @@ const RUNTIME_STATE_META: Record<AgentRuntimeState, RuntimeStateMeta> = {
  * go-live gate at all.
  */
 export function runtimeStateMeta(state: AgentRuntimeState | null): RuntimeStateMeta {
-  return state === null ? { label: "Not activated", live: false } : RUNTIME_STATE_META[state];
+  return state === null ? { label: "Not live yet", live: false } : RUNTIME_STATE_META[state];
 }
 
 /* ═══════════════════════════ Operations ═══════════════════════════ */
@@ -296,14 +293,14 @@ export function runtimeStateMeta(state: AgentRuntimeState | null): RuntimeStateM
 export const ACCESS_HEADING: Record<"read" | "write" | "unknown", string> = {
   read: "Can read",
   write: "Can act on your behalf",
-  unknown: "Not in the operation registry",
+  unknown: "Not recognised",
 };
 
 /** Why an unclassified operation is its own column rather than filed as a read. */
 export const UNKNOWN_ACCESS_NOTE =
-  "lib/plan/operations.ts has no entry for these, so nothing can say whether they read " +
-  "or write. They are shown as unknown rather than assumed harmless, which is how the " +
-  "runtime treats them too — `isReadOnly` answers false for an operation it does not know.";
+  "These are not on the list of known actions, so nothing can say whether they only read " +
+  "or can change something. They are shown as unrecognised rather than assumed harmless — " +
+  "which is exactly how they are treated when they run, too.";
 
 /* ═══════════════════════════ Instants ═══════════════════════════ */
 

@@ -116,18 +116,18 @@ export default function SideNav({
           chosen at all. */}
       {lane === "demo" && (
         <div className={styles.navFoot} data-demo-label>
-          <span className="oa-demo-badge">Interactive demo</span>
+          <span className="oa-demo-badge">Sample data</span>
           <p className="oa-sub" style={{ fontSize: 11.5 }}>
-            This screen is a scripted walkthrough on prepared demo data. Screens
-            marked &ldquo;Live runtime&rdquo; read the real workforce.
+            You&rsquo;re looking at a sample workforce, not your own. Nothing
+            here reaches a real customer or account.
           </p>
         </div>
       )}
       {lane === "live" && (
         <div className={styles.navFoot}>
-          <span className="oa-tag oa-tag--amber">Live runtime</span>
+          <span className="oa-tag oa-tag--amber">Your workspace</span>
           <p className="oa-sub" style={{ fontSize: 11.5 }}>
-            This screen reads the live agent runtime. Calls are real.
+            This is your own workforce. What you approve here really happens.
           </p>
         </div>
       )}

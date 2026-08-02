@@ -24,7 +24,7 @@
  */
 
 import type { AgentLifecycle } from "@/lib/runtime/active-plan";
-import type { ActivationGateId } from "@/lib/runtime/schedule/types";
+import type { ActivationGateId, AgentRuntimeState } from "@/lib/runtime/schedule/types";
 
 /* ═══════════════════════════ The three gates ═══════════════════════════ */
 
@@ -37,19 +37,19 @@ export interface GateMeta {
 
 const GATE_META = {
   packages: {
-    what: "Every agent in the plan has a current, runnable package stored by the Agent Factory.",
+    what: "Every agent in your plan has been built and is up to date.",
     whenShut:
-      "An agent with no package cannot run, so activating would put a name live with nothing behind it. This gate also refuses a plan with no agents at all.",
+      "An agent that has not been built cannot run, so going live would put a name live with nothing behind it. This check also refuses a plan with no agents in it at all.",
   },
   sandbox: {
-    what: "The scenario suite and the stress sweep have passed against THIS plan at THIS version.",
+    what: "Your agents have been tested against THIS plan at THIS version.",
     whenShut:
-      "There is no override anywhere in the runtime for this one. A verdict earned before the plan changed cannot authorise a go-live, and an agent no scenario covers has no evidence rather than a clean record.",
+      "There is no way to override this one. Results earned before the plan changed cannot clear a go-live, and an agent no test covers has no evidence rather than a clean record.",
   },
   integrations: {
-    what: "Every connection an agent marks as required is connected for the plan's own organization.",
+    what: "Every tool an agent marks as required is connected for your business.",
     whenShut:
-      "A required tool that is not connected means the agent goes live unable to do the job it was activated for. Optional connections are counted, never blocked.",
+      "A required tool that is not connected means the agent goes live unable to do the job you switched it on for. Optional tools are counted, never held against you.",
   },
 } satisfies Record<ActivationGateId, GateMeta>;
 
@@ -77,33 +77,55 @@ export interface LifecycleMeta {
 
 const LIFECYCLE_META = {
   running: {
-    label: "running",
+    label: "live and up to date",
     cls: "active",
     meaning:
-      "Deployed, and the current plan still asks for exactly this version. Activating again changes nothing for it.",
+      "Live, and your current plan still asks for exactly this version. Going live again changes nothing for it.",
   },
   drifted: {
-    label: "drifted",
+    label: "live but out of date",
     cls: "pending",
     meaning:
-      "Deployed, but the plan has changed since. What is RUNNING is the old version until an activation replaces it.",
+      "Live, but your plan has changed since. The older version is what is RUNNING until you go live again.",
   },
   planned: {
-    label: "planned",
+    label: "waiting to start",
     cls: "neutral",
-    meaning: "In the current plan and never deployed. This activation is what would start it.",
+    meaning: "In your current plan and never put live. Going live is what would start it.",
   },
   retired: {
-    label: "retired",
+    label: "live, dropped from your plan",
     cls: "failed",
     meaning:
-      "Deployed once and since removed from the plan. Activation leaves it running — this is the one nobody expects.",
+      "Put live once and since taken out of your plan. Going live leaves it running — this is the one nobody expects.",
   },
 } satisfies Record<AgentLifecycle, LifecycleMeta>;
 
 /** The framing for a tag, or null for a word this build does not know. */
 export function lifecycleMeta(tag: string): LifecycleMeta | null {
   return tag in LIFECYCLE_META ? LIFECYCLE_META[tag as AgentLifecycle] : null;
+}
+
+/* ═══════════════════════════ Agent states ═══════════════════════════ */
+
+/**
+ * The five runtime states as an owner would say them.
+ *
+ * Total by type — a sixth state added to the runtime is a compile error here
+ * rather than a raw word appearing on a row — and safe to index because
+ * ./api.ts refuses any state outside this union before it reaches a component.
+ */
+const AGENT_STATE_LABEL = {
+  building: "being built",
+  validated: "tested and ready",
+  active: "running",
+  paused: "paused",
+  failed: "failed",
+} satisfies Record<AgentRuntimeState, string>;
+
+/** How an agent's current state reads on screen. */
+export function agentStateLabel(state: AgentRuntimeState): string {
+  return AGENT_STATE_LABEL[state];
 }
 
 /* ═══════════════════════════ Small helpers ═══════════════════════════ */

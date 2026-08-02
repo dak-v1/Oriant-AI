@@ -81,25 +81,25 @@ export default function ActivationGates({ label }: { label?: string }) {
           aria-busy={checking}
         >
           <PlugZap size={13} aria-hidden className={checking ? "oa-spin" : undefined} />
-          {checking ? "Checking…" : (label ?? "Check what is blocking activation")}
+          {checking ? "Checking…" : (label ?? "Check what is blocking go-live")}
         </button>
         <span className="oa-sub">
-          Takes a moment — the check re-runs the sandbox rather than trusting an
-          old verdict.
+          Takes a moment — it runs the checks again rather than trusting an old
+          answer.
         </span>
       </div>
 
       {checking && (
         <p className="oa-sub">
-          Re-reading the built packages, re-running the sandbox scenarios and
-          re-checking the required integrations. Nothing is cached, so this is as
+          Checking that every agent is ready, running their test runs again, and
+          re-checking the connections they need. Nothing is cached, so this is as
           slow as the truth is.
         </p>
       )}
 
       {!checking && result !== null && result.error !== null && (
         <SourceError
-          source="The activation checklist"
+          source="The go-live checks"
           message={result.error}
           retry={() => void check()}
         />
@@ -124,8 +124,8 @@ function GateList({ snapshot }: { snapshot: ActivationSnapshot }) {
     <div className={styles.gateList}>
       <p className="oa-sub">
         {snapshot.ready
-          ? "Every gate is satisfied. Activation is one step away."
-          : "At least one gate is shut. Each one blocks on its own."}
+          ? "Every check has passed. Going live is one step away."
+          : "At least one check has not passed. Each one blocks on its own."}
       </p>
 
       {snapshot.gates.map((gate) => (
@@ -135,7 +135,7 @@ function GateList({ snapshot }: { snapshot: ActivationSnapshot }) {
             <span
               className={`oa-status oa-status--${gate.satisfied ? "completed" : "pending"}`}
             >
-              {gate.satisfied ? "Satisfied" : "Blocked"}
+              {gate.satisfied ? "Passed" : "Blocked"}
             </span>
           </div>
           <p className="oa-sub">{gate.detail}</p>
@@ -156,12 +156,11 @@ function GateList({ snapshot }: { snapshot: ActivationSnapshot }) {
 
       {snapshot.deployment !== null && (
         <p className={styles.footNote}>
-          A deployment for plan version {snapshot.deployment.planVersion} is on
-          record, activated by {snapshot.deployment.activatedBy} at{" "}
-          {snapshot.deployment.activatedAt}. No triggers are registered against
-          it, which should not happen — activation writes triggers first — so
-          treat this page and the deploy screen as disagreeing until it is
-          explained.
+          Plan version {snapshot.deployment.planVersion} is recorded as live, put
+          live by {snapshot.deployment.activatedBy} at{" "}
+          {snapshot.deployment.activatedAt}. Nothing is scheduled against it,
+          which should not happen — so treat this page and the go-live page as
+          disagreeing until it is explained.
         </p>
       )}
     </div>

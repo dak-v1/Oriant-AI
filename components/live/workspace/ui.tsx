@@ -116,18 +116,18 @@ const RUN_PILL = {
   awaiting_approval: { cls: "pending", label: "Waiting on you" },
   completed: { cls: "completed", label: "Completed" },
   failed: { cls: "failed", label: "Failed" },
-  refused: { cls: "failed", label: "Refused" },
+  refused: { cls: "failed", label: "Blocked by your rules" },
   cancelled: { cls: "neutral", label: "Cancelled" },
 } satisfies Record<RunStatus, Pill>;
 
 const JOB_PILL = {
-  queued: { cls: "neutral", label: "Queued" },
+  queued: { cls: "neutral", label: "Waiting to start" },
   running: { cls: "active", label: "Running" },
   succeeded: { cls: "completed", label: "Succeeded" },
   failed: { cls: "failed", label: "Failed" },
   // Terminal after `maxAttempts`. Nothing retries out of it automatically, so
   // the word has to say more than "failed" does.
-  dead_letter: { cls: "failed", label: "Dead-lettered" },
+  dead_letter: { cls: "failed", label: "Gave up" },
   // Quiet hours or the daily cap. NOT a failure — see the read-model header.
   skipped: { cls: "optional", label: "Skipped" },
 } satisfies Record<JobStatus, Pill>;

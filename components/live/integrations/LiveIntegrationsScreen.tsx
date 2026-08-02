@@ -116,15 +116,48 @@ interface LoadFailure {
 
 const FAILURE_ADVICE: Record<LoadFailure["kind"], string> = {
   transport:
-    "The browser could not reach the runtime at all. Check that the app is running and " +
-    "that /api/runtime/integrations is reachable from here.",
-  http: "The runtime answered, and the answer was a refusal. The status and its reason are above.",
+    "Your browser could not reach the app at all. Check that it is running and that you are " +
+    "still connected to it.",
+  http: "The app answered, and the answer was a refusal. Its reason is above.",
   malformed:
-    "The runtime answered with a shape this screen does not understand. Nothing was " +
-    "rendered from it on purpose: a partly-read connections list would be missing exactly " +
-    "the row you cannot see is missing. This is a mismatch between this screen and " +
-    "/api/runtime/integrations.",
-  unknown: "The failure did not identify itself, which is itself worth reporting.",
+    "The answer came back in a form this screen could not read, so nothing was shown from it " +
+    "on purpose: a partly-read list of connections would be missing exactly the row you " +
+    "cannot see is missing.",
+  unknown: "The failure did not say what it was, which is itself worth reporting.",
+};
+
+/**
+ * Whose connected accounts these are, in this screen's own words.
+ *
+ * The disclosure itself is not this screen's invention and must not be dropped:
+ * a page that reports eight live connections on a deployment where nobody
+ * authorised anything is the most convincing lie in the product. What IS this
+ * screen's job is saying it in a sentence an owner can act on, rather than
+ * quoting one written around an organisation identifier and an environment
+ * variable that mean nothing to them.
+ */
+const PROVIDER_NOTE: Record<"stub" | "external" | "unknown", { title: string; body: string }> = {
+  stub: {
+    title: "These connections are examples, not real ones",
+    body:
+      "Nothing here was actually authorised: this workspace reports the same tools connected " +
+      "on every machine, they cannot expire, and no account is behind them. Treat every " +
+      "“Connected” below as an example rather than as proof your agents can reach anything.",
+  },
+  external: {
+    title: "Whose connected accounts these are",
+    body:
+      "These come from real connected accounts. Where a workspace has been set up with sample " +
+      "data, those accounts can belong to another organisation and be borrowed for it — so " +
+      "what you see is real, but not necessarily yours.",
+  },
+  unknown: {
+    title: "This app cannot say whose connections these are",
+    body:
+      "It could not be established whose connected accounts your agents would act through. " +
+      "Every connection below is therefore shown as needed and going live is blocked. " +
+      "Nothing was read from any other organisation's connections.",
+  },
 };
 
 export default function LiveIntegrationsScreen() {
@@ -229,23 +262,25 @@ export default function LiveIntegrationsScreen() {
           </h1>
           <p className="oa-lead">
             Every connection your approved plan depends on, what each agent may do through
-            it, and whether anything missing is holding up go-live.
+            it, and whether anything missing is holding up going live.
           </p>
         </div>
         <div className={styles.headSide}>
           {view?.mode === "live" ? (
-            <span className="oa-tag oa-tag--amber">Live runtime · calls are real</span>
+            <span className="oa-tag oa-tag--amber">Actions are real</span>
           ) : view?.mode === "fixture" ? (
-            <span className="oa-tag oa-tag--teal">Fixture runtime · tools stubbed</span>
+            <span className="oa-tag oa-tag--teal">Practice mode — nothing is sent</span>
           ) : (
-            <span className="oa-tag oa-tag--neutral">Runtime mode unknown</span>
+            <span className="oa-tag oa-tag--neutral">
+              Cannot tell whether actions are real
+            </span>
           )}
           {blocked ? (
             <span className="oa-tag oa-tag--amber">
-              {blocking > 0 ? `${blocking} blocking activation` : "Activation blocked"}
+              {blocking > 0 ? `${blocking} blocking go-live` : "Go-live blocked"}
             </span>
           ) : rows.length > 0 ? (
-            <span className="oa-tag oa-tag--teal">Nothing blocking activation</span>
+            <span className="oa-tag oa-tag--teal">Nothing blocking go-live</span>
           ) : null}
           {attention > 0 && (
             <span className="oa-tag oa-tag--neutral">{attention} need attention</span>
@@ -263,17 +298,16 @@ export default function LiveIntegrationsScreen() {
           <StreamIcon status={stream.status} />
           <span className={styles.streamWord}>{STREAM_WORD[stream.status]}</span>
           <span className={styles.streamDetail}>
-            {stream.detail} Connection states themselves are not pushed by anything: the runtime
-            does not observe Role D&apos;s registry, so a tool authorised elsewhere reaches this
-            page when you come back to this tab or press Refresh.
+            {stream.detail} Connection states themselves are never pushed here, so a tool you
+            connect somewhere else shows up when you come back to this page or press Refresh.
           </span>
         </span>
         <span className={styles.streamRead}>
           {busy || loading
-            ? "Reading now."
+            ? "Loading now."
             : readAt === null
-              ? "Nothing has been read yet."
-              : `Last read at ${readAt.toLocaleTimeString()}.`}
+              ? "Nothing has loaded yet."
+              : `Last updated at ${readAt.toLocaleTimeString()}.`}
         </span>
       </p>
 
@@ -288,13 +322,18 @@ export default function LiveIntegrationsScreen() {
             <AlertTriangle size={15} aria-hidden />
             {view !== null
               ? "This view is out of date"
-              : "The connections could not be read"}
+              : "Your connections could not be loaded"}
           </p>
-          <p className={styles.errorDetail}>{failure.message}</p>
+          {/* The raw reason, except when the answer was unreadable — there the
+              reason names a field for a developer, and the sentence below it is
+              the one an owner can act on. */}
+          {failure.kind !== "malformed" && (
+            <p className={styles.errorDetail}>{failure.message}</p>
+          )}
           <p>{FAILURE_ADVICE[failure.kind]}</p>
           {view !== null && (
             <p>
-              The cards below are what the runtime last confirmed, at{" "}
+              The cards below are what was last confirmed, at{" "}
               {readAt ? readAt.toLocaleTimeString() : "an earlier point"}. A connection may
               have been removed since, and this screen would not know.
             </p>
@@ -315,22 +354,21 @@ export default function LiveIntegrationsScreen() {
 
       {blocked && (
         <BlockedByIntegrations
-          gateLabel={gate?.label ?? "integrations gate"}
+          gateLabel={gate?.label ?? "the connections check"}
           gateDetail={gate?.detail ?? null}
           connections={blocking}
           unattributed={unattributed}
         />
       )}
 
-      {/* The provider disclosure renders in EVERY state, external included.
-          It used to be skipped for an external registry, which read as "these
-          are your workspace connections" on the one deployment where they are
-          not: the BrightPath fixture borrows whichever real organization
-          ORIANT_ORGANIZATION_ID nominates, the API's provider.detail says so in
-          as many words, and this screen was the only reader dropping the
-          sentence. The route is the sole author of the attribution (see
-          describeProvider there); this quotes it rather than re-deriving whose
-          accounts they are. */}
+      {/* The provider disclosure renders in EVERY state, external included. It
+          used to be skipped for an external registry, which read as "these are
+          your workspace connections" on the one deployment where they are not.
+          The route decides WHICH of the three cases this is; the wording is
+          this screen's, because the route's own sentence is written around an
+          organisation identifier and an environment variable that mean nothing
+          to the person reading this page. Nothing the sentence asserts was
+          dropped — see PROVIDER_NOTE. */}
       {view !== null && (
         <div className={styles.callout}>
           <span className={styles.calloutIcon} aria-hidden>
@@ -338,13 +376,9 @@ export default function LiveIntegrationsScreen() {
           </span>
           <div className={styles.calloutText}>
             <p className={styles.calloutTitle}>
-              {view.provider.kind === "stub"
-                ? "These connection states are stubbed, not authorised"
-                : view.provider.kind === "external"
-                  ? "Whose connected accounts these are"
-                  : "This build cannot identify where these connection states came from"}
+              {PROVIDER_NOTE[view.provider.kind ?? "unknown"].title}
             </p>
-            <p className="oa-sub">{view.provider.detail}</p>
+            <p className="oa-sub">{PROVIDER_NOTE[view.provider.kind ?? "unknown"].body}</p>
           </div>
         </div>
       )}
@@ -367,18 +401,18 @@ export default function LiveIntegrationsScreen() {
             <div className={styles.errorBox} role="alert">
               <p className={styles.errorTitle}>
                 <ShieldAlert size={15} aria-hidden />
-                The activation checklist returned no integrations gate
+                The go-live checks said nothing about connections
               </p>
               <p>
-                Nothing on this screen can say what is blocking go-live, because the one
+                Nothing on this screen can say what is blocking going live, because the one
                 place that decides it did not answer. The connections below are still
                 listed; treat every &ldquo;not blocking&rdquo; on this page as unproven
-                until the checklist reads again.
+                until the checks run again.
               </p>
             </div>
           )}
 
-          {view !== null && rows.length === 0 && <EmptyPlan planId={view.plan.planId} />}
+          {view !== null && rows.length === 0 && <EmptyPlan />}
 
           {GROUPS.map((group) => {
             const list = grouped.get(group.id) ?? [];
@@ -408,9 +442,9 @@ export default function LiveIntegrationsScreen() {
                   Blocking, with no connection to point at
                 </h2>
                 <p className="oa-sub">
-                  The activation checklist raised these and they match no connection above —
-                  usually a required tool grant that names no integration at all — so no card
-                  can carry them. They stop go-live all the same.
+                  The go-live checks raised these and they match no connection above — usually
+                  a permission in your plan that names no tool at all — so no card can carry
+                  them. They stop go-live all the same.
                 </p>
               </div>
               <div className={styles.blockerBox}>
@@ -427,11 +461,11 @@ export default function LiveIntegrationsScreen() {
             <section className={styles.group} aria-labelledby="oa-ig-unattributed-grants">
               <div className={styles.groupHead}>
                 <h2 id="oa-ig-unattributed-grants" className="oa-h2" style={{ fontSize: 19 }}>
-                  Grants that name no tool
+                  Permissions that name no tool
                 </h2>
                 <p className="oa-sub">
-                  These tool grants carry no integration id, so there is nothing to check a
-                  connection against. That is a defect in the plan rather than a connection
+                  These permissions name no tool at all, so there is nothing to check a
+                  connection against. That is a problem in your plan rather than a connection
                   problem, and it is shown here because this is where somebody would notice it.
                 </p>
               </div>
@@ -463,28 +497,27 @@ export default function LiveIntegrationsScreen() {
               </button>
             </div>
             <div className={styles.railRows}>
-              <RailRow label="Referenced by the plan" value={String(rows.length)} />
-              <RailRow label="Blocking activation" value={String(blocking)} />
-              <RailRow label="Connected and callable" value={String(grouped.get("connected")?.length ?? 0)} />
+              <RailRow label="Named in your plan" value={String(rows.length)} />
+              <RailRow label="Blocking go-live" value={String(blocking)} />
+              <RailRow label="Connected and usable" value={String(grouped.get("connected")?.length ?? 0)} />
               <RailRow label="Need attention" value={String(attention)} />
               <RailRow label="Not connected" value={String(grouped.get("unconnected")?.length ?? 0)} />
               <RailRow
-                label="This tab last read"
+                label="Last updated"
                 value={readAt ? readAt.toLocaleTimeString() : "—"}
               />
             </div>
             {gate !== null && (
               <p className="oa-sub">
-                Activation checklist, integrations gate:{" "}
-                <strong>{gate.satisfied ? "satisfied" : "not satisfied"}</strong>. {gate.detail}
+                Connections check: <strong>{gate.satisfied ? "passing" : "not passing"}</strong>.{" "}
+                {gate.detail}
               </p>
             )}
             {(grouped.get("unconnected")?.length ?? 0) > 0 && (
               <p className="oa-sub">
-                &ldquo;Degrade gracefully&rdquo; in that sentence is the plan contract&apos;s
-                phrase for an optional connection (§3.9), not a description of what the
-                runtime does. What actually happens when a tool is missing is on each
-                not-connected card.
+                &ldquo;Degrade gracefully&rdquo; is your plan&apos;s phrase for an optional
+                connection, not a description of what actually happens. What happens when a
+                tool is missing is on each not-connected card.
               </p>
             )}
           </section>
@@ -492,10 +525,9 @@ export default function LiveIntegrationsScreen() {
           <section className={`oa-card ${styles.railCard}`} aria-label="What this screen cannot tell you">
             <p className="oa-micro">What this screen cannot tell you</p>
             <p className="oa-sub">
-              ROLE_C_PLAN asks this screen for expiry and re-authorisation warnings. The
-              fields below do not exist anywhere in this build, so they are named as missing
-              rather than estimated — an invented renewal date would be the only fabricated
-              fact on a screen where everything else is derived.
+              Expiry and re-authorisation warnings belong here. Nothing in this app records
+              them, so they are named as missing rather than estimated — an invented renewal
+              date would be the only made-up fact on a screen where everything else is checked.
             </p>
             <dl className={styles.unavailableList}>
               {(view?.unavailable ?? []).map((field) => (
@@ -514,23 +546,21 @@ export default function LiveIntegrationsScreen() {
             <p className="oa-micro">Connecting a tool</p>
             <p className="oa-sub">
               Nothing on this screen connects, disconnects or re-authorises anything, and it
-              deliberately offers no button that looks like it might. Connections belong to
-              Role D&apos;s integration registry, which this lane reads through{" "}
-              <code>IntegrationProvider</code> and cannot write to.
+              deliberately offers no button that looks like it might. This page only reads
+              your connections; it cannot change them.
             </p>
             <p className="oa-sub">
-              The scripted connections screen shows the intended flow — search, connect,
-              approve permissions — but its wizard moves a value in the demo store and
-              reaches no registry. The activation checklist&apos;s blockers link there today.
+              The sample connections screen shows the intended flow — search, connect, approve
+              permissions — but nothing it does is real. The go-live checks link there for now.
             </p>
             <div className={styles.railActions}>
               <Link href="/app/integrations" className="oa-btn oa-btn--ghost oa-btn--sm">
                 <Cable size={13} aria-hidden />
-                Scripted connections screen
+                Sample connections screen
               </Link>
               <Link href="/app/deploy" className="oa-btn oa-btn--ghost oa-btn--sm">
                 <Plug size={13} aria-hidden />
-                Activation
+                Go-live checks
               </Link>
             </div>
           </section>
@@ -539,39 +569,35 @@ export default function LiveIntegrationsScreen() {
             <p className="oa-micro">Where this comes from</p>
             <ol className={styles.stateSteps}>
               <li>
-                Every row is a <code>ToolGrant</code> in the approved plan
-                {view !== null ? ` (${view.plan.planId}, v${view.plan.version})` : ""}. A tool
-                no agent asked for does not appear.
+                Every row is a permission your approved plan grants
+                {view !== null ? ` (version ${view.plan.version})` : ""}. A tool no agent asked
+                for does not appear.
               </li>
               <li>
-                Connection state is the integrations registry&apos;s answer for that id, read
-                fresh on every request and never cached.
+                Connection state is read fresh every time this page loads, and never cached.
               </li>
               <li>
-                Read-only versus acting comes from the shared operation registry,{" "}
-                <code>lib/plan/operations.ts</code>. An operation it does not know is shown as
-                unknown, never as harmless.
+                Whether something only reads or can act on your behalf comes from a shared list
+                of known actions. An action that is not on it is shown as unrecognised, never
+                as harmless.
               </li>
               <li>
-                Whether something blocks go-live is the activation checklist&apos;s answer,
-                quoted. This screen does not have its own opinion about that.
+                Whether something blocks going live is the go-live checks&apos; answer, quoted.
+                This screen does not have its own opinion about that.
               </li>
             </ol>
             {view !== null && view.deployment !== null && (
               <p className="oa-sub">
-                Plan v{view.deployment.planVersion} is live as deployment{" "}
-                <code>{view.deployment.deploymentId}</code>, activated{" "}
-                {formatInstant(view.deployment.activatedAt)} by {view.deployment.activatedBy}.
-                Its integrations gate was{" "}
-                {view.deployment.integrationsReady ? "satisfied" : "not satisfied"} at go-live —
-                so anything blocking above went missing after that, rather than never having
-                been there.
+                Plan version {view.deployment.planVersion} has been live since{" "}
+                {formatInstant(view.deployment.activatedAt)}, put live by{" "}
+                {view.deployment.activatedBy}. Its connections check was{" "}
+                {view.deployment.integrationsReady ? "passing" : "not passing"} at that point —
+                so anything blocking above went missing since, rather than never having been
+                there.
               </p>
             )}
             {view !== null && (
-              <p className="oa-sub">
-                Server clock at this read: {formatInstant(view.now)}.
-              </p>
+              <p className="oa-sub">Current time: {formatInstant(view.now)}.</p>
             )}
           </section>
         </div>
@@ -629,15 +655,15 @@ function BlockedByIntegrations({
     <div className={styles.blockedBox} role="alert">
       <p className={styles.blockedTitle}>
         <ShieldAlert size={16} aria-hidden />
-        Blocked: go-live is refused until these connections exist
+        Blocked: going live is refused until these connections exist
       </p>
       <p>
-        The activation checklist&apos;s <strong>{gateLabel}</strong> is not satisfied.{" "}
+        <strong>{gateLabel}</strong> is not passing.{" "}
         {connections > 0 && (
           <>
-            {connections} {connections === 1 ? "connection is" : "connections are"} required by
-            the approved plan and not usable — each is in the first group below, with the
-            checklist&apos;s own sentence on its card.{" "}
+            {connections} {connections === 1 ? "connection is" : "connections are"} needed by
+            your approved plan and not usable — each is in the first group below, with the
+            go-live checks&apos; own sentence on its card.{" "}
           </>
         )}
         {unattributed.length > 0 && (
@@ -654,12 +680,12 @@ function BlockedByIntegrations({
       <div className={styles.blockedActions}>
         <Link href="/app/deploy" className="oa-btn oa-btn--primary oa-btn--sm">
           <Plug size={13} aria-hidden />
-          Open the activation checklist
+          Open the go-live checks
         </Link>
         {destinations.map((href) => (
           <Link key={href} href={href} className="oa-btn oa-btn--ghost oa-btn--sm">
             <Cable size={13} aria-hidden />
-            Go to {href}
+            Fix this
           </Link>
         ))}
       </div>
@@ -681,10 +707,10 @@ function UnattributedGrant({ grant }: { grant: GrantView }) {
   return (
     <>
       <strong>{grant.agentName}</strong> ({state.label}) holds a{" "}
-      {grant.required ? "required" : "optional"} grant with no integration id
+      {grant.required ? "needed" : "optional"} permission that names no tool
       {grant.purpose === "" ? "" : ` for “${grant.purpose}”`}
       {grant.operationIds.length === 0
-        ? ", and it names no operations either."
+        ? ", and it names no actions either."
         : `, covering ${grant.operationIds.join(", ")}.`}
     </>
   );
@@ -698,29 +724,28 @@ function UnattributedGrant({ grant }: { grant: GrantView }) {
  * Only the first is normal, and the second would leave a workforce that activates
  * cleanly and cannot do anything.
  */
-function EmptyPlan({ planId }: { planId: string }) {
+function EmptyPlan() {
   return (
     <div className={styles.stateBox}>
       <p className={styles.stateTitle}>
         <Cable size={17} aria-hidden />
-        This plan asks for no connections at all.
+        Your plan asks for no connections at all.
       </p>
       <p>
-        Not one agent in <code>{planId}</code> carries a <code>ToolGrant</code>, so there is
-        nothing here to connect and the integrations gate has nothing to check. That is
-        legitimate for a workforce that only reasons and drafts — and it is also what a plan
-        looks like when its grants were dropped on the way across the seam.
+        Not one agent in your plan is given a tool, so there is nothing here to connect and the
+        connections check has nothing to look at. That is perfectly normal for a workforce that
+        only thinks and drafts — and it is also what a plan looks like when its tool permissions
+        went missing on the way in.
       </p>
       <p style={{ margin: 0, fontWeight: 700 }}>Worth checking before you rely on it:</p>
       <ol className={styles.stateSteps}>
         <li>
-          Open the plan and confirm the agents genuinely have <code>tools: []</code>. An agent
-          that is meant to read email and holds no grant will be refused at its first fetch
-          step, not at activation.
+          Open your plan and confirm the agents genuinely need no tools. An agent that is meant
+          to read email but is given no tool will be refused at its first step, not at go-live.
         </li>
         <li>
-          The activation checklist will pass its integrations gate on an empty plan, because
-          there is nothing to require. A green gate here proves nothing about capability.
+          The connections check passes on a plan with no connections, because there is nothing
+          to require. A green check here proves nothing about what your agents can do.
         </li>
       </ol>
     </div>

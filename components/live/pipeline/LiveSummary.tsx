@@ -41,20 +41,22 @@ export default function LiveSummary({
     <section className={styles.liveCard} aria-labelledby="oa-pipe-live">
       <h2 className={styles.liveTitle} id="oa-pipe-live">
         <CheckCircle2 size={18} aria-hidden />
-        The pass completed and this is what is live
+        The run finished, and this is what is live
       </h2>
 
       <div className={styles.liveGrid}>
         <div className={styles.liveStat}>
-          <span className={styles.liveLabel}>Deployment</span>
+          <span className={styles.liveLabel}>Go-live recorded</span>
+          {/* The identifier is not printed — it is an internal one and reads as
+              noise — but the two STATES it distinguished are the point, and they
+              still read as opposites: something is on record, or nothing is and
+              this go-live cannot be vouched for. */}
           {live.deploymentId === null ? (
             <span className={styles.liveMissing}>
-              not reported — treat this activation as unproven
+              no — treat this go-live as unproven
             </span>
           ) : (
-            <span className={`${styles.liveValue} ${styles.liveValueId}`}>
-              {live.deploymentId}
-            </span>
+            <span className={styles.liveValue}>yes, on record</span>
           )}
         </div>
 
@@ -64,28 +66,37 @@ export default function LiveSummary({
         </div>
 
         <div className={styles.liveStat}>
-          <span className={styles.liveLabel}>Triggers registered</span>
+          <span className={styles.liveLabel}>Scheduled runs set up</span>
           <span className={styles.liveValue}>{live.triggersRegistered}</span>
         </div>
       </div>
 
       {live.triggersRegistered === 0 && (
         <p className="oa-sub">
-          No trigger was registered. That happens legitimately when this exact plan
-          version was already live and activation had nothing to write — but if this was a
-          first go-live, nothing will ever start on its own and the workforce is live in
-          name only.
+          Nothing was scheduled. That is legitimate when this exact version was already live
+          and there was nothing to change — but if this was a first go-live, nothing will
+          ever start on its own and your workforce is live in name only.
         </p>
       )}
 
       {plan !== null && (
         <p className="oa-sub">
-          Plan <code>{plan.planId}</code>, version {plan.version},{" "}
-          {plural(plan.agents.length, "agent", "agents")} ingested.
+          Version {plan.version} of your plan, {plural(plan.agents.length, "agent", "agents")}{" "}
+          imported.
         </p>
       )}
 
-      {notice !== null && <p className="oa-sub">{notice}</p>}
+      {/* THE RECEIPT, IN THIS SCREEN'S WORDS. The sentence that comes back with
+          a finished run says the same thing in the vocabulary of whoever wrote
+          the route, so it is no longer quoted — but it is still what GATES this
+          line, because asserting that every agent waits when nobody said so is
+          the one claim this card must never make on its own. */}
+      {notice !== null && (
+        <p className="oa-sub">
+          Live — and every agent still waits for your approval before it acts. It prepares
+          the work and stops; see the note at the top of this page.
+        </p>
+      )}
     </section>
   );
 }

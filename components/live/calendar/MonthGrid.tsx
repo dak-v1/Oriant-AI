@@ -262,8 +262,8 @@ function MonthGridImpl({
           {projection.outsideRange}{" "}
           {projection.outsideRange === 1 ? "event falls" : "events fall"} on a day this grid does
           not contain, so {projection.outsideRange === 1 ? "it is" : "they are"} not drawn below.
-          The runtime and this range disagree about what was asked for; the day view and the
-          counts underneath still hold {projection.outsideRange === 1 ? "it" : "them"}.
+          This calendar and the range it asked for disagree; the day view and the counts
+          underneath still include {projection.outsideRange === 1 ? "it" : "them"}.
         </p>
       )}
 

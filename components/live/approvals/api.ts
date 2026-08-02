@@ -273,8 +273,8 @@ function deadline(value: unknown, where: string): ApprovalDeadlineView {
     minutesRemaining: num(raw, "minutesRemaining", where),
     detail: known
       ? str(raw, "detail", where)
-      : `This build does not recognise the deadline state "${state}", so this item is ` +
-        `treated as needing attention.`,
+      : "This screen does not recognise the deadline this item came back with, so it is " +
+        "treated as needing attention rather than as having time left.",
   };
 }
 
@@ -312,7 +312,7 @@ async function getJson(url: string, signal: AbortSignal | undefined): Promise<un
     // Includes the abort, which the caller distinguishes by checking the signal.
     throw new ApprovalsApiError(
       "transport",
-      `Could not reach ${url}: ${err instanceof Error ? err.message : String(err)}`,
+      `The app could not be reached: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 
@@ -341,7 +341,7 @@ function errorMessage(body: unknown, response: Response): string {
     if (typeof error === "string" && error.trim() !== "") return error;
   }
   if (typeof body === "string" && body.trim() !== "") return body.slice(0, 400);
-  return `The runtime answered ${response.status} ${response.statusText}.`;
+  return `The server answered ${response.status} ${response.statusText}.`;
 }
 
 /* ═══════════════════════════ Reads ═══════════════════════════ */
@@ -640,10 +640,9 @@ export async function submitDecision(
     return {
       kind: "unknown",
       message:
-        `The runtime answered ${response.status} ${response.statusText}: ` +
-        `${errorMessage(body, response)} That status is not one this route raises before it ` +
-        `writes, so the decision may already have been recorded. Refresh the inbox before ` +
-        `deciding again.`,
+        `The server answered ${response.status}: ${errorMessage(body, response)} That answer ` +
+        `does not prove the decision was refused, so it may already have been recorded. ` +
+        `Refresh the inbox and check before deciding again.`,
     };
   }
 
@@ -673,8 +672,8 @@ function readOutcome(body: unknown): DecisionOutcome {
     return {
       ...empty,
       unreadable:
-        "The runtime accepted the decision but its answer was not a JSON object, so this " +
-        "screen cannot say how the run ended. Open the run to check.",
+        "Your decision was accepted, but the answer could not be read, so this screen " +
+        "cannot say how the run ended.",
     };
   }
 
@@ -703,8 +702,8 @@ function readOutcome(body: unknown): DecisionOutcome {
     dependencyError: optionalStr(raw, "dependencyError"),
     unreadable:
       runStatus === null
-        ? "The runtime accepted the decision but did not report the run's status, so this " +
-          "screen cannot confirm how the run ended. Open the run to check."
+        ? "Your decision was accepted, but nothing came back about how the run ended, so " +
+          "this screen cannot confirm it."
         : null,
   };
 }

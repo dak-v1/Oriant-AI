@@ -24,8 +24,8 @@ export type { LaneInput };
 
 const SURFACE = {
   envVar: WORKSPACE_LANE_ENV,
-  liveLabel: "the live Workspace",
-  demoLabel: "the scripted demo",
+  liveLabel: "your own workspace",
+  demoLabel: "the sample workspace",
 } as const;
 
 export function resolveWorkspaceLane(input: LaneInput): WorkspaceLane {

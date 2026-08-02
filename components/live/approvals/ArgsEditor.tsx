@@ -104,10 +104,10 @@ function parse(kind: ValueKind, text: string): Parsed {
 
   if (kind === "number") {
     const trimmed = text.trim();
-    if (trimmed === "") return { ok: false, error: "This argument is a number; it cannot be blank." };
+    if (trimmed === "") return { ok: false, error: "This field is a number; it cannot be blank." };
     const value = Number(trimmed);
     if (!Number.isFinite(value)) {
-      return { ok: false, error: `"${trimmed}" is not a number. Policy limits compare numbers, not text.` };
+      return { ok: false, error: `"${trimmed}" is not a number. Your limits compare numbers, not text.` };
     }
     return { ok: true, value };
   }
@@ -115,7 +115,7 @@ function parse(kind: ValueKind, text: string): Parsed {
   if (kind === "boolean") {
     if (text === "true") return { ok: true, value: true };
     if (text === "false") return { ok: true, value: false };
-    return { ok: false, error: "This argument is true or false." };
+    return { ok: false, error: "This field is true or false." };
   }
 
   const trimmed = text.trim();
@@ -209,7 +209,7 @@ const KIND_LABEL: Record<ValueKind, string> = {
   json: "JSON",
 };
 
-/** Kinds an owner may choose when adding an argument the agent did not propose. */
+/** Kinds an owner may choose when adding a field the agent did not propose. */
 const ADDABLE: ValueKind[] = ["string", "number", "boolean", "json"];
 
 export default function ArgsEditor({
@@ -248,7 +248,7 @@ export default function ArgsEditor({
     <div className={styles.args}>
       {draft.entries.length === 0 && (
         <p className="oa-sub">
-          This action carries no arguments. Approving it runs the operation exactly as proposed.
+          This action has no details to change. Approving it carries it out exactly as proposed.
         </p>
       )}
 
@@ -288,7 +288,7 @@ export default function ArgsEditor({
                     type="button"
                     className="oa-btn oa-btn--ghost oa-btn--sm"
                     onClick={() => draft.drop(entry.key)}
-                    aria-label={`Remove the argument ${entry.key} you added`}
+                    aria-label={`Remove the ${entry.key} field you added`}
                   >
                     <X size={13} aria-hidden />
                     Remove
@@ -347,9 +347,9 @@ export default function ArgsEditor({
       {!disabled && (
         <div className={styles.argRow}>
           <div className={styles.argHead}>
-            <span className={styles.argKey}>Add an argument</span>
+            <span className={styles.argKey}>Add a field</span>
             <span className="oa-sim-note">
-              Sent as a new key on top of the agent&apos;s proposal.
+              Sent as a new field on top of what the agent proposed.
             </span>
           </div>
           <div className={styles.argAddRow}>
@@ -408,15 +408,14 @@ export default function ArgsEditor({
           </div>
           {duplicate && (
             <p className={styles.argParseError} role="alert">
-              <AlertTriangle size={12} aria-hidden /> The proposal already has an argument called
+              <AlertTriangle size={12} aria-hidden /> This action already has a field called
               &quot;{trimmedKey}&quot;. Edit it above instead.
             </p>
           )}
           <p className="oa-sub">
-            Arguments cannot be removed here. The runtime expresses a removal as an undefined
-            value, which JSON drops on the way to the server, so a &quot;remove&quot; button would
-            quietly leave the agent&apos;s value in place. Setting a value to{" "}
-            <code>null</code> is a change to null, not a removal.
+            The agent&apos;s own fields cannot be removed here. A removal cannot survive the trip
+            to the server, so a Remove button would quietly leave the agent&apos;s value in place
+            instead. Setting a value to <code>null</code> is a change to null, not a removal.
           </p>
         </div>
       )}

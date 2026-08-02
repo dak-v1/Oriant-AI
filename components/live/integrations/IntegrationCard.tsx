@@ -120,7 +120,6 @@ function IntegrationCardImpl({
           <h3 id={titleId} className="oa-h3">
             {label}
           </h3>
-          <p className={styles.idLine}>{row.integrationId}</p>
         </div>
         <span className={shell.cardStatus}>
           <span className={`oa-status ${status.badge}`}>{status.label}</span>
@@ -129,14 +128,14 @@ function IntegrationCardImpl({
 
       <div className="oa-cluster">
         <span className={`oa-tag ${row.requiredByPlan ? "oa-tag--amber" : "oa-tag--neutral"}`}>
-          {row.requiredByPlan ? "Required by the plan" : "Optional in the plan"}
+          {row.requiredByPlan ? "Needed by your plan" : "Optional in your plan"}
         </span>
         <span className="oa-tag oa-tag--neutral">
           {agents.length} {agents.length === 1 ? "agent" : "agents"}
           {liveAgents.length > 0 ? ` · ${liveAgents.length} active` : ""}
         </span>
         <span className="oa-tag oa-tag--neutral">
-          {row.operations.length} {row.operations.length === 1 ? "operation" : "operations"}
+          {row.operations.length} {row.operations.length === 1 ? "action" : "actions"}
         </span>
         {writes.length > 0 && (
           <span className="oa-tag oa-tag--amber">
@@ -178,14 +177,14 @@ function IntegrationCardImpl({
             ))}
           </ul>
           <p className="oa-sub">
-            Quoted from the activation checklist. Fixing it is Role D&apos;s connections
-            surface; this view reads the registry and cannot change it.
+            Quoted from the go-live checks. This page only reads your connections; it cannot
+            change them.
           </p>
           {blockerDestinations.length > 0 && (
             <div className={styles.blockerActions}>
               {blockerDestinations.map((href) => (
                 <Link key={href} href={href} className="oa-btn oa-btn--ghost oa-btn--sm">
-                  Go to {href}
+                  Fix this
                   <ArrowUpRight size={13} aria-hidden />
                 </Link>
               ))}
@@ -220,7 +219,7 @@ function IntegrationCardImpl({
       <div className={shell.permCols}>
         <OperationColumn
           heading={ACCESS_HEADING.read}
-          empty="No read-only operation is granted here."
+          empty="Nothing here is read-only."
           operations={reads}
           integrationId={row.integrationId}
           icon="read"
@@ -266,7 +265,8 @@ function IntegrationCardImpl({
           />
           Which agent uses what
           <span className="oa-sub" style={{ fontSize: 11.5 }}>
-            ({row.grants.length} {row.grants.length === 1 ? "grant" : "grants"} in the plan)
+            ({row.grants.length} {row.grants.length === 1 ? "permission" : "permissions"} in
+            your plan)
           </span>
         </button>
         {/* Permanent, so `aria-controls` above always resolves; empty until
@@ -286,8 +286,8 @@ function IntegrationCardImpl({
       <p className={styles.footNote}>
         <Timer size={12} aria-hidden />
         <span>
-          Expiry and re-authorisation are not tracked in this build — nothing anywhere
-          carries a token lifetime. See &ldquo;What this screen cannot tell you&rdquo;.
+          Expiry and re-authorisation are not tracked yet — nothing here records when a
+          connection needs renewing. See &ldquo;What this screen cannot tell you&rdquo;.
         </span>
       </p>
     </article>
@@ -326,18 +326,15 @@ function OperationColumn({
                 <ArrowUpRight size={13} aria-hidden />
               )}
               <span className={styles.opText}>
-                <span>
-                  {op.description ??
-                    "The operation registry has no description for this operation."}
-                </span>
+                <span>{op.description ?? "There is no plain description of this action."}</span>
                 <span className={styles.opId}>{op.id}</span>
                 {op.baselineRisk !== null && icon === "write" && (
-                  <span className={styles.quiet}>Baseline risk: {op.baselineRisk}</span>
+                  <span className={styles.quiet}>Usual risk: {op.baselineRisk}</span>
                 )}
                 {op.belongsTo !== null && op.belongsTo !== integrationId && (
                   <span className={styles.mismatch}>
-                    The operation registry files this under {op.belongsTo}, not{" "}
-                    {integrationId}.
+                    This action belongs to {integrationLabel(op.belongsTo)}, not{" "}
+                    {integrationLabel(integrationId)}.
                   </span>
                 )}
               </span>
@@ -377,14 +374,14 @@ function GrantBlock({
           {state.label}
         </span>
         <span className={`oa-tag ${grant.required ? "oa-tag--amber" : "oa-tag--neutral"}`}>
-          {grant.required ? "Required" : "Optional"}
+          {grant.required ? "Needed" : "Optional"}
         </span>
-        <span className={styles.quiet}>v{grant.agentVersion}</span>
+        <span className={styles.quiet}>version {grant.agentVersion}</span>
       </p>
 
       <p className={styles.grantPurpose}>
         {grant.purpose === ""
-          ? "The plan records no purpose for this grant."
+          ? "Your plan gives no reason for this permission."
           : `“${grant.purpose}”`}
       </p>
 
@@ -396,9 +393,9 @@ function GrantBlock({
             <li key={id} className={styles.opId} data-access={access}>
               {id}
               <span className={styles.opAccess}>
-                {access === "write" ? "acts" : access === "read" ? "reads" : "unknown"}
+                {access === "write" ? "acts" : access === "read" ? "reads" : "unrecognised"}
               </span>
-              {refused && <span className={styles.opRefused}>refused by policy</span>}
+              {refused && <span className={styles.opRefused}>blocked by your rules</span>}
             </li>
           );
         })}
@@ -408,20 +405,17 @@ function GrantBlock({
         <p className={styles.problem}>
           <AlertTriangle size={13} aria-hidden />
           <span>
-            A deny list also names{" "}
-            {grant.refusedOperationIds.length === 1 ? "this operation" : "these operations"}, so
-            the runtime refuses{" "}
-            {grant.refusedOperationIds.length === 1 ? "it" : "them"} outright whatever the grant
-            says. Granting and forbidding the same operation is a plan defect the validator
-            rejects.
+            Your rules also block{" "}
+            {grant.refusedOperationIds.length === 1 ? "this action" : "these actions"}, so{" "}
+            {grant.refusedOperationIds.length === 1 ? "it is" : "they are"} refused outright
+            whatever this permission says. Allowing and blocking the same action is a mistake
+            in the plan.
           </span>
         </p>
       )}
 
       {grant.runtimeDetail !== null && (
-        <p className={styles.quiet}>
-          Runtime state: {grant.runtimeDetail}
-        </p>
+        <p className={styles.quiet}>Status: {grant.runtimeDetail}</p>
       )}
     </div>
   );

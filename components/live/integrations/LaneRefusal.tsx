@@ -8,18 +8,21 @@
  * that walks a four-step wizard, and no sign that any of it is a fixture. The
  * lie would only surface at go-live.
  *
+ * THE SETTING'S OWN NAME IS NOT PRINTED — see the Approvals copy of this
+ * component. It is either "?live=" or an environment variable, and neither is
+ * something the reader of this page owns or can act on. The value, the accepted
+ * forms and both ways out are.
+ *
  * A server component: no state, no effects, nothing to hydrate.
  */
+import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import styles from "./live-integrations.module.css";
 
 export default function LaneRefusal({
-  setting,
   value,
   accepted,
 }: {
-  /** The switch that could not be read — "?live=" or the env var's name. */
-  setting: string;
   value: string;
   /** The forms this build does accept, in the owner's words. */
   accepted: string;
@@ -36,37 +39,37 @@ export default function LaneRefusal({
       <div className={styles.errorBox} role="alert">
         <p className={styles.errorTitle}>
           <AlertTriangle size={15} aria-hidden />
-          This route was asked for a screen that does not exist
+          This address asked for a screen that does not exist
         </p>
         <p className={styles.errorDetail}>
-          {setting}
-          {value}
+          It asked for <strong>{value === "" ? "(blank)" : value}</strong>, and what is
+          accepted is {accepted}.
         </p>
         <p>
-          Two screens answer this URL: the scripted connections screen and the live view
-          backed by the integrations registry the runtime actually calls. Accepted values are{" "}
-          {accepted}.
+          Two screens answer this address: a set of sample connections, and your own, which
+          reports what your agents can actually reach.
         </p>
         <p>
-          Nothing was rendered instead, on purpose. The scripted screen shows every tool
-          connected and offers to connect the rest; none of that reaches the runtime, and
-          putting it in front of somebody who asked in writing for the live view is how a
-          workforce reaches go-live believing its connections are in place.
+          Nothing was chosen for you, on purpose. The sample screen shows every tool connected
+          and offers to connect the rest; none of that is real, and putting it in front of
+          someone who asked for their own is how a workforce goes live believing its
+          connections are in place.
         </p>
       </div>
 
-      <div className={styles.stateBox} style={{ marginTop: 14 }}>
-        <p className={styles.stateTitle}>Where to go from here</p>
-        <ol className={styles.stateSteps}>
-          <li>
-            The scripted screen: <code>/app/workspace/integrations</code>, or{" "}
-            <code>/app/workspace/integrations?live=0</code> if a deployment has switched the
-            default over.
-          </li>
-          <li>
-            The live view: <code>/app/workspace/integrations?live=1</code>.
-          </li>
-        </ol>
+      <div className="oa-cluster" style={{ marginTop: 14 }}>
+        <Link
+          href="/app/workspace/integrations?live=1"
+          className="oa-btn oa-btn--primary oa-btn--sm"
+        >
+          Open your connections
+        </Link>
+        <Link
+          href="/app/workspace/integrations?live=0"
+          className="oa-btn oa-btn--ghost oa-btn--sm"
+        >
+          Open the sample connections
+        </Link>
       </div>
     </main>
   );

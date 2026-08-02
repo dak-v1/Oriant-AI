@@ -148,8 +148,8 @@ export default function DemoCalendarScreen() {
             type="button"
             className="oa-btn oa-btn--ghost oa-btn--icon"
             disabled
-            title="Demo month"
-            aria-label="Previous month (demo month only)"
+            title="Sample month"
+            aria-label="Previous month (sample month only)"
           >
             <ChevronLeft size={15} aria-hidden />
           </button>
@@ -158,8 +158,8 @@ export default function DemoCalendarScreen() {
             type="button"
             className="oa-btn oa-btn--ghost oa-btn--icon"
             disabled
-            title="Demo month"
-            aria-label="Next month (demo month only)"
+            title="Sample month"
+            aria-label="Next month (sample month only)"
           >
             <ChevronRight size={15} aria-hidden />
           </button>

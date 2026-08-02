@@ -220,16 +220,34 @@ export interface ActivationSnapshot {
 
 /* ═══════════════════════════ Narrowing ═══════════════════════════ */
 
+/**
+ * A parse failure, told apart from every other failure so `load` can replace it
+ * with a sentence an owner can act on.
+ *
+ * The messages below are written for a developer reading a stack trace — they
+ * name the field and the shape it was expected to be — and they must never reach
+ * a screen. What an owner needs to be told is that the answer could not be read
+ * and that nothing was shown from it, which is what `load` says instead. The
+ * technical message is kept on the error, so it is one `console.error` away and
+ * not lost.
+ */
+class UnreadableAnswer extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnreadableAnswer";
+  }
+}
+
 function asRecord(value: unknown, path: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new Error(`${path} should be a JSON object; got ${describe(value)}.`);
+    throw new UnreadableAnswer(`${path} should be a JSON object; got ${describe(value)}.`);
   }
   return value as Record<string, unknown>;
 }
 
 function asArray(value: unknown, path: string): unknown[] {
   if (!Array.isArray(value)) {
-    throw new Error(`${path} should be an array; got ${describe(value)}.`);
+    throw new UnreadableAnswer(`${path} should be an array; got ${describe(value)}.`);
   }
   return value;
 }
@@ -237,7 +255,7 @@ function asArray(value: unknown, path: string): unknown[] {
 function asText(source: Record<string, unknown>, key: string, path: string): string {
   const value = source[key];
   if (typeof value !== "string") {
-    throw new Error(`${path}.${key} should be a string; got ${describe(value)}.`);
+    throw new UnreadableAnswer(`${path}.${key} should be a string; got ${describe(value)}.`);
   }
   return value;
 }
@@ -250,7 +268,7 @@ function asTextOrNull(
   const value = source[key];
   if (value === null || value === undefined) return null;
   if (typeof value !== "string") {
-    throw new Error(
+    throw new UnreadableAnswer(
       `${path}.${key} should be a string or null; got ${describe(value)}.`,
     );
   }
@@ -260,7 +278,7 @@ function asTextOrNull(
 function asNumber(source: Record<string, unknown>, key: string, path: string): number {
   const value = source[key];
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`${path}.${key} should be a finite number; got ${describe(value)}.`);
+    throw new UnreadableAnswer(`${path}.${key} should be a finite number; got ${describe(value)}.`);
   }
   return value;
 }
@@ -268,7 +286,7 @@ function asNumber(source: Record<string, unknown>, key: string, path: string): n
 function asFlag(source: Record<string, unknown>, key: string, path: string): boolean {
   const value = source[key];
   if (typeof value !== "boolean") {
-    throw new Error(`${path}.${key} should be true or false; got ${describe(value)}.`);
+    throw new UnreadableAnswer(`${path}.${key} should be true or false; got ${describe(value)}.`);
   }
   return value;
 }
@@ -280,7 +298,7 @@ function asTextList(
 ): string[] {
   return asArray(source[key], `${path}.${key}`).map((entry, index) => {
     if (typeof entry !== "string") {
-      throw new Error(
+      throw new UnreadableAnswer(
         `${path}.${key}[${index}] should be a string; got ${describe(entry)}.`,
       );
     }
@@ -306,7 +324,7 @@ function asMember<T extends string>(
   const value = source[key];
   const match = allowed.find((candidate) => candidate === value);
   if (match === undefined) {
-    throw new Error(
+    throw new UnreadableAnswer(
       `${path}.${key} is ${describe(value)}, which this build does not recognise. ` +
         `Expected one of: ${allowed.join(", ")}.`,
     );
@@ -488,7 +506,12 @@ export interface Loaded<T> {
   error: string | null;
 }
 
-async function getJson(url: string, signal: AbortSignal): Promise<unknown> {
+/**
+ * `label` is what this source is CALLED on screen, and it is threaded through
+ * every failure message for one reason: the alternative was naming the URL, and
+ * a URL tells the person reading a dashboard nothing they can do anything about.
+ */
+async function getJson(url: string, label: string, signal: AbortSignal): Promise<unknown> {
   const response = await fetch(url, {
     signal,
     // The runtime stores are the truth and they change under us; a cached
@@ -503,9 +526,7 @@ async function getJson(url: string, signal: AbortSignal): Promise<unknown> {
   try {
     raw = JSON.parse(body);
   } catch {
-    throw new Error(
-      `${url} answered ${response.status} with a body that is not JSON.`,
-    );
+    throw new Error(`${label} answered ${response.status}, and the answer could not be read.`);
   }
 
   if (!response.ok) {
@@ -518,7 +539,7 @@ async function getJson(url: string, signal: AbortSignal): Promise<unknown> {
     throw new Error(
       typeof stated === "string" && stated.trim() !== ""
         ? stated
-        : `${url} answered ${response.status}.`,
+        : `${label} answered ${response.status}.`,
     );
   }
 
@@ -527,31 +548,43 @@ async function getJson(url: string, signal: AbortSignal): Promise<unknown> {
 
 async function load<T>(
   url: string,
+  label: string,
   parse: (raw: unknown) => T,
   signal: AbortSignal,
 ): Promise<Loaded<T>> {
   try {
-    return { data: parse(await getJson(url, signal)), error: null };
+    return { data: parse(await getJson(url, label, signal)), error: null };
   } catch (err) {
     // An abort is a navigation or a superseded refresh, not a failure to report.
     // Reported as neither data nor error so the panel keeps whatever it had.
     if (err instanceof DOMException && err.name === "AbortError") {
       return { data: null, error: null };
     }
+    /* A parse failure names a field and a JSON shape, which is a sentence for a
+       developer. The screen is told the same fact in the terms it can act on:
+       the answer could not be read, and nothing was taken from it. */
+    if (err instanceof UnreadableAnswer) {
+      return {
+        data: null,
+        error:
+          `${label} answered, but in a form this screen could not read, so nothing was ` +
+          `taken from it. None of the figures here are a count of zero.`,
+      };
+    }
     return { data: null, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
 export function loadScheduler(signal: AbortSignal): Promise<Loaded<SchedulerSnapshot>> {
-  return load("/api/runtime/scheduler", parseScheduler, signal);
+  return load("/api/runtime/scheduler", "The schedule", parseScheduler, signal);
 }
 
 export function loadApprovals(signal: AbortSignal): Promise<Loaded<ApprovalsSnapshot>> {
-  return load("/api/runtime/approvals", parseApprovals, signal);
+  return load("/api/runtime/approvals", "The approvals queue", parseApprovals, signal);
 }
 
 export function loadRuns(signal: AbortSignal): Promise<Loaded<RunsSnapshot>> {
-  return load("/api/runtime/run", parseRuns, signal);
+  return load("/api/runtime/run", "Your recent activity", parseRuns, signal);
 }
 
 /**
@@ -560,5 +593,5 @@ export function loadRuns(signal: AbortSignal): Promise<Loaded<RunsSnapshot>> {
  * on a timer would re-prove the whole workforce every few seconds.
  */
 export function loadActivation(signal: AbortSignal): Promise<Loaded<ActivationSnapshot>> {
-  return load("/api/runtime/activation", parseActivation, signal);
+  return load("/api/runtime/activation", "The go-live checks", parseActivation, signal);
 }

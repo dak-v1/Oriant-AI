@@ -34,6 +34,7 @@
 
 import type { BuildJobStatus } from "@/lib/runtime/build/types";
 import type { JobView } from "../api";
+import { STATUS_META } from "../format";
 
 /** Fixed track positions per reported state. `failed` is derived — see below. */
 export const STAGE_PCT = {
@@ -60,17 +61,17 @@ export interface StageView {
  */
 export function stagePercent(job: JobView | null, observedPct: number | null): StageView {
   if (job === null) {
-    return { pct: 0, label: "No build has ever been recorded for this agent." };
+    return { pct: 0, label: "This agent has not been built yet." };
   }
   if (job.status === "failed") {
     // Where it died: what we saw beats what the row implies; see the header.
     const pct = observedPct ?? (job.attempt >= 1 ? STAGE_PCT.generating : STAGE_PCT.queued);
-    return { pct, label: `Failed — the bar is frozen where the build died (${pct}%).` };
+    return { pct, label: "Failed — the bar stops at the step the build got to." };
   }
   const pct = STAGE_PCT[job.status];
   const suffix =
     job.status === "skipped"
-      ? "the stored package was already current"
-      : `stage position ${pct}%, not a measured percentage`;
-  return { pct, label: `${job.status} — ${suffix}.` };
+      ? "this agent already matched its settings"
+      : "this bar marks the step reached, not a measured percentage";
+  return { pct, label: `${STATUS_META[job.status].label} — ${suffix}.` };
 }

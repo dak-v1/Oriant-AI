@@ -63,7 +63,7 @@ export default async function WorkspaceIntegrationsPage({
   });
 
   if (lane.lane === "refused") {
-    return <LaneRefusal setting={lane.setting} value={lane.value} accepted={lane.accepted} />;
+    return <LaneRefusal value={lane.value} accepted={lane.accepted} />;
   }
 
   if (lane.lane === "live") {

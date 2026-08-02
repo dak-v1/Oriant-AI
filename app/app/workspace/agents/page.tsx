@@ -40,7 +40,6 @@ import LiveAgentRoster from "@/components/live/agents/LiveAgentRoster";
 import { AGENTS_LANE_ENV, resolveAgentsLane } from "@/components/live/agents/lane";
 import type { AgentsLane } from "@/components/live/agents/lane";
 import { OPERATE_LANE_ENV, RUNTIME_MODE_ENV } from "@/components/live/lane";
-import styles from "@/components/live/agents/live-agents.module.css";
 import AgentRoster from "@/components/mock/workspace/AgentRoster";
 
 export const dynamic = "force-dynamic";
@@ -81,20 +80,20 @@ function LaneRefused({ lane }: { lane: Extract<AgentsLane, { lane: "refused" }> 
     <main className="oa-page oa-page--narrow">
       <div className="oa-card oa-stack" role="alert">
         <p className="oa-eyebrow">Operate · Agents</p>
-        <h1 className="oa-h2">That is not a roster this build has</h1>
+        <h1 className="oa-h2">That is not a view this app has</h1>
         <p className="oa-lead">
-          <code className={styles.mono}>{lane.setting}</code> was{" "}
-          <strong>{lane.value === "" ? "(blank)" : lane.value}</strong>, and this build
-          accepts {lane.accepted}. Nothing was chosen for you: the scripted roster&apos;s
-          controls only raise a toast, and showing them to someone who asked for the live
-          roster would let them believe they had paused an agent that is still running.
+          This address asked for{" "}
+          <strong>{lane.value === "" ? "(blank)" : lane.value}</strong>, and what is accepted
+          is {lane.accepted}. Nothing was chosen for you: the sample agents&apos; controls do
+          not change anything, and showing them to someone who asked for their own would let
+          them believe they had paused an agent that is still running.
         </p>
         <div className="oa-cluster">
           <Link href="/app/workspace/agents?live=1" className="oa-btn oa-btn--primary oa-btn--sm">
-            Open the live roster
+            Open your agents
           </Link>
           <Link href="/app/workspace/agents?live=0" className="oa-btn oa-btn--ghost oa-btn--sm">
-            Open the scripted roster
+            Open the sample agents
           </Link>
         </div>
       </div>

@@ -74,9 +74,9 @@ export default function SchedulePanel({
         icon={<CalendarDays size={16} className={styles.cardIcon} aria-hidden />}
       >
         {scheduler.error === null ? (
-          <LoadingNote>Reading the schedule…</LoadingNote>
+          <LoadingNote>Loading the schedule…</LoadingNote>
         ) : (
-          <SourceError source="The scheduler" message={scheduler.error} retry={onRetry} />
+          <SourceError source="The schedule" message={scheduler.error} retry={onRetry} />
         )}
       </Card>
     );
@@ -94,8 +94,8 @@ export default function SchedulePanel({
       >
         {split.undated && (
           <EmptyNote>
-            The server&apos;s instant could not be read, so nothing can be placed
-            against today. Everything due is listed under Next runs instead.
+            The current time could not be read, so nothing can be placed against
+            today. Everything due is listed under Next runs instead.
           </EmptyNote>
         )}
 
@@ -124,8 +124,8 @@ export default function SchedulePanel({
       >
         {split.later.length === 0 && (
           <EmptyNote>
-            No further runs have a fire time. Anything below is waiting on a signal
-            rather than on the clock.
+            No further runs have a time. Anything below is waiting for something to
+            arrive rather than for the clock.
           </EmptyNote>
         )}
 
@@ -152,7 +152,8 @@ export default function SchedulePanel({
         {waiting.length > 0 && (
           <div className={styles.signalList}>
             <p className={styles.signalHead}>
-              <RadioTower size={13} aria-hidden /> Waiting on a signal, not a time
+              <RadioTower size={13} aria-hidden /> Waiting for something to arrive, not for a
+              time
             </p>
             <ul className={styles.flatList}>
               {waiting.map((trigger) => (
@@ -168,9 +169,9 @@ export default function SchedulePanel({
               ))}
             </ul>
             <p className={styles.footNote}>
-              An event or threshold trigger only starts once something delivers
-              into it — a webhook from the integration, or a metric poller. If no
-              delivery path is connected, these register and stay live but never
+              A workflow that waits for an event or a number only starts once
+              something arrives — a message from the connected tool, or a fresh
+              reading. If nothing is delivering to it, these stay live and never
               run.
             </p>
           </div>
@@ -220,7 +221,7 @@ function ScheduleRow({
       <span className={styles.timeBlock}>
         <span className={styles.timeMain}>{time ?? "—"}</span>
         <span className={styles.timeSub}>
-          {time === null ? "unreadable time" : (dayLabel ?? "")}
+          {time === null ? "time unreadable" : (dayLabel ?? "")}
         </span>
       </span>
       <span className={styles.rowMain}>

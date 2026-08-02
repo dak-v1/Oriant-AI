@@ -95,7 +95,7 @@ export default function CommandPalette({
               className={styles.palette}
               role="dialog"
               aria-modal="true"
-              aria-label="Universal command bar"
+              aria-label="Ask Oriant"
               initial={{ opacity: 0, y: 14, scale: 0.985 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.99 }}
@@ -113,7 +113,7 @@ export default function CommandPalette({
                     if (e.key === "Enter" && value.trim()) submit(value);
                   }}
                   disabled={phase === "routing"}
-                  aria-label="Command input"
+                  aria-label="What would you like Oriant to do?"
                 />
                 {phase === "input" && value.trim() && (
                   <button
@@ -129,7 +129,7 @@ export default function CommandPalette({
                   type="button"
                   className={styles.iconBtn}
                   onClick={onClose}
-                  aria-label="Close command bar"
+                  aria-label="Close"
                 >
                   <X size={15} aria-hidden />
                 </button>
@@ -156,7 +156,8 @@ export default function CommandPalette({
                       ))}
                     </div>
                     <p className="oa-sub">
-                      Commands run against prepared demo data; nothing is sent to a live system.
+                      Requests here run on the sample workforce. Nothing is sent
+                      to a real customer, inbox or account.
                     </p>
                   </>
                 )}
@@ -188,7 +189,7 @@ export default function CommandPalette({
                   >
                     <div className="oa-between">
                       <span className="oa-tag">Routed to {result.agentName}</span>
-                      <span className="oa-sim-note">Prepared demo result</span>
+                      <span className="oa-sim-note">Example result, from sample data</span>
                     </div>
                     <div className={styles.resultCard}>
                       <h3 className="oa-h3">{result.resultTitle}</h3>

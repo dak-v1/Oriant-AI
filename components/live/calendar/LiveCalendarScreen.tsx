@@ -100,15 +100,14 @@ interface LoadFailure {
 
 const FAILURE_ADVICE: Record<LoadFailure["kind"], string> = {
   transport:
-    "The browser could not reach the runtime at all. Check that the app is running and that " +
-    "/api/runtime/calendar is reachable from here.",
-  http: "The runtime answered, and the answer was a refusal. Its reason is above.",
+    "Your browser could not reach the app at all. Check that it is running and that you are " +
+    "still connected to it.",
+  http: "The app answered, and the answer was a refusal. Its reason is above.",
   malformed:
-    "The runtime answered with a shape this screen does not understand. Nothing was drawn from " +
-    "it on purpose: a half-read month is worse than none, because an empty-looking day is " +
-    "indistinguishable from a quiet one. This is a mismatch between this screen and " +
-    "/api/runtime/calendar.",
-  unknown: "The failure did not identify itself, which is itself worth reporting.",
+    "The answer came back in a form this screen could not read, so nothing was drawn from it " +
+    "on purpose: a half-read month is worse than none, because a day that looks empty is " +
+    "indistinguishable from a day that genuinely is.",
+  unknown: "The failure did not say what it was, which is itself worth reporting.",
 };
 
 /** The connection, in one word, before the sentence explaining it. */
@@ -306,11 +305,13 @@ export default function LiveCalendarScreen() {
         </div>
         <div className={styles.headSide}>
           {data === null ? (
-            <span className="oa-tag oa-tag--neutral">Runtime mode unknown</span>
+            <span className="oa-tag oa-tag--neutral">
+              Cannot tell whether actions are real
+            </span>
           ) : data.mode === "live" ? (
-            <span className="oa-tag oa-tag--amber">Live runtime · actions are real</span>
+            <span className="oa-tag oa-tag--amber">Actions are real</span>
           ) : (
-            <span className="oa-tag oa-tag--teal">Fixture runtime · tools stubbed</span>
+            <span className="oa-tag oa-tag--teal">Practice mode — nothing is sent</span>
           )}
           {zone !== null && (
             <span className="oa-tag oa-tag--neutral">
@@ -401,13 +402,18 @@ export default function LiveCalendarScreen() {
         <div className={styles.errorBox} role="alert">
           <p className={styles.errorTitle}>
             <AlertTriangle size={15} aria-hidden />
-            {data === null ? "The calendar could not be read" : "This calendar is out of date"}
+            {data === null ? "The calendar could not be loaded" : "This calendar is out of date"}
           </p>
-          <p className={styles.errorDetail}>{failure.message}</p>
+          {/* The raw reason, except when the answer was unreadable — there the
+              reason names a field for a developer, and the sentence below it is
+              the one an owner can act on. */}
+          {failure.kind !== "malformed" && (
+            <p className={styles.errorDetail}>{failure.message}</p>
+          )}
           <p>{FAILURE_ADVICE[failure.kind]}</p>
           {data !== null && (
             <p>
-              What is drawn below is what the runtime last confirmed, at{" "}
+              What is drawn below is what was last confirmed, at{" "}
               {readAt ? readAt.toLocaleTimeString() : "an earlier point"}. Runs and approvals since
               then are not on it.
             </p>
@@ -435,10 +441,10 @@ export default function LiveCalendarScreen() {
             The plan&apos;s timezone could not be used
           </p>
           <p>
-            The plan asks for <code>{zone.requested}</code>, which this server&apos;s timezone
-            database does not know, so every day and time below is in <strong>UTC</strong> instead.
-            They are correct instants placed on possibly the wrong local day — treat the grid as
-            approximate until the zone is fixed in the plan.
+            Your plan asks for <code>{zone.requested}</code>, which is not a timezone this app
+            knows, so every day and time below is in <strong>UTC</strong> instead. The times are
+            correct but may sit on the wrong local day — treat the grid as approximate until the
+            timezone is fixed in the plan.
           </p>
         </div>
       )}
@@ -447,7 +453,7 @@ export default function LiveCalendarScreen() {
         <p className={styles.note}>
           This grid is grouped by <strong>{zone.id}</strong>, but some schedules are written in{" "}
           {zone.otherScheduleZones.join(", ")}. Their times below are converted into {zone.id}, so a
-          firing may sit on a different local day than the one its cron names.
+          run may sit on a different local day than the one its own schedule names.
         </p>
       )}
 
@@ -529,12 +535,12 @@ export default function LiveCalendarScreen() {
       )}
 
       {data !== null && data.unplaceable.length > 0 && (
-        <section className={`oa-card ${styles.panel}`} aria-label="Not placeable on a calendar">
-          <p className="oa-micro">Real, and not placeable on a day</p>
+        <section className={`oa-card ${styles.panel}`} aria-label="Real, but with no day to show them on">
+          <p className="oa-micro">Real, but with no day to show them on</p>
           <p className="oa-sub">
-            These exist in the runtime but carry no readable instant, so there is no cell to draw
-            them in. They are listed rather than dropped: the one item nobody can reason about must
-            not be the one that disappears.
+            These exist, but carry no readable time, so there is no day to draw them on. They are
+            listed rather than dropped: the one item nobody can make sense of must not be the one
+            that disappears.
           </p>
           <ul className={styles.plainList}>
             {data.unplaceable.map((item) => (
@@ -559,19 +565,19 @@ export default function LiveCalendarScreen() {
           <p className="oa-micro">What feeds this calendar</p>
           <dl className={styles.factGrid}>
             <Fact
-              label="Schedule triggers"
+              label="Run on a schedule"
               value={data.summary.scheduleTriggers}
-              note="Registered, enabled, and due at a time — the only kind a calendar can show."
+              note="Switched on and due at a time — the only kind a calendar can show."
             />
             <Fact
-              label="Waiting on a signal"
+              label="Waiting for something to arrive"
               value={data.summary.signalTriggers}
-              note="Event, threshold, dependency and manual triggers. Live, and never on a grid."
+              note="These start on an event, a threshold or another workflow. Live, and never on a grid."
             />
             <Fact
               label="Stood down"
               value={data.summary.disabledTriggers}
-              note="Registered but disabled — a paused agent's triggers, which fire nothing."
+              note="Set up but switched off — a paused agent's workflows, which start nothing."
             />
             <Fact
               label="Runs recorded"
@@ -580,8 +586,8 @@ export default function LiveCalendarScreen() {
             />
           </dl>
           <p className="oa-sub">
-            Server day <strong>{data.todayKey}</strong> in {data.timezone.id}, from{" "}
-            {zoneSourceNote(data)}. This tab last read the runtime at{" "}
+            Today is <strong>{data.todayKey}</strong> in {data.timezone.id}, taken from{" "}
+            {zoneSourceNote(data)}. Last updated at{" "}
             {readAt ? readAt.toLocaleTimeString() : "—"}.
           </p>
         </section>
@@ -637,12 +643,12 @@ function StreamStatus({
       </span>
       <span className={styles.streamRead}>
         {busy
-          ? "Reading the runtime now."
+          ? "Checking for updates now."
           : readAt === null
             ? hasData
               ? ""
-              : "Nothing has been read yet."
-            : `This tab last read at ${readAt.toLocaleTimeString()}.`}
+              : "Nothing has loaded yet."
+            : `Last updated at ${readAt.toLocaleTimeString()}.`}
       </span>
     </p>
   );
@@ -755,22 +761,22 @@ function BlockedByActivation() {
     <div className={styles.blockedBox} role="alert">
       <p className={styles.blockedTitle}>
         <Rocket size={16} aria-hidden />
-        Blocked: this plan has not been activated on this runtime
+        Blocked: this plan has not been put live yet
       </p>
       <p>
-        No trigger is registered, for any agent, in any state. Nothing is scheduled to fire,
-        nothing will start on its own, and no month you move to will have a future in it. Runs
-        already recorded still appear below; everything ahead of now does not exist yet.
+        Nothing is scheduled, for any agent, in any state. Nothing will start on its own, and no
+        month you move to will have a future in it. Runs already recorded still appear below;
+        everything ahead of now does not exist yet.
       </p>
       <p>
-        The gate is <strong>activation</strong>: it checks that every agent is built, that the
-        sandbox passed and that the required integrations are connected, and only then registers
-        each enabled workflow&apos;s trigger.
+        Going live runs three checks first: that every agent is ready, that it passed its test
+        run, and that the connections it needs are in place. Only then is each workflow put on
+        the schedule.
       </p>
       <div className={styles.blockedActions}>
         <Link href="/app/deploy" className="oa-btn oa-btn--primary oa-btn--sm">
           <Rocket size={13} aria-hidden />
-          Open activation
+          Open the go-live checks
         </Link>
         <Link href="/app/workspace/integrations?live=1" className="oa-btn oa-btn--ghost oa-btn--sm">
           See which connections it needs
@@ -802,7 +808,7 @@ function EmptyCalendar({ data }: { data: CalendarView }) {
 
       <p>
         {summary.scheduleTriggers === 0
-          ? "No workflow is driven by the clock."
+          ? "No workflow runs on a clock."
           : `${summary.scheduleTriggers} ${
               summary.scheduleTriggers === 1 ? "workflow is" : "workflows are"
             } scheduled, and none of them falls in this range.`}{" "}
@@ -812,25 +818,23 @@ function EmptyCalendar({ data }: { data: CalendarView }) {
           } when something arrives — an event, a threshold, another workflow finishing — which is never a time on a grid.`}{" "}
         {summary.disabledTriggers > 0 &&
           `${summary.disabledTriggers} ${
-            summary.disabledTriggers === 1 ? "trigger is" : "triggers are"
+            summary.disabledTriggers === 1 ? "workflow is" : "workflows are"
           } stood down, which is what a paused agent looks like here.`}
       </p>
       <p style={{ margin: 0, fontWeight: 700 }}>What would put something here:</p>
       <ol className={styles.stateSteps}>
         <li>Move to a month a schedule actually reaches — the arrows above change the range.</li>
         <li>
-          Let a trigger fire. Something has to turn the scheduler: a deployment runs the poller
-          (<code>ORIANT_POLLER=on</code>), otherwise every firing waits for a{" "}
-          <code>POST /api/runtime/scheduler</code>. With the poller off, an activated workforce
-          looks live and never starts a run — and this calendar would show firings that keep being
-          due and never happening.
+          Let a workflow start. Something has to actually run the schedule: if nothing is
+          turning it, a workforce that has gone live looks perfectly healthy and never starts a
+          run — and this calendar would show work that keeps coming due and never happening.
         </li>
         <li>
-          Resume anything paused from the{" "}
+          Resume anything paused from{" "}
           <Link href="/app/workspace/agents?live=1" className="oa-blue-text">
-            agents roster
+            your agents
           </Link>
-          . A paused agent&apos;s triggers are switched off, not forgotten.
+          . A paused agent&apos;s workflows are switched off, not forgotten.
         </li>
       </ol>
     </div>
@@ -842,11 +846,11 @@ function EmptyCalendar({ data }: { data: CalendarView }) {
 function zoneSourceNote(data: CalendarView): string {
   switch (data.timezone.source) {
     case "global-quiet-hours":
-      return "the plan's org-wide quiet hours";
+      return "your plan's organisation-wide quiet hours";
     case "schedule-trigger":
-      return "the first scheduled workflow in the plan";
+      return "the first scheduled workflow in your plan";
     case "fallback":
-      return "nowhere — the plan names no timezone, so UTC was assumed";
+      return "nowhere — your plan names no timezone, so UTC was assumed";
   }
 }
 

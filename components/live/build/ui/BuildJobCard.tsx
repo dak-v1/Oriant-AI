@@ -41,7 +41,13 @@ import { AlertTriangle, Bot, FileCode2, PackageCheck, PauseCircle, RotateCcw } f
 import StatusBadge from "@/components/mock/ui/StatusBadge";
 import { DUR, EASE, STAGGER } from "@/lib/mock/motion";
 import type { JobView, PackageView, PlanAgentView } from "../api";
-import { STATUS_META, elapsed, plural } from "../format";
+import {
+  STATUS_META,
+  elapsed,
+  missingReasonText,
+  operatingModeText,
+  plural,
+} from "../format";
 import BuildLog from "./BuildLog";
 import { stagePercent } from "./stage";
 import styles from "./build.module.css";
@@ -95,7 +101,7 @@ export default function BuildJobCard({
   return (
     <motion.article
       className={`oa-card ${styles.card}`}
-      aria-label={`Build state for ${agent.name}`}
+      aria-label={`${agent.name} — build status`}
       initial={reduced === true ? false : { opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: DUR.card, ease: EASE, delay: index * STAGGER }}
@@ -110,19 +116,17 @@ export default function BuildJobCard({
           </span>
           <div style={{ minWidth: 0 }}>
             <h2 className={styles.agentName}>{agent.name}</h2>
-            <p className="oa-sub">
-              <code>{agent.id}</code> · v{agent.version} · {agent.operatingMode}
-            </p>
+            <p className="oa-sub">{operatingModeText(agent.operatingMode)}</p>
           </div>
         </div>
         {job !== null ? (
-          <StatusBadge status={job.status} />
+          <StatusBadge status={job.status} label={STATUS_META[job.status].label} />
         ) : pkg !== null ? (
           /* No job under this plan, but the store holds a current package —
              built earlier, or by another process. The badge reports the store. */
-          <StatusBadge status="validated" label="Package stored" />
+          <StatusBadge status="validated" label="Built and ready" />
         ) : (
-          <StatusBadge status="never_built" label="Never built" />
+          <StatusBadge status="never_built" label="Not built yet" />
         )}
       </div>
 
@@ -136,7 +140,7 @@ export default function BuildJobCard({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuetext={stage.label}
-          aria-label={`${agent.name} build stage`}
+          aria-label={`How far the build got for ${agent.name}`}
         >
           <span style={{ width: `${stage.pct}%` }} />
         </div>
@@ -153,14 +157,14 @@ export default function BuildJobCard({
         agentName={agent.name}
         emptyText={
           job === null
-            ? "No build has ever been recorded for this agent under this plan."
-            : "The runtime recorded no log lines for this job."
+            ? "This agent has not been built yet."
+            : "This build recorded no lines."
         }
       />
       {replayKey > 0 && job !== null && job.logs.length > 0 && (
         <p className={styles.paceNote}>
-          Replayed at reading pace — the pacing is presentational; every line is the
-          runtime&apos;s own.
+          Played back at reading speed — only the timing is ours; every line is exactly
+          what the build wrote.
         </p>
       )}
 
@@ -168,16 +172,15 @@ export default function BuildJobCard({
         <p className={styles.artifacts}>
           <FileCode2 size={13} aria-hidden style={{ flex: "none", marginTop: 3 }} />
           <span>
-            Package: {plural(pkg.workflows, "workflow", "workflows")} ·{" "}
-            {plural(pkg.allowedOperations, "permitted operation", "permitted operations")} ·{" "}
-            <code>{pkg.checksum}</code>
+            Built with {plural(pkg.workflows, "workflow", "workflows")} and{" "}
+            {plural(pkg.allowedOperations, "permitted action", "permitted actions")}.
           </span>
         </p>
       ) : (
         running && (
           <p className={styles.artifacts}>
             <FileCode2 size={13} aria-hidden style={{ flex: "none", marginTop: 3 }} />
-            <span>Compiling and validating a package from the approved spec…</span>
+            <span>Building this agent and checking it against the settings you approved…</span>
           </p>
         )
       )}
@@ -186,8 +189,8 @@ export default function BuildJobCard({
         <p className={styles.caveat}>
           <AlertTriangle size={13} aria-hidden style={{ flex: "none", marginTop: 3 }} />
           <span>
-            This job built version {job.agentVersion}; the plan now asks for version{" "}
-            {agent.version}, so it says nothing about whether the current spec is built.
+            This build was for version {job.agentVersion} and your plan now asks for version{" "}
+            {agent.version}, so it says nothing about whether the current version is built.
           </span>
         </p>
       )}
@@ -195,7 +198,7 @@ export default function BuildJobCard({
       {missingReason !== null && (
         <p className={styles.caveat}>
           <AlertTriangle size={13} aria-hidden style={{ flex: "none", marginTop: 3 }} />
-          <span>{missingReason}</span>
+          <span>{missingReasonText(missingReason)}</span>
         </p>
       )}
 
@@ -203,9 +206,9 @@ export default function BuildJobCard({
         <p className={styles.caveat}>
           <PauseCircle size={13} aria-hidden style={{ flex: "none", marginTop: 3 }} />
           <span>
-            Nothing is building from this tab, so this row is another process mid-build or
-            a build that stopped without finishing. It is not a queue: pressing Build
-            starts a fresh job rather than resuming this one.
+            No build is running from this page, so this is either a build running
+            somewhere else right now or one that stopped before it finished. There is no
+            queue: pressing Build starts a fresh build rather than picking this one up.
           </span>
         </p>
       )}
@@ -220,25 +223,25 @@ export default function BuildJobCard({
       <div className={styles.cardFoot}>
         {failed ? (
           <span className={styles.cancelNote}>
-            <AlertTriangle size={13} aria-hidden /> Failed — no current package
+            <AlertTriangle size={13} aria-hidden /> Failed — not ready to go live
           </span>
         ) : done ? (
           <span className={styles.footNote}>
             <PackageCheck size={13} aria-hidden />
             {job !== null && job.status === "skipped"
-              ? "Stored package already current — reused"
-              : `Validated and stored${took !== null ? ` · ${took}` : ""}`}
+              ? "Already up to date — nothing needed building"
+              : `Built and checked${took !== null ? ` · ${took}` : ""}`}
           </span>
         ) : running ? (
-          <span className={styles.footNote}>Reading the runner&apos;s rows…</span>
+          <span className={styles.footNote}>Building now…</span>
         ) : job === null ? (
           <span className={styles.footNote}>
-            {pkg !== null
-              ? "Current package in the store"
-              : "Nothing has been asked of the Factory yet"}
+            {pkg !== null ? "Built and ready to go live" : "Not built yet"}
           </span>
         ) : (
-          <span className={styles.footNote}>Last recorded state: {job.status}</span>
+          <span className={styles.footNote}>
+            Last known status: {STATUS_META[job.status].label}
+          </span>
         )}
 
         {failed && (
@@ -248,15 +251,25 @@ export default function BuildJobCard({
             onClick={onRetry}
             disabled={!canBuild}
           >
-            <RotateCcw size={13} aria-hidden /> Retry build
+            <RotateCcw size={13} aria-hidden /> Try building again
           </button>
         )}
         {pkg !== null && (
           <button type="button" className="oa-btn oa-btn--soft oa-btn--sm" onClick={onReview}>
-            Review stored package
+            See what was built
           </button>
         )}
       </div>
+
+      {/* Identity, kept off the headline and out of the way. It is here because
+          somebody comparing this screen with a plan or a support thread needs
+          it, not because a reader of the card does. */}
+      <details className={styles.idDetails}>
+        <summary>Details</summary>
+        <p>
+          Version {agent.version} · <code>{agent.id}</code>
+        </p>
+      </details>
     </motion.article>
   );
 }

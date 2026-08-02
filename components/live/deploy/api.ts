@@ -612,7 +612,7 @@ function lifecycleRowView(value: unknown, where: string): LifecycleRowView {
 }
 
 function checklistSnapshot(value: unknown): ChecklistSnapshot {
-  const where = "The activation response";
+  const where = "The activation details";
   const root = obj(value, where);
   return {
     mode: str(root, "mode", where),
@@ -665,7 +665,7 @@ function registrationView(value: unknown, where: string): RegistrationView | nul
 }
 
 function activatedView(value: unknown): ActivatedView {
-  const where = "The go-live response";
+  const where = "The go-live details";
   const root = obj(value, where);
   return {
     outcome: str(root, "outcome", where),
@@ -706,7 +706,7 @@ function rosterAgentView(value: unknown, where: string): RosterAgentView {
 }
 
 function rosterSnapshot(value: unknown): RosterSnapshot {
-  const where = "The roster response";
+  const where = "The agent list";
   const root = obj(value, where);
   const deploymentRaw = root.deployment;
 
@@ -768,7 +768,7 @@ function errorMessage(body: unknown, response: Response): string {
     if (stated !== null) return stated;
   }
   if (typeof body === "string" && body.trim() !== "") return body.slice(0, 400);
-  return `The runtime answered ${response.status} ${response.statusText}.`;
+  return `The request came back as ${response.status} ${response.statusText}.`;
 }
 
 function errorHint(body: unknown): string | null {
@@ -820,10 +820,20 @@ function organizationRefusal(
   };
 }
 
-function transportFailure(url: string, err: unknown): Failure {
+/**
+ * The browser never got an answer.
+ *
+ * The endpoint is deliberately NOT named in the sentence: the screen has one
+ * banner per request and already says which one failed, and a URL in the copy
+ * is the kind of thing an owner cannot act on. The underlying error is kept —
+ * it is the only clue there is about why nothing came back.
+ */
+function transportFailure(err: unknown): Failure {
   return {
     kind: "unreachable",
-    message: `Could not reach ${url}: ${err instanceof Error ? err.message : String(err)}`,
+    message: `Your workspace could not be reached: ${
+      err instanceof Error ? err.message : String(err)
+    }`,
     hint: null,
     status: null,
   };
@@ -864,7 +874,7 @@ export async function readChecklist(signal?: AbortSignal): Promise<ChecklistOutc
       headers: { accept: "application/json" },
     });
   } catch (err) {
-    return { kind: "failed", failure: transportFailure(URL_ACTIVATION, err) };
+    return { kind: "failed", failure: transportFailure(err) };
   }
 
   const body = await readBody(response);
@@ -900,7 +910,7 @@ export async function readRoster(signal?: AbortSignal): Promise<RosterOutcome> {
       headers: { accept: "application/json" },
     });
   } catch (err) {
-    return { kind: "failed", failure: transportFailure(URL_AGENTS, err) };
+    return { kind: "failed", failure: transportFailure(err) };
   }
 
   const body = await readBody(response);
@@ -957,7 +967,7 @@ export async function goLive(
       body: JSON.stringify({ activatedBy }),
     });
   } catch (err) {
-    return { kind: "failed", failure: transportFailure(URL_ACTIVATION, err) };
+    return { kind: "failed", failure: transportFailure(err) };
   }
 
   const body = await readBody(response);
@@ -969,14 +979,14 @@ export async function goLive(
      own safety gate as a bug. */
   if (response.status === 409) {
     try {
-      const root = obj(body, "The refused go-live response");
+      const root = obj(body, "The go-live details");
       return {
         kind: "blocked",
-        outcome: str(root, "outcome", "The refused go-live response"),
-        checklist: checklistView(root.checklist, "The refused go-live response.checklist"),
-        blockers: arr(root.blockers, "The refused go-live response.blockers").map(
+        outcome: str(root, "outcome", "The go-live details"),
+        checklist: checklistView(root.checklist, "The go-live details.checklist"),
+        blockers: arr(root.blockers, "The go-live details.blockers").map(
           (item, index) =>
-            blockerView(item, `The refused go-live response.blockers[${index}]`),
+            blockerView(item, `The go-live details.blockers[${index}]`),
         ),
       };
     } catch (err) {

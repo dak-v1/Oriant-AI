@@ -568,7 +568,7 @@ function bestMessage(body: unknown, response: Response): string {
     if (typeof error === "string" && error.trim() !== "") return error;
   }
   if (typeof body === "string" && body.trim() !== "") return body.slice(0, 400);
-  return `The runtime answered ${response.status} ${response.statusText}.`;
+  return `The server answered ${response.status} ${response.statusText}.`;
 }
 
 /* ═══════════════════════════ The read ═══════════════════════════ */
@@ -586,7 +586,7 @@ export async function fetchRoster(signal?: AbortSignal): Promise<RosterView> {
   } catch (err) {
     throw new AgentsApiError(
       "transport",
-      `Could not reach /api/runtime/agents: ${err instanceof Error ? err.message : String(err)}`,
+      `Your agents could not be reached: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
 
@@ -637,8 +637,8 @@ function readOutcome(body: unknown): TransitionOutcome {
   const unreadable: TransitionOutcome = {
     changed: false,
     detail:
-      "The runtime accepted the request but its answer was not a shape this screen can " +
-      "read, so it cannot say what changed. Refresh the roster to see the agent's state.",
+      "This was accepted, but the answer could not be read, so this screen cannot say what " +
+      "changed. Refresh to see the agent's state.",
     state: null,
     triggers: 0,
     rejected: [],
@@ -675,7 +675,7 @@ function readOutcome(body: unknown): TransitionOutcome {
     detail:
       typeof detail === "string" && detail.trim() !== ""
         ? detail
-        : "The runtime reported no detail for this change, which is itself worth reporting.",
+        : "No detail came back for this change, which is itself worth reporting.",
     state,
     triggers,
     rejected,
@@ -709,8 +709,7 @@ export async function submitTransition(
       kind: "unknown",
       message:
         `The request never completed (${err instanceof Error ? err.message : String(err)}). ` +
-        `Refresh the roster to see whether it landed; both pause and resume are safe to send ` +
-        `again.`,
+        `Refresh to see whether it went through; both pause and resume are safe to send again.`,
     };
   }
 

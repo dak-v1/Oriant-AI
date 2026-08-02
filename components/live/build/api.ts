@@ -330,7 +330,7 @@ function errorMessage(body: unknown, response: Response): string {
     if (typeof error === "string" && error.trim() !== "") return error;
   }
   if (typeof body === "string" && body.trim() !== "") return body.slice(0, 400);
-  return `The runtime answered ${response.status} ${response.statusText}.`;
+  return `The app answered ${response.status} ${response.statusText}.`;
 }
 
 function errorHint(body: unknown): string | null {
@@ -341,10 +341,15 @@ function errorHint(body: unknown): string | null {
   return null;
 }
 
-function transportFailure(url: string, err: unknown): ApiFailure {
+/**
+ * `what` is the thing the reader was waiting for, not the route that served it:
+ * the browser's own error text is kept because it is the only diagnostic there
+ * is, but the address it was aimed at means nothing to the person reading it.
+ */
+function transportFailure(what: string, err: unknown): ApiFailure {
   return {
     kind: "unreachable",
-    message: `Could not reach ${url}: ${err instanceof Error ? err.message : String(err)}`,
+    message: `The app did not answer while ${what}: ${err instanceof Error ? err.message : String(err)}`,
   };
 }
 
@@ -384,14 +389,14 @@ export async function fetchBuildStatus(signal?: AbortSignal): Promise<StatusOutc
       headers: { accept: "application/json" },
     });
   } catch (err) {
-    return transportFailure(URL_BUILD, err);
+    return transportFailure("loading what has been built", err);
   }
 
   const body = await readBody(response);
   if (!response.ok) return refusal(body, response);
 
   try {
-    const where = "The build status response";
+    const where = "The reply about what is built";
     const root = obj(body, where);
     const plan = obj(root.plan, `${where}.plan`);
 
@@ -460,14 +465,14 @@ export async function fetchPlanSource(signal?: AbortSignal): Promise<SourceOutco
       headers: { accept: "application/json" },
     });
   } catch (err) {
-    return transportFailure(URL_AGENTS, err);
+    return transportFailure("checking whose workforce this is", err);
   }
 
   const body = await readBody(response);
   if (!response.ok) return refusal(body, response);
 
   try {
-    const where = "The roster response";
+    const where = "The reply about whose workforce this is";
     const root = obj(body, where);
     const plan = obj(root.plan, `${where}.plan`);
     return {
@@ -518,14 +523,14 @@ export async function runBuild(
       body: JSON.stringify({ force: options.force }),
     });
   } catch (err) {
-    return transportFailure(URL_BUILD, err);
+    return transportFailure("running the build", err);
   }
 
   const body = await readBody(response);
   if (!response.ok) return refusal(body, response);
 
   try {
-    const where = "The build response";
+    const where = "The reply from the build";
     const root = obj(body, where);
     return {
       kind: "report",

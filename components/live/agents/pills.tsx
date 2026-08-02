@@ -41,14 +41,22 @@ interface Pill {
  * warnings would put an amber badge on every agent during a normal build.
  */
 const AGENT_PILL = {
-  building: { cls: "neutral", label: "Building" },
-  validated: { cls: "review", label: "Validated" },
+  building: { cls: "neutral", label: "Getting ready" },
+  validated: { cls: "review", label: "Checked" },
   active: { cls: "active", label: "Active" },
   paused: { cls: "pending", label: "Paused" },
   failed: { cls: "failed", label: "Failed" },
 } satisfies Record<AgentRuntimeState, Pill>;
 
-const NEVER_ACTIVATED: Pill = { cls: "neutral", label: "Never activated" };
+const NEVER_ACTIVATED: Pill = { cls: "neutral", label: "Not live yet" };
+
+/**
+ * The same word the badge shows, for prose that has to name a state inline.
+ * Exported so no sentence anywhere prints the stored word instead.
+ */
+export function agentStateLabel(state: AgentRuntimeState | null): string {
+  return state === null ? NEVER_ACTIVATED.label : AGENT_PILL[state].label;
+}
 
 export function AgentStatePill({ state }: { state: AgentRuntimeState | null }) {
   const pill: Pill = state === null ? NEVER_ACTIVATED : AGENT_PILL[state];
@@ -65,7 +73,7 @@ const RUN_PILL = {
   awaiting_approval: { cls: "pending", label: "Waiting on you" },
   completed: { cls: "completed", label: "Completed" },
   failed: { cls: "failed", label: "Failed" },
-  refused: { cls: "failed", label: "Refused" },
+  refused: { cls: "failed", label: "Blocked by your rules" },
   cancelled: { cls: "neutral", label: "Cancelled" },
 } satisfies Record<RunStatus, Pill>;
 

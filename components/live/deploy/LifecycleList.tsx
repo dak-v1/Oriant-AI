@@ -34,7 +34,7 @@
 
 import { HelpCircle } from "lucide-react";
 import type { LifecycleRowView, LiveCountsView, RosterAgentView } from "./api";
-import { lifecycleMeta } from "./format";
+import { agentStateLabel, lifecycleMeta } from "./format";
 import styles from "./deploy.module.css";
 
 /**
@@ -72,8 +72,8 @@ export default function LifecycleList({
         <p>{source.why}</p>
         <p>
           No rows are shown. An empty list here would read as &ldquo;nothing is
-          deployed&rdquo;, and that is a claim about the workforce rather than a report
-          of what this screen was told — which is nothing.
+          live&rdquo;, and that is a claim about your workforce rather than a report of
+          what this screen was told — which is nothing.
         </p>
       </div>
     );
@@ -83,23 +83,25 @@ export default function LifecycleList({
     <div className={styles.section}>
       {counts !== null && (
         <p className="oa-sub">
-          {counts.running} running · {counts.drifted} drifted · {counts.planned} planned ·{" "}
-          {counts.retired} retired. These are the runtime&apos;s own totals, reconciled
-          from the deployed plan and the current one in a single read.
+          {counts.running} live and up to date · {counts.drifted} live but out of date ·{" "}
+          {counts.planned} waiting to start · {counts.retired} live but dropped from your
+          plan. These totals come from comparing what is live now against your current plan.
         </p>
       )}
 
       {source.unnamed !== null && (
-        <p className="oa-sub">Shown by agent id rather than by name: {source.unnamed}</p>
+        <p className="oa-sub">
+          Shown by their internal name rather than their title: {source.unnamed}
+        </p>
       )}
 
       {source.rows.length === 0 ? (
         <div className={styles.stateBox}>
-          <p className={styles.stateTitle}>No agent appears in either plan</p>
+          <p className={styles.stateTitle}>No agent appears in your plan or in what is live</p>
           <p>
-            The runtime reconciled what is deployed against what is planned and found
-            nothing in either. That is what an empty workforce looks like — and it is also
-            what the packages gate refuses to activate.
+            Comparing what is live against what you have planned found nothing in either.
+            That is what an empty workforce looks like — and it is also what the first
+            check refuses to put live.
           </p>
         </div>
       ) : (
@@ -137,8 +139,9 @@ export default function LifecycleList({
 
                 {agent !== null && agent.runtimeState !== null && (
                   <p className={styles.lifecycleMeaning}>
-                    Runtime state <strong>{agent.runtimeState}</strong> · {agent.enabledTriggers}{" "}
-                    of {agent.registeredTriggers} triggers enabled
+                    Currently <strong>{agentStateLabel(agent.runtimeState)}</strong> ·{" "}
+                    {agent.enabledTriggers} of {agent.registeredTriggers} scheduled runs
+                    switched on
                     {agent.runtimeDetail === null ? "" : ` — ${agent.runtimeDetail}`}
                   </p>
                 )}
@@ -150,7 +153,7 @@ export default function LifecycleList({
                     whether a runtime record exists. */}
                 {agent !== null && agent.runtimeState === null && (
                   <p className={styles.lifecycleMeaning}>
-                    No runtime record — this agent has never been through activation.
+                    Nothing on record — this agent has never been through a go-live.
                   </p>
                 )}
               </li>

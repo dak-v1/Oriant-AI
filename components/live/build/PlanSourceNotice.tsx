@@ -76,13 +76,12 @@ export default function PlanSourceNotice({
           <p className={styles.noticeTitle}>
             {checking
               ? "Checking whose workforce this is…"
-              : "Whose workforce this is has not been established"}
+              : "Whose workforce this is has not been confirmed yet"}
           </p>
           <p className={styles.noticeBody}>
-            The runtime serves a built-in demo plan when nothing has been ingested, and it
-            looks exactly like a real one on this screen. Until{" "}
-            <code>/api/runtime/agents</code> answers, the agents below are not proven to be
-            yours — and not proven to be the demo either.
+            When no plan has been imported, a sample workforce is shown here — and it looks
+            exactly like a real one on this page. Until that check answers, the agents below
+            are not confirmed to be yours, and not confirmed to be the sample either.
           </p>
         </div>
       </section>
@@ -97,14 +96,13 @@ export default function PlanSourceNotice({
         </span>
         <div className={styles.noticeText}>
           <p className={styles.noticeTitle}>
-            This screen could not establish whose workforce it is showing
+            This page could not confirm whose workforce it is showing
           </p>
           <p className={styles.noticeBody}>
-            The plan and its build jobs below are real records from{" "}
-            <code>/api/runtime/build</code>. What is missing is the one field that says
-            where the plan came from, and without it these agents may be your ingested
-            workforce or may be the built-in demo. They are not the same thing and this
-            screen will not guess between them.
+            The agents and builds below are real records. What is missing is the one thing
+            that says where this plan came from — so these may be the workforce you
+            imported, or they may be the sample one. Those are not the same thing, and this
+            page will not guess between them.
           </p>
           <p className={styles.noticeDetail}>{state.message}</p>
           <p className={styles.noticeBody}>{state.advice}</p>
@@ -129,14 +127,14 @@ export default function PlanSourceNotice({
         </span>
         <div className={styles.noticeText}>
           <p className={styles.noticeTitle}>
-            The provenance answer is about a different plan
+            These two answers are about different plans
           </p>
           <p className={styles.noticeBody}>
-            The Factory is building <code>{factoryPlanId}</code> and the roster described{" "}
-            <code>{source.planId}</code>. The most likely reason is an ingest landing
-            between the two requests. Whichever it was, the source below belongs to the
-            other plan and says nothing about the agents on this screen, so this screen is
-            treating them as unattributed. Refresh to ask both endpoints again.
+            The agents on this page and the answer about where the plan came from describe
+            two different plans — most likely because a plan was imported between the two
+            checks. Either way, that answer belongs to the other plan and says nothing
+            about the agents on this page, so they are being treated as unconfirmed. Press
+            Refresh to check both again.
           </p>
         </div>
       </section>
@@ -150,11 +148,11 @@ export default function PlanSourceNotice({
           <CheckCircle2 size={20} />
         </span>
         <div className={styles.noticeText}>
-          <p className={styles.noticeTitle}>This is your ingested workforce</p>
+          <p className={styles.noticeTitle}>This is your own workforce</p>
           <p className={styles.noticeBody}>
-            Plan <code>{source.planId}</code>, version {source.planVersion}. It came from a
-            handoff that was ingested into this runtime, not from the built-in demo — so
-            every agent below is one somebody asked for.
+            These agents come from the workforce plan you imported, not from the sample one
+            — so every agent below is one somebody asked for. Plan version{" "}
+            {source.planVersion}.
           </p>
         </div>
       </section>
@@ -175,47 +173,47 @@ export default function PlanSourceNotice({
       <div className={styles.noticeText}>
         <p className={styles.noticeTitle}>
           {isFixture
-            ? "These are demo agents, not your workforce"
-            : `The runtime called this plan's source "${source.source}", which this screen does not recognise`}
+            ? "You are viewing a sample workforce — your own plan has not been imported yet"
+            : "We could not confirm that this workforce is yours"}
         </p>
         <p className={styles.noticeBody}>
-          {/* The demo plan is NOT named here. Which fixture ships is the
-              runtime's business and it has already changed once; `fallbackReason`
-              below names it in the runtime's own words, and a second name kept on
-              this screen would be the one that goes stale. */}
+          {/* The sample workforce is NOT named here, and that is deliberate for
+              the same reason as before the rewrite: which fixture ships is the
+              runtime's business and it has already changed once, so a name kept
+              on this screen is the thing that goes stale. */}
           {isFixture
-            ? "Nothing has been ingested into this runtime, so it is serving its built-in " +
-              "demo plan. Everything below is real — real job rows, real packages, real " +
-              "checksums — but it is a demo workforce being built, and activating it would " +
-              "put demo agents live."
-            : "This build only trusts the word “ingested” to mean an owner's own handoff. " +
-              "Anything else is treated as unattributed, because the alternative is reading a " +
-              "word nobody has defined as proof that these agents are yours."}
+            ? "No plan of yours has been imported, so a sample workforce is being shown " +
+              "instead. Everything below really happened — these are real builds of real " +
+              "agents — but they are the sample agents, and putting them live would put " +
+              "sample agents live."
+            : "This page treats a workforce as yours only when it can confirm your own plan " +
+              "was imported. Anything else is shown as unconfirmed, because the alternative " +
+              "is taking an answer nobody has defined as proof that these agents are yours."}
         </p>
-        {source.fallbackReason !== null && (
+        {/* The runtime's own sentence is kept only where this page has no words
+            of its own — an unrecognised state, where whatever explanation came
+            back is the only one there is. In the sample case the plain copy
+            above says the same thing, and says it without the vocabulary the
+            owner asked to be rid of. */}
+        {!isFixture && source.fallbackReason !== null && (
           <p className={styles.noticeDetail}>{source.fallbackReason}</p>
         )}
-        {/* The runtime's sentence above says "run a handoff through the
-            pipeline", and the pipeline's most prominent button runs a stored
-            demo handoff that blocks at Ingest on purpose. Without this
-            qualifier the notice points an owner at a press that cannot deliver
-            what it promises. Dropping the runtime's sentence instead was
-            rejected: it is the one line that names which demo is standing in,
-            and the components must not paraphrase it. */}
+        {/* Without this qualifier the notice points an owner at the most
+            prominent button on the plan page — which runs a worked example on
+            sample data and stops part-way on purpose, so it cannot deliver what
+            this notice would seem to promise. */}
         {isFixture && (
           <p className={styles.noticeBody}>
-            What replaces it is ingesting a <em>real</em> handoff — pasted on the pipeline
-            page, or collected from Role B. The pipeline&apos;s built-in button runs a
-            stored demo handoff that blocks at Ingest by design, to demonstrate the gap
-            report; pressing it does not replace this workforce.
+            To replace it, import your own workforce plan: paste it on the plan page, or
+            bring it across from the planning step. The worked example already on that page
+            uses sample data and stops part-way by design — pressing it will not replace
+            this workforce.
           </p>
         )}
-        <p className={styles.noticeBody}>
-          Plan <code>{source.planId}</code>, version {source.planVersion}.
-        </p>
+        <p className={styles.noticeBody}>Plan version {source.planVersion}.</p>
         <div>
           <Link href="/app/pipeline" className="oa-btn oa-btn--soft oa-btn--sm">
-            Ingest a real handoff
+            Import your plan
             <ArrowRight size={13} aria-hidden />
           </Link>
         </div>

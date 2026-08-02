@@ -92,9 +92,10 @@ export default function DayView({
           <CalendarOff size={20} aria-hidden />
           <p style={{ margin: 0, fontWeight: 700 }}>Nothing on this day.</p>
           <p className="oa-sub" style={{ maxWidth: 420 }}>
-            No trigger is due, no run started and no approval falls due on {dayLabelLong(dayKey)} in{" "}
-            {zoneId}. Workflows that wait for an event, a threshold or another workflow never appear
-            on a calendar at all — they start when something arrives, not when time passes.
+            Nothing is scheduled, no run started and no decision falls due on{" "}
+            {dayLabelLong(dayKey)} in {zoneId}. Workflows that wait for an event, a threshold or
+            another workflow never appear on a calendar at all — they start when something
+            arrives, not when time passes.
           </p>
         </div>
       ) : (
@@ -156,12 +157,12 @@ function DayRow({ event }: { event: CalendarEventView }) {
             <span className={`oa-tag ${RISK_TAG[event.risk]}`}>Risk: {event.risk}</span>
           )}
           {action !== null && !action.named && (
-            <span className="oa-tag oa-tag--amber">
-              No plain-language name for {event.proposed?.operation}
-            </span>
+            <span className="oa-tag oa-tag--amber">No plain description of this action</span>
           )}
           {event.scheduleTimezone !== null && (
-            <span className="oa-tag oa-tag--neutral">Cron in {event.scheduleTimezone}</span>
+            <span className="oa-tag oa-tag--neutral">
+              Scheduled in {event.scheduleTimezone}
+            </span>
           )}
         </div>
       </div>
@@ -192,8 +193,8 @@ function noDestination(event: CalendarEventView): string {
     case "scheduled":
       return "Nothing to open yet — it has not run.";
     case "approval":
-      return "No link available for this approval.";
+      return "There is no link to this approval.";
     case "run":
-      return "No run detail screen in this build.";
+      return "There is no detail page for a run yet.";
   }
 }

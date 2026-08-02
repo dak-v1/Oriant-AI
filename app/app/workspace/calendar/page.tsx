@@ -74,20 +74,20 @@ function LaneRefused({ lane }: { lane: Extract<CalendarLane, { lane: "refused" }
     <main className="oa-page oa-page--narrow">
       <div className="oa-card oa-stack" role="alert">
         <p className="oa-eyebrow">Operate · Automation calendar</p>
-        <h1 className="oa-h2">That is not a calendar this build has</h1>
+        <h1 className="oa-h2">That is not a calendar this app has</h1>
         <p className="oa-lead">
-          <code>{lane.setting}</code> was{" "}
-          <strong>{lane.value === "" ? "(blank)" : lane.value}</strong>, and this build accepts{" "}
-          {lane.accepted}. Nothing was chosen for you: the scripted calendar shows a fixed demo
-          month, and handing it to someone who asked for the live one would have them plan around
-          firings that are not scheduled.
+          This address asked for{" "}
+          <strong>{lane.value === "" ? "(blank)" : lane.value}</strong>, and what is accepted is{" "}
+          {lane.accepted}. Nothing was chosen for you: the sample calendar shows a fixed example
+          month, and handing it to someone who asked for their own would have them plan around
+          work that is not scheduled.
         </p>
         <div className="oa-cluster">
           <Link href="/app/workspace/calendar?live=1" className="oa-btn oa-btn--primary oa-btn--sm">
-            Open the live calendar
+            Open your calendar
           </Link>
           <Link href="/app/workspace/calendar?live=0" className="oa-btn oa-btn--ghost oa-btn--sm">
-            Open the scripted demo
+            Open the sample calendar
           </Link>
         </div>
       </div>

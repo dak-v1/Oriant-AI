@@ -77,7 +77,7 @@ export default function TopBar({
 
   return (
     <header className={styles.topbar}>
-      <button type="button" className={styles.company} aria-label="Company: BrightPath Home Services (demo)">
+      <button type="button" className={styles.company} aria-label="Company: BrightPath Home Services (a sample company)">
         <span className={styles.companyMark} aria-hidden>
           BP
         </span>
@@ -99,8 +99,8 @@ export default function TopBar({
         {/* Same rule as the sidebar footer: the chrome may only claim the lane
             the screen was actually resolved to. A refused lane gets no badge —
             the page itself is explaining that neither screen was chosen. */}
-        {lane === "demo" && <span className="oa-demo-badge">Interactive demo</span>}
-        {lane === "live" && <span className="oa-tag oa-tag--amber">Live runtime</span>}
+        {lane === "demo" && <span className="oa-demo-badge">Sample data</span>}
+        {lane === "live" && <span className="oa-tag oa-tag--amber">Your workspace</span>}
 
         <Link
           href="/#faq"
@@ -115,17 +115,17 @@ export default function TopBar({
           <button
             type="button"
             className={styles.iconBtn}
-            aria-label="Demo controls"
+            aria-label="Options"
             aria-expanded={menuOpen}
-            title="Demo controls"
+            title="Options"
             onClick={() => setMenuOpen((v) => !v)}
           >
             <SlidersHorizontal size={16} aria-hidden />
           </button>
 
           {menuOpen && (
-            <div className={styles.demoMenu} role="menu" aria-label="Demo controls">
-              <p className={`oa-micro ${styles.demoMenuLabel}`}>Demo controls</p>
+            <div className={styles.demoMenu} role="menu" aria-label="Options">
+              <p className={`oa-micro ${styles.demoMenuLabel}`}>Options</p>
               <button
                 type="button"
                 role="menuitem"
@@ -140,7 +140,7 @@ export default function TopBar({
                 ) : (
                   <EyeOff size={14} aria-hidden style={{ color: "var(--oa-blue)" }} />
                 )}
-                {presentation ? "Exit recording mode" : "Recording mode (hide demo labels)"}
+                {presentation ? "Show sample-data labels" : "Hide sample-data labels"}
               </button>
               <button
                 type="button"
@@ -153,10 +153,10 @@ export default function TopBar({
                 }}
               >
                 <RotateCcw size={14} aria-hidden style={{ color: "var(--oa-red-ink)" }} />
-                Reset demo
+                Start over
               </button>
               <hr className="oa-divider" style={{ margin: "6px 0" }} />
-              <p className={`oa-micro ${styles.demoMenuLabel}`}>Fast-forward to…</p>
+              <p className={`oa-micro ${styles.demoMenuLabel}`}>Jump to…</p>
               {FAST_FORWARD_TARGETS.map((t) => (
                 <button
                   key={t.state}
@@ -177,7 +177,7 @@ export default function TopBar({
           )}
         </div>
 
-        <span className={styles.avatar} aria-label={`Signed in as ${OWNER.name} (demo)`}>
+        <span className={styles.avatar} aria-label={`Signed in as ${OWNER.name} (a sample account)`}>
           {OWNER.initials}
         </span>
       </div>

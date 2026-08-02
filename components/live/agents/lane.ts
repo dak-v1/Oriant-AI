@@ -23,8 +23,8 @@ export type { LaneInput };
 
 const SURFACE = {
   envVar: AGENTS_LANE_ENV,
-  liveLabel: "the live roster",
-  demoLabel: "the scripted roster",
+  liveLabel: "your own agents",
+  demoLabel: "the sample agents",
 } as const;
 
 export function resolveAgentsLane(input: LaneInput): AgentsLane {

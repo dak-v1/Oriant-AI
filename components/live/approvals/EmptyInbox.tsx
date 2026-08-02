@@ -75,7 +75,7 @@ export default function EmptyInbox({ updateNote }: { updateNote: string }) {
         </p>
         <p>
           Checking whether that is because your workforce is running quietly or
-          because nothing is registered to run at all…
+          because nothing is set up to run at all…
         </p>
       </div>
     );
@@ -93,20 +93,20 @@ export default function EmptyInbox({ updateNote }: { updateNote: string }) {
           Nothing is waiting on you — and this screen cannot tell you why.
         </p>
         <p>
-          The approvals queue answered and it is empty. The scheduler did not
-          answer, so this screen cannot say whether that is a quiet workforce or
-          one that was never activated:{" "}
+          The approvals queue answered and it is empty. The schedule could not be
+          read, so this screen cannot say whether that is a quiet workforce or one
+          that was never put live:{" "}
           <span className={styles.stateDetail}>
-            {probe.error ?? "the read was cancelled before it completed"}
+            {probe.error ?? "the check was cancelled before it finished"}
           </span>
         </p>
         <p style={{ margin: 0 }}>
-          Treat the empty queue as unexplained until the scheduler can be read.
+          Treat the empty queue as unexplained until the schedule can be read.
         </p>
         <div className="oa-cluster">
           <Link href="/app/deploy" className="oa-btn oa-btn--ghost oa-btn--sm">
             <Rocket size={13} aria-hidden />
-            Open activation
+            Open the go-live checks
           </Link>
         </div>
       </div>
@@ -125,21 +125,20 @@ export default function EmptyInbox({ updateNote }: { updateNote: string }) {
           Nothing can reach this queue yet.
         </p>
         <p>
-          No trigger is registered, which means activation has never run for this
-          plan. Nothing is scheduled, nothing will fire, and no run can pause for
-          a decision — so the empty queue below is not a quiet workforce, it is
-          the absence of one.
+          Nothing is scheduled at all, which means this plan has never been put
+          live. Nothing will start, and no run can pause for a decision — so the
+          empty queue below is not a quiet workforce, it is the absence of one.
         </p>
         <p style={{ margin: 0 }}>
-          Three gates stand in front of go-live and each blocks on its own: every
-          agent&apos;s package built, the sandbox passed, and the integrations the
-          plan marks required actually connected.
+          Three checks stand in front of going live and each blocks on its own:
+          every agent ready, its test run passed, and the connections your plan
+          needs actually in place.
         </p>
-        <ActivationGates label="Check which gate is shut" />
+        <ActivationGates label="Check what is holding it up" />
         <div className="oa-cluster">
           <Link href="/app/deploy" className="oa-btn oa-btn--primary oa-btn--sm">
             <Rocket size={13} aria-hidden />
-            Go to activation
+            Go to the go-live checks
           </Link>
         </div>
       </div>
@@ -155,14 +154,14 @@ export default function EmptyInbox({ updateNote }: { updateNote: string }) {
           Every workflow is paused.
         </p>
         <p>
-          {triggers.length} trigger{triggers.length === 1 ? " is" : "s are"} registered, so this plan
-          was activated — but not one of them is enabled. A paused agent does not
-          fire, does not run and cannot raise an approval, so this queue will stay
-          empty until one is resumed.
+          {triggers.length} trigger{triggers.length === 1 ? " is" : "s are"} set up, so this plan
+          was put live — but not one of them is switched on. A paused agent does not
+          start, does not run and cannot send you anything to decide, so this queue
+          will stay empty until one is resumed.
         </p>
         <div className="oa-cluster">
           <Link href="/app/workspace/agents?live=1" className="oa-btn oa-btn--primary oa-btn--sm">
-            Open the agent roster
+            Open your agents
           </Link>
         </div>
       </div>
@@ -178,22 +177,20 @@ export default function EmptyInbox({ updateNote }: { updateNote: string }) {
       </p>
       <p>
         {enabled.length} workflow{enabled.length === 1 ? " is" : "s are"} live and nothing has
-        reached a step that needs your decision. This queue holds runs the
-        executor has paused mid-flight; it is empty because there are none, not
-        because the screen has nothing to show.
+        reached a step that needs your decision. This queue holds runs that stopped
+        part-way for you; it is empty because there are none, not because the
+        screen has nothing to show.
       </p>
       <p style={{ margin: 0, fontWeight: 700 }}>The one failure that looks exactly like this:</p>
       <ol className={styles.stateSteps}>
         <li>
-          Something has to turn the scheduler. A deployment runs the poller
-          (<code>ORIANT_POLLER=on</code>); otherwise every firing waits for a{" "}
-          <code>POST /api/runtime/scheduler</code>, which drives exactly one pass. With
-          the poller off, an activated workforce looks live and never starts a
-          run.
+          Something has to actually run the schedule. If nothing is turning it, a
+          workforce that has gone live looks perfectly healthy and never starts a
+          single run — which looks exactly like a quiet queue.
         </li>
         <li>
-          Schedules are minute-granular and fire in the agent&apos;s own timezone,
-          so the Friday sweep arrives on Friday at 09:00 there — not here.
+          Schedules run in each agent&apos;s own timezone, so the Friday sweep
+          arrives on Friday at 09:00 there — not here.
         </li>
       </ol>
       <p style={{ margin: 0 }}>{updateNote}</p>

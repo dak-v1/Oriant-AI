@@ -70,11 +70,11 @@ export default function ActivityFeed({
       icon={<Activity size={16} className={styles.cardIcon} aria-hidden />}
     >
       {runs.error !== null && (
-        <SourceError source="The run log" message={runs.error} retry={onRetry} />
+        <SourceError source="Your recent activity" message={runs.error} retry={onRetry} />
       )}
 
       {snapshot === null && runs.error === null && (
-        <LoadingNote>Reading the run log…</LoadingNote>
+        <LoadingNote>Loading your recent activity…</LoadingNote>
       )}
 
       {snapshot !== null && rows.length === 0 && (
@@ -97,7 +97,7 @@ export default function ActivityFeed({
                   </span>
                   <span className={styles.rowSub}>
                     {directory.agentName(row.agentId)} · started{" "}
-                    {started ?? "at an unreadable time"}
+                    {started ?? "at a time this browser cannot read"}
                   </span>
                   <span className={styles.rowSub}>{row.detail}</span>
                   {row.risk !== null && (

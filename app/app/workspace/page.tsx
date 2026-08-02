@@ -39,7 +39,6 @@ import { OPERATE_LANE_ENV, RUNTIME_MODE_ENV } from "@/components/live/lane";
 import { WORKSPACE_LANE_ENV, resolveWorkspaceLane } from "@/components/live/workspace/lane";
 import type { WorkspaceLane } from "@/components/live/workspace/lane";
 import { planFacts } from "@/components/live/workspace/plan-facts";
-import styles from "@/components/live/workspace/live-workspace.module.css";
 import WorkspaceOverview from "@/components/mock/workspace/WorkspaceOverview";
 import { getRuntimeSession } from "@/lib/runtime/session";
 
@@ -86,20 +85,20 @@ function LaneRefused({ lane }: { lane: Extract<WorkspaceLane, { lane: "refused" 
     <main className="oa-page oa-page--narrow">
       <div className="oa-card oa-stack" role="alert">
         <p className="oa-eyebrow">Operate · Workspace</p>
-        <h1 className="oa-h2">That is not a Workspace this build has</h1>
+        <h1 className="oa-h2">That is not a workspace this app has</h1>
         <p className="oa-lead">
-          <code className={styles.mono}>{lane.setting}</code> was{" "}
-          <strong>{lane.value === "" ? "(blank)" : lane.value}</strong>, and this
-          build accepts {lane.accepted}. Nothing was chosen for you: showing the
-          scripted Workspace to someone who asked for the live one would put
-          invented numbers where real ones were requested.
+          This address asked for{" "}
+          <strong>{lane.value === "" ? "(blank)" : lane.value}</strong>, and what is
+          accepted is {lane.accepted}. Nothing was chosen for you: showing the
+          sample workspace to someone who asked for their own would put made-up
+          numbers where real ones were requested.
         </p>
         <div className="oa-cluster">
           <Link href="/app/workspace?live=1" className="oa-btn oa-btn--primary oa-btn--sm">
-            Open the live Workspace
+            Open your workspace
           </Link>
           <Link href="/app/workspace?live=0" className="oa-btn oa-btn--ghost oa-btn--sm">
-            Open the scripted demo
+            Open the sample workspace
           </Link>
         </div>
       </div>

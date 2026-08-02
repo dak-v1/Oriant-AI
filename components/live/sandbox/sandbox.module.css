@@ -1,0 +1,315 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   components/live/sandbox/sandbox.module.css — the live Sandbox's own chrome.
+
+   Everything visual comes from app/app/app.css (`.oa` scope): surfaces, type
+   scale, buttons, `.oa-status--*` badges, focus rings, easing. Nothing below
+   invents a colour, a radius or a font.
+
+   THE WORKSPACE ITSELF IS NOT HERE. The four zones — summary strip, test rail,
+   scenario panel with its numbered step rail, output panel — come from
+   components/live/sandbox/ui/sandbox.module.css, which is the mock's stylesheet
+   copied verbatim because the owner asked for the mock's look on the live
+   screens. What remains in this file is the layout the mock never had a reason
+   to draw: the plan-source notice, the change-stream line, the failure and
+   unheard boxes, and the verdict's own numbers.
+
+   ADAPTED FROM components/live/build/build.module.css, which drew the same
+   chrome for the Agent Factory. Copied rather than shared for the reason that
+   lane's api.ts gives about its readers: a shared stylesheet is one place where
+   restyling one screen's warning silently restyles another's, and the two
+   screens carry different warnings. The class names are kept identical so the
+   two pages are recognisably the same product.
+
+   The plan-source notice is sized like a headline, not a footnote. On this page
+   more than anywhere: a green verdict about the built-in demo plan, read as a
+   green verdict about the owner's workforce, is a go-live decision made on
+   somebody else's evidence.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+
+.head {
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.headTitles {
+  display: grid;
+  gap: 8px;
+  max-width: 64ch;
+}
+
+.headTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* The header's action column: the run buttons, then the one-line reminder of
+   what a run does and does not touch. */
+.headActions {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  max-width: 380px;
+}
+
+.headButtons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+/* ── The plan-source notice ────────────────────────────────────────────────
+   Deliberately the loudest thing on the page after the h1. See the header. */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  border: 1px solid var(--oa-border);
+  border-left-width: 5px;
+  border-radius: var(--oa-r-card);
+  background: var(--oa-surface);
+}
+
+.noticeIcon {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 13px;
+  background: var(--oa-surface);
+  display: grid;
+  place-items: center;
+}
+
+.noticeText {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  max-width: 82ch;
+}
+
+.noticeTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.noticeBody {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* The runtime's own sentence, set apart from ours so the two are never confused. */
+.noticeDetail {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--oa-muted-strong);
+}
+
+.noticeIngested {
+  border-color: var(--oa-teal-deep);
+  background: var(--oa-soft-teal);
+  color: var(--oa-teal-deep);
+}
+
+.noticeIngested .noticeIcon {
+  color: var(--oa-teal-deep);
+}
+
+.noticeFixture {
+  border-color: var(--oa-amber-border);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+}
+
+.noticeFixture .noticeIcon {
+  color: var(--oa-amber-ink);
+}
+
+.noticeUnknown {
+  border-color: var(--oa-border-strong);
+  background: var(--oa-bg-alt);
+  color: var(--oa-ink);
+}
+
+.noticeUnknown .noticeIcon {
+  color: var(--oa-muted-strong);
+}
+
+/* ── The change-stream line ────────────────────────────────────────────── */
+
+.stream {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--oa-muted-strong);
+}
+
+.streamState {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 460px;
+}
+
+.streamState svg {
+  align-self: center;
+  flex: none;
+}
+
+.streamWord {
+  font-weight: 800;
+  color: var(--oa-ink);
+  flex: none;
+}
+
+.streamDetail {
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.streamRead {
+  flex: none;
+}
+
+/* ── Boxes: failure, caution, and the absence of an answer ─────────────────
+   Three shapes, because "the runtime refused", "this verdict is about a
+   different workforce" and "nobody has answered yet" are three different
+   instructions to the reader and must not look alike. */
+
+.errorBox,
+.warnBox,
+.stateBox {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--oa-r-card);
+  font-size: 13px;
+  line-height: 1.55;
+  border: 1px solid var(--oa-border);
+  background: var(--oa-surface);
+}
+
+.errorBox {
+  border-color: var(--oa-red);
+  background: var(--oa-soft-red);
+  color: var(--oa-red-ink);
+}
+
+.warnBox {
+  border-color: var(--oa-amber-border);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+}
+
+.stateBox {
+  border-style: dashed;
+  border-color: var(--oa-border-strong);
+  background: var(--oa-bg-alt);
+  color: var(--oa-ink);
+}
+
+.errorBox p,
+.warnBox p,
+.stateBox p {
+  margin: 0;
+  max-width: 82ch;
+}
+
+.boxTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* The runtime's verbatim sentence inside one of the boxes above. */
+.boxDetail {
+  font-family: var(--oa-mono);
+  font-size: 12px;
+  word-break: break-word;
+}
+
+/* A list of the runtime's own blocker lines. Each one is a reason the gate is
+   shut, in the words `runSuite` wrote — never paraphrased. */
+.blockerList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.blockerRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.blockerRow svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ── Per-agent coverage ────────────────────────────────────────────────────
+   `byAgent`, which the mock had no equivalent of: an agent with no scenario at
+   all is not ready, and that is the one blocker a list of green scenarios can
+   hide completely. */
+
+.agentSection {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin-top: 24px;
+}
+
+.sectionTitle {
+  margin: 0;
+}
+
+.agentList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agentRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+  font-size: 13px;
+}
+
+.mono {
+  font-family: var(--oa-mono);
+  font-size: 0.94em;
+  overflow-wrap: anywhere;
+}

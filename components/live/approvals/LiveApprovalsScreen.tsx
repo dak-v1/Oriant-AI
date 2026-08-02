@@ -81,7 +81,7 @@ import type {
   RiskLevel,
 } from "./api";
 import { ApprovalsApiError, fetchInbox, fetchPlanContext } from "./api";
-import { deadlineTone, formatClock } from "./format";
+import { deadlineTone, formatClock, runStatusMeta } from "./format";
 import ApprovalListCard from "./ApprovalListCard";
 import EmptyInbox from "./EmptyInbox";
 import ReviewDrawer from "./ReviewDrawer";
@@ -122,15 +122,14 @@ interface LoadFailure {
 
 const FAILURE_ADVICE: Record<LoadFailure["kind"], string> = {
   transport:
-    "The browser could not reach the runtime at all. Check that the app is running and that " +
-    "/api/runtime/approvals is reachable from here.",
-  http:
-    "The runtime answered, and the answer was a refusal. The status and its reason are above.",
+    "Your browser could not reach the app at all. Check that it is running and that you are " +
+    "still connected to it.",
+  http: "The app answered, and the answer was a refusal. Its reason is above.",
   malformed:
-    "The runtime answered with a shape this screen does not understand. Nothing was rendered from " +
-    "it on purpose: a half-read approval is worse than none, because you cannot see what is " +
-    "missing from it. This is a mismatch between the inbox and /api/runtime/approvals.",
-  unknown: "The failure did not identify itself, which is itself worth reporting.",
+    "The answer came back in a form this screen could not read, so nothing was shown from it " +
+    "on purpose: a half-read approval is worse than none, because you cannot see what is " +
+    "missing from it.",
+  unknown: "The failure did not say what it was, which is itself worth reporting.",
 };
 
 const RISK_OPTIONS: RiskLevel[] = ["high", "medium", "low"];
@@ -343,18 +342,18 @@ export default function LiveApprovalsScreen() {
   const countSummary = useMemo(() => {
     if (!answered) {
       return loadError === null
-        ? "Reading the approval queue."
-        : "The approval queue could not be read. Nothing is known about what is waiting.";
+        ? "Loading the approvals queue."
+        : "The approvals queue could not be loaded. Nothing is known about what is waiting.";
     }
     const waiting = `${pending.length} approval${pending.length === 1 ? "" : "s"} waiting on you, ${overdueCount} overdue.`;
-    return stale ? `${waiting} This is the last confirmed read; a newer one failed.` : waiting;
+    return stale ? `${waiting} This is the last confirmed list; a newer one failed to load.` : waiting;
   }, [answered, loadError, overdueCount, pending.length, stale]);
 
   const updateNote = !liveUpdates
     ? "Live updates are switched off for this screen, so a new approval will not appear until you press Refresh."
     : events.status === "live"
-      ? "A run that pauses appears here as soon as the runtime raises it — no reload needed."
-      : "This screen is not being pushed changes at the moment, so a new approval can take a few seconds longer to arrive. The connection's state is in the rail.";
+      ? "A run that pauses appears here the moment it happens — no reload needed."
+      : "This screen is not receiving updates automatically at the moment, so a new approval can take a few seconds longer to appear. Its connection is shown in the panel beside this one.";
 
   return (
     <main className="oa-page">
@@ -376,16 +375,18 @@ export default function LiveApprovalsScreen() {
               asked about, corrected a moment later. */}
           {plan !== null &&
             (plan.mode === "live" ? (
-              <span className="oa-tag oa-tag--amber">Live runtime · actions are real</span>
+              <span className="oa-tag oa-tag--amber">Actions are real</span>
             ) : plan.mode === "fixture" ? (
-              <span className="oa-tag oa-tag--teal">Fixture runtime · tools stubbed</span>
+              <span className="oa-tag oa-tag--teal">Practice mode — nothing is sent</span>
             ) : (
-              <span className="oa-tag oa-tag--neutral">Runtime mode unknown</span>
+              <span className="oa-tag oa-tag--neutral">
+                Cannot tell whether actions are real
+              </span>
             ))}
 
           {!answered ? (
             loadError !== null && (
-              <span className="oa-tag oa-tag--amber">Queue could not be read</span>
+              <span className="oa-tag oa-tag--amber">Queue could not be loaded</span>
             )
           ) : overdueCount > 0 ? (
             <span className="oa-tag oa-tag--amber">{overdueCount} overdue</span>
@@ -417,13 +418,18 @@ export default function LiveApprovalsScreen() {
             <div className={styles.errorBox} role="alert">
               <p className={styles.errorTitle}>
                 <AlertTriangle size={15} aria-hidden />
-                {answered ? "This list is out of date" : "The approvals queue could not be read"}
+                {answered ? "This list is out of date" : "The approvals queue could not be loaded"}
               </p>
-              <p className={styles.errorDetail}>{loadError.message}</p>
+              {/* The raw reason, except when the answer was unreadable — there the
+                  reason names a field for a developer, and the sentence below it
+                  is the one an owner can act on. */}
+              {loadError.kind !== "malformed" && (
+                <p className={styles.errorDetail}>{loadError.message}</p>
+              )}
               <p>{FAILURE_ADVICE[loadError.kind]}</p>
               {answered && (
                 <p>
-                  The items below are what the runtime last confirmed, at{" "}
+                  The items below are what was last confirmed, at{" "}
                   {readAt ? readAt.toLocaleTimeString() : "an earlier point"}. Newer approvals may
                   exist, and ones decided since may still be showing.
                 </p>
@@ -510,7 +516,7 @@ export default function LiveApprovalsScreen() {
             <div className={shell.list} aria-busy="true">
               <p className={styles.loadingLead}>
                 <Loader2 size={13} className="oa-spin" aria-hidden />
-                Reading the approval queue…
+                Loading the approvals queue…
               </p>
               {[0, 1, 2].map((index) => (
                 <div key={index} className={`oa-card oa-card--flat ${styles.skelCard}`} aria-hidden>
@@ -558,11 +564,11 @@ export default function LiveApprovalsScreen() {
         </section>
 
         {/* ══ Rail ══ */}
-        <aside className={styles.railPane} aria-label="Runtime status and guidance">
+        <aside className={styles.railPane} aria-label="Status and guidance">
           <section className={`oa-card ${styles.railCard}`} aria-labelledby={`${fieldId}-runtime`}>
             <div className={styles.railHead}>
               <h2 className={`oa-micro ${styles.railHeading}`} id={`${fieldId}-runtime`}>
-                Live runtime
+                Status
               </h2>
               {/* Not `disabled` while it works: disabling the control a keyboard
                   user just activated drops focus to the document body. */}
@@ -578,16 +584,16 @@ export default function LiveApprovalsScreen() {
             </div>
             <div className={styles.railRows}>
               <RailRow
-                label="Pending approvals"
-                value={answered ? String(pending.length) : "Not read"}
+                label="Waiting on you"
+                value={answered ? String(pending.length) : "Not loaded"}
               />
               <RailRow
-                label="Overdue (runtime)"
-                value={answered ? String(overdueCount) : "Not read"}
+                label="Overdue"
+                value={answered ? String(overdueCount) : "Not loaded"}
               />
-              <RailRow label="Server clock" value={inbox ? formatClock(inbox.now) : "—"} />
+              <RailRow label="Current time" value={inbox ? formatClock(inbox.now) : "—"} />
               <RailRow
-                label="This tab last read"
+                label="Last updated"
                 value={readAt ? readAt.toLocaleTimeString() : "—"}
               />
             </div>
@@ -620,15 +626,15 @@ export default function LiveApprovalsScreen() {
 
             {held && (
               <p className={styles.heldNote} role="status">
-                The runtime changed while the review panel was open. The list was not refreshed
+                Something changed while the review panel was open. The list was not refreshed
                 underneath your edit; closing the panel picks the change up.
               </p>
             )}
 
             <p className="oa-sub">
-              Overdue is the runtime&apos;s answer, derived from each agent&apos;s{" "}
-              <code>escalateAfterMins</code> against the server clock above — never recomputed in
-              this browser.
+              Overdue is worked out where your agents run, from each agent&apos;s escalation
+              window against the time above — never recalculated in your browser, so the two
+              cannot drift apart.
             </p>
           </section>
 
@@ -656,7 +662,7 @@ export default function LiveApprovalsScreen() {
                         </span>
                         {entry.edited && <span className="oa-tag">Edited</span>}
                         <span className="oa-sub">
-                          Run: {entry.runStatus ?? "status not reported"}
+                          Run: {runStatusMeta(entry.runStatus, entry.decision).label}
                         </span>
                       </span>
                     </button>
@@ -675,22 +681,22 @@ export default function LiveApprovalsScreen() {
             </h2>
             <ol className={styles.stateSteps}>
               <li>
-                An activated agent&apos;s trigger fires — the Friday sweep, a dependency, a manual
-                run.
+                A live agent starts a run — the Friday sweep, another workflow finishing,
+                someone starting it by hand.
               </li>
               <li>
-                A step it wants to take needs you: its operating mode says so, the operation is on{" "}
-                <code>alwaysApprove</code>, or a policy limit was breached.
+                A step it wants to take needs you: that is how the agent is set up, the action
+                is on the list that always needs you, or one of your limits was passed.
               </li>
               <li>
-                The executor persists the run mid-flight and raises the approval into this queue.
-                Deciding it resumes that same run from exactly where it stopped.
+                The run is saved exactly where it stopped and the decision appears here.
+                Deciding it carries that same run on from where it stopped.
               </li>
             </ol>
             <div className={styles.railActions}>
               <Link href="/app/deploy" className="oa-btn oa-btn--ghost oa-btn--sm">
                 <ShieldCheck size={13} aria-hidden />
-                Activation
+                Go-live checks
               </Link>
               <Link href="/app/workspace/calendar?live=1" className="oa-btn oa-btn--ghost oa-btn--sm">
                 <CalendarClock size={13} aria-hidden />

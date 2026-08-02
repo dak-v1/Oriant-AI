@@ -45,6 +45,7 @@
 import type { OperatingMode, RiskLevel } from "@/lib/plan/types";
 import type { JobStatus } from "@/lib/runtime/schedule/types";
 import type { RunStatus } from "@/lib/runtime/types";
+import { operationPhrase } from "@/components/live/approvals/format";
 import type { OutcomeMetric, WorkspacePlanFacts } from "./plan-facts";
 import type {
   ApprovalsSnapshot,
@@ -287,15 +288,13 @@ export function statTiles(input: {
   const scheduler = sourceState(input.scheduler);
   const approvals = sourceState(input.approvals);
   const risk = combine([
-    { name: "the scheduler", source: input.scheduler },
-    { name: "the approvals inbox", source: input.approvals },
-    { name: "the run log", source: input.runs },
+    { name: "the schedule", source: input.scheduler },
+    { name: "the approvals queue", source: input.approvals },
+    { name: "your recent activity", source: input.runs },
   ]);
 
   const schedulerDetail =
-    scheduler === "loading"
-      ? "Reading the scheduler…"
-      : "The scheduler did not answer.";
+    scheduler === "loading" ? "Loading the schedule…" : "The schedule could not be read.";
 
   return [
     {
@@ -306,7 +305,7 @@ export function statTiles(input: {
           ? null
           : input.scheduler.data.triggers.filter((trigger) => trigger.enabled).length,
       state: scheduler,
-      detail: scheduler === "ready" ? "registered and enabled" : schedulerDetail,
+      detail: scheduler === "ready" ? "scheduled and switched on" : schedulerDetail,
       tone: "neutral",
     },
     {
@@ -318,8 +317,8 @@ export function statTiles(input: {
         approvals === "ready"
           ? "waiting on you now"
           : approvals === "loading"
-            ? "Reading the approvals inbox…"
-            : "The approvals inbox did not answer, so this is NOT a count of zero.",
+            ? "Loading the approvals queue…"
+            : "The approvals queue could not be read, so this is NOT a count of zero.",
       tone: "attention",
     },
     {
@@ -331,10 +330,10 @@ export function statTiles(input: {
       state: risk.state,
       detail:
         risk.state === "ready"
-          ? "overdue, dead-lettered, failed or refused"
+          ? "overdue, gave up, failed or blocked"
           : risk.state === "loading"
-            ? "Reading the scheduler, the inbox and the run log…"
-            : `At risk needs the scheduler, the inbox and the run log; ${list(risk.failed)} did not answer.`,
+            ? "Loading the schedule, the approvals queue and your recent activity…"
+            : `This needs the schedule, the approvals queue and your recent activity; ${list(risk.failed)} could not be read.`,
       tone: "attention",
     },
     {
@@ -342,7 +341,7 @@ export function statTiles(input: {
       label: "Scheduled runs upcoming",
       value: scheduler === "ready" && input.upcoming !== null ? input.upcoming.length : null,
       state: scheduler,
-      detail: scheduler === "ready" ? "next fires and queued work" : schedulerDetail,
+      detail: scheduler === "ready" ? "next runs and work waiting to start" : schedulerDetail,
       tone: "neutral",
     },
   ];
@@ -371,9 +370,9 @@ export interface AttentionItem {
 
 export const ATTENTION_LABEL = {
   overdue_approval: "Overdue approval",
-  dead_letter: "Dead-lettered job",
+  dead_letter: "Gave up after retrying",
   failed_run: "Failed run",
-  refused_run: "Refused by policy",
+  refused_run: "Blocked by your rules",
 } satisfies Record<AttentionKind, string>;
 
 /**
@@ -399,7 +398,9 @@ export function atRiskItems(input: {
     items.push({
       id: `approval:${approval.approvalId}`,
       kind: "overdue_approval",
-      title: `${directory.agentName(approval.agentId)} — ${approval.operation}`,
+      title: `${directory.agentName(approval.agentId)} — ${
+        operationPhrase(approval.operation) ?? approval.operation
+      }`,
       detail: approval.deadline.detail,
       agentId: approval.agentId,
       workflowId: approval.workflowId,
@@ -418,7 +419,7 @@ export function atRiskItems(input: {
       )}`,
       detail:
         job.error ??
-        `Gave up after ${job.attempt} of ${job.maxAttempts} attempts. Nothing retries it automatically.`,
+        `Gave up after ${job.attempt} of ${job.maxAttempts} attempts. Nothing will retry it on its own.`,
       agentId: job.agentId,
       workflowId: job.workflowId,
       href: null,
@@ -438,7 +439,7 @@ export function atRiskItems(input: {
         run.failure ??
         (run.status === "failed"
           ? "The run ended in failure and recorded no reason."
-          : "Policy refused the operation and ended the run."),
+          : "Your rules blocked this action and ended the run."),
       agentId: run.agentId,
       workflowId: run.workflowId,
       href: null,
@@ -470,7 +471,7 @@ export function skippedJobs(scheduler: SchedulerSnapshot): SkippedEntry[] {
       jobId: job.jobId,
       agentId: job.agentId,
       workflowId: job.workflowId,
-      reason: job.skipReason ?? "The scheduler skipped this run and gave no reason.",
+      reason: job.skipReason ?? "This run was skipped and no reason was given.",
       at: job.endedAt ?? job.enqueuedAt,
     }));
 }
@@ -522,8 +523,8 @@ export function upcomingRuns(input: {
         job.status === "running"
           ? "Running now."
           : job.attempt > 1
-            ? `Queued — retry ${job.attempt} of ${job.maxAttempts}.`
-            : "Queued, waiting for a worker.",
+            ? `Waiting to start — retry ${job.attempt} of ${job.maxAttempts}.`
+            : "Waiting to start.",
       source: "job",
       jobStatus: job.status,
     });
@@ -543,7 +544,7 @@ export function upcomingRuns(input: {
       workflowId: trigger.workflowId,
       detail:
         Number.isFinite(fireMs) && Number.isFinite(nowMs) && fireMs < nowMs
-          ? `${trigger.label} — due now, waiting for the scheduler to turn.`
+          ? `${trigger.label} — due now, waiting to start.`
           : trigger.label,
       source: "trigger",
       jobStatus: null,
@@ -610,11 +611,11 @@ export interface WaitingTrigger {
 }
 
 const WAITING_FOR = {
-  event: "Starts when the integration reports the event it listens for.",
-  threshold: "Starts when the metric it watches crosses its threshold.",
-  dependency: "Starts after the workflow it depends on completes.",
+  event: "Starts when the connected tool reports the event it listens for.",
+  threshold: "Starts when the number it watches crosses its limit.",
+  dependency: "Starts after the workflow it depends on finishes.",
   manual: "Starts only when someone runs it.",
-  schedule: "Waiting for its next fire time to be computed.",
+  schedule: "Waiting for its next run time to be worked out.",
 } satisfies Record<TriggerRow["kind"], string>;
 
 export function waitingTriggers(scheduler: SchedulerSnapshot): WaitingTrigger[] {
@@ -710,7 +711,9 @@ function describeRun(
       }
       return {
         ...base,
-        detail: `${approval.operation} — ${approval.deadline.detail}`,
+        detail: `${operationPhrase(approval.operation) ?? approval.operation} — ${
+          approval.deadline.detail
+        }`,
         risk: approval.risk,
         href: approvalsHref(approval.approvalId, live),
       };
@@ -727,7 +730,7 @@ function describeRun(
     case "refused":
       return {
         ...base,
-        detail: run.failure ?? "Policy refused the operation and ended the run.",
+        detail: run.failure ?? "Your rules blocked this action and ended the run.",
       };
     case "cancelled":
       return { ...base, detail: "Cancelled before it finished." };
@@ -768,10 +771,10 @@ export interface MetricReading {
 }
 
 const UNMEASURED =
-  "Not measured — the runtime records runs and approvals, not this metric.";
+  "Not measured — this app records runs and approvals, not this figure.";
 
 const UNMEASURED_NO_BASELINE =
-  "Not measured, and the approved plan carries no baseline for it either.";
+  "Not measured, and your approved plan carries no starting figure for it either.";
 
 export function readMetric(metric: OutcomeMetric): MetricReading {
   const target = formatMeasure(metric.target, metric.unit);
@@ -803,12 +806,12 @@ export function readMetric(metric: OutcomeMetric): MetricReading {
     target,
     gap:
       distance === 0
-        ? "The target is the baseline — no movement asked for."
+        ? "The target is where you started — no movement asked for."
         : towards
           ? `${formatMeasure(distance, metric.unit)} of movement asked for.`
           : // A target on the wrong side of the baseline is a plan defect, and
             // saying so is more useful than rendering the distance as progress.
-            `The target is ${formatMeasure(distance, metric.unit)} the wrong side of the baseline for a ${metric.direction}.`,
+            `The target is ${formatMeasure(distance, metric.unit)} on the wrong side of where you started, for something meant to ${metric.direction}.`,
     unmeasured: UNMEASURED,
   };
 }

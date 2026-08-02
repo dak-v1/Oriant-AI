@@ -79,15 +79,15 @@ export default function RunPanel({
   return (
     <section className={`oa-card ${styles.runPanel}`} aria-labelledby="oa-pipe-run">
       <h2 className="oa-h3" id="oa-pipe-run">
-        Run a pass
+        Bring your plan live
       </h2>
 
       <p className={styles.runNote}>
-        One press runs all six stages against the real runtime stores. The first five are
-        repeatable — collect, ingest, validate, build and prove can be run as often as you
-        like. <strong>Activate writes.</strong> A pass that gets that far registers triggers
-        and puts a deployment on record; it is a go-live, not a preview. It cannot be
-        forced past a shut gate: there is no override flag, here or in the endpoint.
+        One press runs all six steps for real. The first five are repeatable — receiving
+        your plan, reading it in, checking it, building and testing can be done as often as
+        you like. <strong>The last step goes live.</strong> A run that gets that far sets up
+        scheduled runs and puts your workforce live; it is not a preview. It cannot be
+        forced past something that is not ready: there is no override anywhere.
       </p>
 
       <div className={styles.runRow}>
@@ -107,10 +107,10 @@ export default function RunPanel({
               that reads as running a handoff promises the go-live this button
               cannot produce. */}
           {busy
-            ? "Running the pass…"
+            ? "Running…"
             : hasResult
-              ? "Demonstrate the gap report again"
-              : "Demonstrate the gap report (stored Role B handoff)"}
+              ? "Show the example again"
+              : "See it with an example plan"}
         </button>
 
         <button
@@ -120,24 +120,23 @@ export default function RunPanel({
           aria-expanded={showPayload}
         >
           <Braces size={13} aria-hidden />
-          {showPayload ? "Hide the paste field" : "Paste a handoff instead"}
+          {showPayload ? "Hide the paste box" : "Paste your own plan instead"}
         </button>
       </div>
 
       <p className={styles.runNote}>
-        The stored handoff is the fixture in <code>lib/plan/fixtures/role-b-handoff.ts</code>,
-        sent as <code>{'{"fixture": true}'}</code> — Role B&apos;s real payload, kept
-        deliberately stale, so the pass blocks at Ingest and shows the gap report doing its
-        work. It is a demonstration, not a route to live, and it never replaces the demo
-        workforce. Going live takes a real handoff: pasted below, or collected from Role B.
-        Nothing on this screen names who is activating, so a pass that reaches the end
-        records the endpoint&apos;s own default owner on the deployment.
+        The example is a sample plan kept deliberately out of date, so the run stops early
+        and shows you what gets assumed when information is missing. It is a demonstration,
+        not a way to go live, and it never replaces the sample workforce. Going live takes a
+        plan of your own: pasted below, or brought over from your planning step. Nothing on
+        this screen asks who is authorising, so a run that reaches the end records a default
+        name against the go-live rather than yours.
       </p>
 
       {showPayload && (
         <div className={styles.payloadForm}>
           <label className="oa-label" htmlFor={areaId}>
-            A workforce handoff, as JSON
+            Your workforce plan, as JSON
           </label>
           <textarea
             id={areaId}
@@ -148,15 +147,14 @@ export default function RunPanel({
               setPayload(event.target.value);
               if (payloadError !== null) setPayloadError(null);
             }}
-            placeholder='{"handoff_type":"workforce_plan", "workforce_plan":{…}, "agents":[…], "integrations":[…]}'
+            placeholder='{"workforce_plan": {…}, "agents": […], "integrations": […]}'
             aria-describedby={payloadError === null ? undefined : errorId}
             aria-invalid={payloadError !== null}
           />
           <p className={styles.runNote}>
-            This is the <code>payload</code> from Role B&apos;s{" "}
-            <code>GET /api/planner/:workforcePlanId/handoff</code>, posted as{" "}
-            <code>{'{"payload": …}'}</code>. The runtime checks the shape itself and refuses
-            anything that is not a workforce handoff.
+            This is the plan your planning step produces, pasted whole. It is checked as it
+            comes in, and anything that is not a workforce plan is refused before a single
+            step runs.
           </p>
           {payloadError !== null && (
             <p className={styles.payloadError} id={errorId} role="alert">
@@ -171,7 +169,7 @@ export default function RunPanel({
               aria-busy={busy}
             >
               <Play size={13} aria-hidden />
-              Run this handoff
+              Bring this plan live
             </button>
           </div>
         </div>

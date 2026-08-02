@@ -37,8 +37,9 @@
  * as the previous day.
  */
 
-import type { OperatingMode, QuietHours } from "@/lib/plan/types";
+import type { Op, OperatingMode, QuietHours } from "@/lib/plan/types";
 import type { Zone } from "@/components/live/workspace/read-model";
+import { agentStateLabel } from "./pills";
 import type { AgentView, RunView, WorkflowView } from "./api";
 
 /* ═══════════════════════════ Labels ═══════════════════════════ */
@@ -50,10 +51,37 @@ import type { AgentView, RunView, WorkflowView } from "./api";
  * identical, because the two screens describe one setting.
  */
 export const MODE_LABEL = {
-  draft_only: "Draft only — prepares work, never acts",
-  act_after_approval: "Acts after approval",
-  auto_within_limits: "Automatic within its limits",
+  draft_only: "Prepares the work and waits for you — it never acts on its own",
+  act_after_approval: "Acts only after you approve",
+  auto_within_limits: "Works within the limits you set",
 } satisfies Record<OperatingMode, string>;
+
+/**
+ * How a workflow is started, in the owner's words.
+ *
+ * The stored word ("schedule", "dependency") is a vocabulary this product's
+ * reader never chose and cannot look up, so it is never rendered on its own.
+ */
+export const KIND_LABEL = {
+  schedule: "On a schedule",
+  event: "When something happens in a connected tool",
+  threshold: "When a number crosses a line",
+  dependency: "After another workflow finishes",
+  manual: "Only when someone starts it",
+} satisfies Record<WorkflowView["kind"], string>;
+
+/**
+ * A comparison, as words rather than as a symbol. A limit is one of the few
+ * places this screen shows an owner a rule they are being held to, and "at most
+ * 1200" is a rule; "<= 1200" is a fragment of a config file.
+ */
+export const LIMIT_OP_WORD = {
+  "<": "under",
+  "<=": "at most",
+  ">": "over",
+  ">=": "at least",
+  "==": "exactly",
+} satisfies Record<Op, string>;
 
 /**
  * What a trigger with no `nextFireAt` is waiting for.
@@ -66,8 +94,8 @@ export const MODE_LABEL = {
  * should not fall through to a generic sentence.
  */
 export const WAITING_FOR = {
-  schedule: "Waiting for its next fire time to be computed.",
-  event: "Starts when the integration reports the event it listens for.",
+  schedule: "Waiting for its next run time to be worked out.",
+  event: "Starts when the connected tool reports the event it listens for.",
   threshold: "Starts when the metric it watches crosses its threshold.",
   dependency: "Starts after the workflow it depends on completes.",
   manual: "Starts only when someone runs it.",
@@ -119,12 +147,12 @@ export function readActivity(agent: AgentView): ActivityReading {
       headline: "Nothing running",
       detail:
         agent.runtime === null
-          ? "This agent has never been activated, so nothing has ever started it."
+          ? "This agent has never been put live, so nothing has ever started it."
           : agent.runtime.state === "paused"
-            ? "Paused — no trigger will start a run until it is resumed."
+            ? "Paused — nothing will start a run until it is resumed."
             : agent.counts.registeredTriggers === 0
-              ? "No trigger is registered for this agent, so nothing will start it."
-              : "No run is in flight. The next one starts when a trigger fires.",
+              ? "Nothing is set up to start this agent, so it will not run."
+              : "Nothing is running. The next run starts when one of its triggers fires.",
       extra: null,
       needsDecision: false,
       approvalId: null,
@@ -195,7 +223,7 @@ export function readNextRun(agent: AgentView, zone: Zone, now: string): NextRunR
     return {
       headline: stamp ?? "An instant this browser cannot read",
       detail: overdue
-        ? `${soonest.workflow.name} — due now, waiting for the scheduler to turn.`
+        ? `${soonest.workflow.name} — due now, waiting to start.`
         : `${soonest.workflow.name} · ${soonest.workflow.label}`,
       scheduled: true,
     };
@@ -217,8 +245,7 @@ export function readNextRun(agent: AgentView, zone: Zone, now: string): NextRunR
   if (agent.runtime === null) {
     return {
       headline: "Nothing scheduled",
-      detail:
-        "This agent has never been activated, so no trigger has ever been registered for it.",
+      detail: "This agent has never been put live, so nothing has ever been set up to start it.",
       scheduled: false,
     };
   }
@@ -227,8 +254,8 @@ export function readNextRun(agent: AgentView, zone: Zone, now: string): NextRunR
     return {
       headline: "Nothing scheduled",
       detail:
-        "Paused — every trigger is switched off. Resuming re-registers them from the next " +
-        "occurrence; runs missed while paused are not backfilled.",
+        "Paused — every trigger is switched off. Resuming picks them up again from the next " +
+        "time each is due; runs missed while it was paused are not made up.",
       scheduled: false,
     };
   }
@@ -237,8 +264,8 @@ export function readNextRun(agent: AgentView, zone: Zone, now: string): NextRunR
     return {
       headline: "Nothing scheduled",
       detail:
-        "No trigger is registered for this agent, so nothing will start it. Re-activating " +
-        "the plan is what registers them.",
+        "Nothing is set up to start this agent, so it will not run. Putting the plan live " +
+        "again is what sets that up.",
       scheduled: false,
     };
   }
@@ -248,8 +275,9 @@ export function readNextRun(agent: AgentView, zone: Zone, now: string): NextRunR
     detail:
       `${agent.counts.registeredTriggers} ${
         agent.counts.registeredTriggers === 1 ? "trigger is" : "triggers are"
-      } registered and every one of them is switched off, while the agent reads as ` +
-      `"${agent.runtime.state}". Those two disagree, so treat the state as unexplained.`,
+      } set up and every one of them is switched off, while the agent itself reads as ` +
+      `"${agentStateLabel(agent.runtime.state)}". Those two disagree, so treat the state as ` +
+      `unexplained.`,
     scheduled: false,
   };
 }
@@ -324,7 +352,7 @@ export function readCounts(agent: AgentView): CountReading[] {
       label: "Failures",
       value: failures,
       suffix: null,
-      sub: `${counts.failedRuns} failed · ${counts.refusedRuns} refused by policy · ${counts.deadLetterJobs} dead-lettered`,
+      sub: `${counts.failedRuns} failed · ${counts.refusedRuns} blocked by your rules · ${counts.deadLetterJobs} gave up after retrying`,
       attention: failures > 0,
     },
     {

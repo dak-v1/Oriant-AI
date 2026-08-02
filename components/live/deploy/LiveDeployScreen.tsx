@@ -149,14 +149,14 @@ interface PhasedFailure extends Failure {
 
 const FAILURE_TITLE = {
   read: {
-    refused: "The runtime would not answer the activation checklist",
-    unreachable: "The runtime could not be reached",
-    malformed: "The checklist came back in a shape this screen does not understand",
+    refused: "The checks could not be read",
+    unreachable: "Your workspace could not be reached",
+    malformed: "The checks came back in a form this screen could not read",
   },
   "go-live": {
-    refused: "The runtime refused the go-live request",
-    unreachable: "The runtime could not be reached",
-    malformed: "The go-live answered in a shape this screen does not understand",
+    refused: "The request to go live was turned down",
+    unreachable: "Your workspace could not be reached",
+    malformed: "Going live answered in a form this screen could not read",
   },
 } satisfies Record<FailurePhase, Record<Failure["kind"], string>>;
 
@@ -178,22 +178,22 @@ function advice(failure: PhasedFailure): string {
     switch (failure.kind) {
       case "refused":
         return (
-          "This was a read, which activates nothing and changes nothing — so it is not a " +
-          "report about the workforce, it is this screen failing to ask. Whether the gates " +
-          "are open, and whether anything is live, is unknown until it succeeds."
+          "This was only a question, which switches nothing on and changes nothing — so it " +
+          "is not a report about your workforce, it is this screen failing to ask. Whether " +
+          "the checks have passed, and whether anything is live, is unknown until it works."
         );
       case "unreachable":
         return (
-          "Nothing was sent but the question, and the answer never arrived. This screen " +
-          "therefore knows nothing about this runtime — not that a gate is shut, not that " +
-          "nothing is live. Check that the app is running and that /api/runtime/activation " +
-          "is reachable from this machine, then re-check the gates."
+          "Nothing was sent but the question, and the answer never came back. So this screen " +
+          "knows nothing about your workspace — not that a check has failed, not that " +
+          "nothing is live. Make sure the app is running and reachable from this computer, " +
+          "then run the checks again."
         );
       case "malformed":
         return (
-          "Nothing was rendered from it on purpose: a partly-read checklist would be missing " +
-          "exactly the gate you cannot see is missing. This is a mismatch between this screen " +
-          "and /api/runtime/activation, and it leaves the go-live unjudged rather than known " +
+          "Nothing was shown from it on purpose: a partly-read answer would be missing " +
+          "exactly the check you cannot see is missing. This screen and your workspace " +
+          "disagree about the format, and it leaves going live unjudged rather than known " +
           "to be safe."
         );
     }
@@ -202,25 +202,24 @@ function advice(failure: PhasedFailure): string {
   switch (failure.kind) {
     case "refused":
       return failure.status !== null && failure.status < 500
-        ? "Nothing was activated. The request was refused in front of the gates, so no " +
-            "trigger was registered and no deployment was written. The runtime's own " +
-            "sentence is above."
-        : "The runtime answered with a server error, and this screen cannot tell how far " +
-            "the go-live got before it did. Treat it as a go-live whose result is unknown " +
-            "rather than one that did not happen: re-check the gates and look at the roster " +
+        ? "Nothing was switched on. The request was turned down before any check ran, so " +
+            "nothing was scheduled and nothing was recorded. The reason is above."
+        : "Your workspace answered with an error, and this screen cannot tell how far going " +
+            "live got before it did. Treat it as a go-live whose result is unknown rather " +
+            "than one that did not happen: run the checks again and look at your agents " +
             "before pressing again.";
     case "unreachable":
       return (
-        "The browser never got an answer, so nothing here knows whether the go-live ran. A " +
-        "request that landed and lost its reply has still activated — triggers may be " +
-        "registered and a deployment written. Re-check the gates first; pressing again is " +
-        "safe in itself, because the runtime writes nothing when the version it is asked to " +
-        "activate is already live."
+        "The browser never got an answer, so nothing here knows whether going live ran. A " +
+        "request that arrived and lost its reply has still gone live — work may already be " +
+        "scheduled and the go-live recorded. Run the checks again first; pressing again is " +
+        "safe in itself, because nothing is written when the version being put live is " +
+        "already live."
       );
     case "malformed":
       return (
-        "The request itself did land, so treat this as a go-live whose result is unknown " +
-        "rather than one that did not happen. Re-check the gates and look at the roster " +
+        "The request itself did arrive, so treat this as a go-live whose result is unknown " +
+        "rather than one that did not happen. Run the checks again and look at your agents " +
         "before pressing again."
       );
   }
@@ -241,7 +240,6 @@ export default function LiveDeployScreen() {
   const [gates, setGates] = useState<Gates | null>(null);
   /** The 409's flattened blockers, kept beside the checklist that carried them. */
   const [refusedBlockers, setRefusedBlockers] = useState<BlockerView[] | null>(null);
-  const [refusedOutcome, setRefusedOutcome] = useState<string | null>(null);
   const [result, setResult] = useState<ActivatedView | null>(null);
   const [roster, setRoster] = useState<RosterSnapshot | null>(null);
 
@@ -329,9 +327,14 @@ export default function LiveDeployScreen() {
     /* Deliberately does NOT clear `roster`; the last good answer stays on screen
        under the note. And it does not touch `heardFrom`: the roster is not the
        checklist, and no roster read has ever said anything about the gates. */
+    /* The allowlist's own `error` is NOT quoted here. It is two paragraphs of
+       server configuration written for whoever administers the machine, and
+       this slot is one line in a rail card. The fact it carries — the list was
+       refused, so these rows are not a report about the workforce — survives in
+       words an owner can act on. See ./OrganizationRefusal. */
     setRosterFailure(
       outcome.kind === "forbidden"
-        ? outcome.refusal.error
+        ? "this workspace is not permitted to act for this business yet — ask your administrator."
         : outcome.failure.message,
     );
   }, []);
@@ -375,7 +378,6 @@ export default function LiveDeployScreen() {
          newer than the refusal, so keeping the old blockers beside it would show
          two answers to one question. */
       setRefusedBlockers(null);
-      setRefusedOutcome(null);
       setHeardFrom(true);
       setReadAt(new Date());
     } else if (outcome.kind === "forbidden") {
@@ -422,7 +424,6 @@ export default function LiveDeployScreen() {
         setResult(outcome.result);
         setGates({ view: outcome.result.checklist, origin: "activated" });
         setRefusedBlockers(null);
-        setRefusedOutcome(null);
         setHeardFrom(true);
         // Everything read before this describes the previous world. The roster
         // read below is what settles it; until it lands, the lifecycle list says
@@ -436,7 +437,6 @@ export default function LiveDeployScreen() {
            beside them. Nothing was written, so no latch moves. */
         setGates({ view: outcome.checklist, origin: "refused" });
         setRefusedBlockers(outcome.blockers);
-        setRefusedOutcome(outcome.outcome);
         setHeardFrom(true);
       } else if (outcome.kind === "forbidden") {
         // Refused for want of authority. Nothing was activated and nothing this
@@ -517,11 +517,11 @@ export default function LiveDeployScreen() {
     ? {
         kind: "unknown",
         why: wroteBlind
-          ? "A go-live was sent from this tab and its reply never arrived, so everything " +
-            "this screen knows about what is running was read before it. A request that " +
-            "landed and lost its reply has still activated."
-          : "A go-live has just been accepted, so every tag read before it describes the " +
-            "previous deployment. The roster is being re-read.",
+          ? "A go-live was sent from this screen and its reply never arrived, so everything " +
+            "shown here about what is running was read before it. A request that arrived " +
+            "and lost its reply has still gone live."
+          : "A go-live has just been accepted, so everything read before it describes the " +
+            "previous version. Your agents are being re-read.",
       }
     : roster !== null
       ? {
@@ -539,13 +539,13 @@ export default function LiveDeployScreen() {
             detail: new Map(),
             unnamed:
               rosterFailure ??
-              "the roster has not answered yet, and these tags came with the checklist instead.",
+              "your agent list has not answered yet, and these came with the checks instead.",
           }
         : {
             kind: "unknown",
             why:
-              "Neither the checklist nor the roster has answered, so this tab has not been " +
-              "told what is deployed — which is not the same as being told that nothing is.",
+              "Neither the checks nor your agent list has answered, so this screen has not " +
+              "been told what is live — which is not the same as being told that nothing is.",
           };
 
   /**
@@ -564,15 +564,14 @@ export default function LiveDeployScreen() {
     <main className="oa-page">
       <header className={`oa-between ${styles.head}`}>
         <div className={styles.headTitles}>
-          <p className="oa-eyebrow">Runtime · Activation</p>
+          <p className="oa-eyebrow">Activation</p>
           <h1 className="oa-h1">
-            Three gates, then <span className="oa-serif">live</span>
+            Three checks, then <span className="oa-serif">live</span>
           </h1>
           <p className="oa-lead">
-            Packages built, sandbox passed, required integrations connected. Every one is
-            re-derived from scratch on every read — there is no stored &ldquo;ready&rdquo;
-            anywhere in the runtime — and the button below sends the same request a
-            terminal would.
+            Your agents are built, they have been tested, and the tools they need are
+            connected. Every check is run again from scratch each time you ask — no earlier
+            answer is ever reused — so what you see is how things stand right now.
           </p>
         </div>
         <div className={styles.headSide}>
@@ -585,22 +584,22 @@ export default function LiveDeployScreen() {
           >
             {unheard
               ? reading
-                ? "Reading the gates"
-                : "Gates not known"
+                ? "Running the checks"
+                : "Checks not known"
               : checklist !== null && checklist.gates.length === 0
-                ? "No gate was reported"
+                ? "No check was reported"
                 : open
-                  ? "Every gate satisfied"
-                  : `${satisfied} of ${checklist === null ? 0 : checklist.gates.length} gates satisfied`}
+                  ? "All checks passed"
+                  : `${satisfied} of ${checklist === null ? 0 : checklist.gates.length} checks passed`}
           </span>
           <span className="oa-tag oa-tag--neutral">
             {!liveKnown
               ? "What is live: not known"
               : liveCounts === null
-                ? "What is live: not read"
+                ? "What is live: not read yet"
                 : liveCounts.source === "deployment"
-                  ? `Live: ${liveCounts.deploymentId ?? "a deployment the runtime did not name"}`
-                  : "Nothing is deployed"}
+                  ? "A workforce is live"
+                  : "Nothing is live yet"}
           </span>
         </div>
       </header>
@@ -625,10 +624,10 @@ export default function LiveDeployScreen() {
               <p>{advice(failure)}</p>
               {checklist !== null && (
                 <p>
-                  The gates below are the last ones the runtime confirmed
-                  {readAt === null ? "" : `, read at ${readAt.toLocaleTimeString()}`}. They are
-                  kept on screen on purpose: an empty checklist would read as &ldquo;no gate
-                  is shut and nothing is wrong&rdquo;.
+                  The checks below are the last ones that were confirmed
+                  {readAt === null ? "" : `, at ${readAt.toLocaleTimeString()}`}. They are
+                  kept on screen on purpose: an empty list would read as &ldquo;nothing is
+                  holding this up and nothing is wrong&rdquo;.
                 </p>
               )}
             </div>
@@ -652,11 +651,11 @@ export default function LiveDeployScreen() {
                 <Loader2 size={18} className="oa-spin" aria-hidden />
               </header>
               <p className="oa-sub">
-                The three gates are being re-derived inside this request before anything is
-                written — the sandbox suite and the stress sweep run again, against the plan
-                as it is right now. There is no per-agent progress to draw: the runtime
-                answers once, when the go-live has finished or refused. Nothing below
-                reports on this request.
+                The three checks are running again right now, against your plan as it stands,
+                before anything is switched on — every scenario is tested afresh. There is no
+                agent-by-agent progress to show: the answer comes back all at once, when
+                going live has finished or been turned down. Nothing below reports on this
+                attempt.
               </p>
             </section>
           )}
@@ -665,19 +664,19 @@ export default function LiveDeployScreen() {
             <div className={styles.blockedBox} role="alert">
               <p className={styles.blockedTitle}>
                 <ShieldAlert size={17} aria-hidden />
-                The go-live was refused — this is a normal result
+                Not ready to go live yet — this is a normal result
               </p>
               <p>
-                A gate shut, which is the checklist doing its job rather than failing at it.
-                The endpoint answers this with <code>409</code> and the whole checklist: the
-                request was well formed, the plan is not live-able yet, and nothing was
-                written — no trigger was registered and no deployment was recorded. There is
-                no override on this screen and none in the endpoint.
+                A check did not pass, which is the checks doing their job rather than failing
+                at it. The whole list came back with it: the request was fine, your plan
+                cannot go live yet, and nothing was changed — nothing was scheduled and no
+                go-live was recorded. There is no way to override this, here or anywhere
+                else.
               </p>
               <p>
                 {refusedBlockers.length === 0
-                  ? "The refusal carried no blockers, which should not happen — a gate shut with nothing to say about why. Re-check the gates, and treat the checklist below as incomplete rather than as a clean bill of health."
-                  : `${plural(refusedBlockers.length, "blocker", "blockers")} came back with it, and every one is shown in full below in the runtime's own words. The outcome it reported was "${refusedOutcome ?? "blocked"}".`}
+                  ? "Nothing came back explaining what is missing, which should not happen — a check did not pass and gave no reason. Run the checks again, and treat the list below as incomplete rather than as a clean bill of health."
+                  : `${plural(refusedBlockers.length, "thing", "things")} to fix came back with it, and every one is shown in full below in the words of whoever raised it.`}
               </p>
             </div>
           )}
@@ -687,16 +686,16 @@ export default function LiveDeployScreen() {
           <section aria-labelledby="oa-deploy-gates" className={styles.section}>
             <div className={styles.sectionHead}>
               <h2 className={`oa-h2 ${styles.sectionTitle}`} id="oa-deploy-gates">
-                The three gates
+                The three checks
               </h2>
               <p className="oa-sub">
                 {unheard
-                  ? "Re-derived on every read: the packages gate asks the package store what exists for the current agent versions, the sandbox gate re-runs the suite, and the integrations gate asks the registry now."
+                  ? "Run again every time: whether every agent is built and up to date, whether they have been tested at this version, and whether the tools they need are connected right now."
                   : gates?.origin === "refused"
-                    ? "These are the gates as they were at the instant the go-live was refused — the most specific answer available, and the one that decided it."
+                    ? "These are the checks exactly as they stood the moment going live was turned down — the answer that decided it."
                     : gates?.origin === "activated"
-                      ? "These are the gates that authorised the activation above. They are not a fresh reading; re-check them to see the workforce as it is now."
-                      : "Read on arrival. Each one is judged against the plan below, and each blocks on its own."}
+                      ? "These are the checks that cleared the go-live above. They are not a fresh reading; run them again to see your workforce as it is now."
+                      : "Run when this page opened. Each one is judged against the plan below, and any one of them can hold up going live."}
               </p>
             </div>
 
@@ -709,26 +708,27 @@ export default function LiveDeployScreen() {
                     <HelpCircle size={17} aria-hidden />
                   )}
                   {reading
-                    ? "Reading the three gates…"
+                    ? "Running the three checks…"
                     : "Whether this workforce may go live is not known"}
                 </p>
                 <p>
-                  The three rows stay empty. Showing them as satisfied, or as blocked, before
-                  the runtime has said so would be an answer, and this is the absence of one.
+                  The three rows stay empty. Showing them as passed, or as not ready, before
+                  anything has said so would itself be an answer, and this is the absence of
+                  one.
                 </p>
                 {reading && (
                   <p>
-                    This is slow on purpose. The sandbox gate runs the whole scenario library
-                    and the stress sweep before it can answer, and nothing anywhere caches the
-                    verdict — a cached &ldquo;ready&rdquo; is the one failure that ships a
-                    workforce on evidence gathered before the plan changed.
+                    This is slow on purpose. Testing runs every scenario again before it can
+                    answer, and no earlier result is ever reused — a remembered
+                    &ldquo;ready&rdquo; is the one mistake that puts a workforce live on
+                    evidence gathered before the plan changed.
                   </p>
                 )}
                 {!reading && (
                   <p>
-                    The banner above says which request went unanswered. Until one answers,
-                    this tab cannot tell a workforce that is one press from live apart from
-                    one that three gates are refusing.
+                    The message above says what went unanswered. Until something answers,
+                    this screen cannot tell a workforce that is one press from live apart
+                    from one that all three checks are holding back.
                   </p>
                 )}
               </div>
@@ -744,11 +744,10 @@ export default function LiveDeployScreen() {
 
             {checklist !== null && checklist.activeDeployment !== null && (
               <p className="oa-sub">
-                Plan version {checklist.planVersion} is already live in deployment{" "}
-                <code>{checklist.activeDeployment.deploymentId}</code>, activated by{" "}
+                Version {checklist.planVersion} of this plan is already live — put live by{" "}
                 {checklist.activeDeployment.activatedBy} at{" "}
-                {formatInstant(checklist.activeDeployment.activatedAt)}. Activating again
-                writes nothing while the plan and every agent version still match.
+                {formatInstant(checklist.activeDeployment.activatedAt)}. Going live again
+                changes nothing while the plan and every agent version still match.
               </p>
             )}
 
@@ -770,9 +769,9 @@ export default function LiveDeployScreen() {
                 What this would change
               </h2>
               <p className="oa-sub">
-                The checklist says whether this plan CAN go live; it never said what is live
-                already. These are the same four tags the agent roster uses, reconciled from
-                the deployed plan and the current one in one read.
+                The checks say whether this plan CAN go live; they never said what is live
+                already. These are the same labels your agent list uses, worked out by
+                comparing what is live now against your current plan.
               </p>
             </div>
             <LifecycleList source={lifecycleSource} counts={liveCounts} />
@@ -780,47 +779,49 @@ export default function LiveDeployScreen() {
         </div>
 
         <div className={styles.railPane}>
-          <section className={`oa-card ${styles.railCard}`} aria-label="This checklist">
-            <p className="oa-micro">This checklist</p>
+          <section className={`oa-card ${styles.railCard}`} aria-label="These checks">
+            <p className="oa-micro">These checks</p>
             <div className={styles.railRows}>
               <RailRow
-                label="Verdict"
+                label="Where this stands"
                 value={
                   unheard
                     ? reading
-                      ? "reading…"
+                      ? "checking…"
                       : "not known"
                     : open
-                      ? "ready"
-                      : "blocked"
+                      ? "ready to go live"
+                      : "not ready"
                 }
               />
               <RailRow
-                label="Gates satisfied"
+                label="Checks passed"
                 value={
                   checklist === null ? "—" : `${satisfied} of ${checklist.gates.length}`
                 }
               />
-              <RailRow label="Blockers" value={checklist === null ? "—" : String(blockerCount)} />
+              <RailRow
+                label="Things to fix"
+                value={checklist === null ? "—" : String(blockerCount)}
+              />
               <RailRow
                 label="Plan version"
                 value={checklist === null ? "—" : `v${checklist.planVersion}`}
               />
-              <RailRow label="Runtime mode" value={snapshot?.mode ?? "—"} />
               <RailRow
-                label="Running"
+                label="Live and up to date"
                 value={liveCounts === null ? "—" : String(liveCounts.running)}
               />
               <RailRow
-                label="Drifted"
+                label="Live but out of date"
                 value={liveCounts === null ? "—" : String(liveCounts.drifted)}
               />
               <RailRow
-                label="Planned"
+                label="Waiting to start"
                 value={liveCounts === null ? "—" : String(liveCounts.planned)}
               />
               <RailRow
-                label="Retired"
+                label="Dropped from your plan"
                 value={liveCounts === null ? "—" : String(liveCounts.retired)}
               />
             </div>
@@ -832,12 +833,12 @@ export default function LiveDeployScreen() {
               <p className="oa-sub">
                 {reading
                   ? "Being read now: every dash above is a value this screen has not been given yet."
-                  : "The runtime has not answered, so every dash above is a value this screen does not have — not a zero, and not a gate that passed."}
+                  : "Nothing has answered, so every dash above is a value this screen does not have — not a zero, and not a check that passed."}
               </p>
             ) : (
               !liveKnown && (
                 <p className="oa-sub">
-                  The four lifecycle rows are dashes because a go-live has changed what they
+                  The last four rows are dashes because going live has changed what they
                   describe and nothing has confirmed the new picture yet.
                 </p>
               )
@@ -851,12 +852,12 @@ export default function LiveDeployScreen() {
                 aria-busy={reading}
               >
                 <RefreshCw size={13} aria-hidden className={reading ? "oa-spin" : undefined} />
-                {reading ? "Re-checking…" : "Re-check the gates"}
+                {reading ? "Checking…" : "Run the checks again"}
               </button>
             </div>
             <p className="oa-sub">
-              Takes a moment: the check re-runs the sandbox rather than trusting an old
-              verdict. Nothing on this screen does it on a timer.
+              Takes a moment: your agents are tested again rather than trusting an older
+              result. Nothing on this screen does this on a timer.
             </p>
           </section>
 
@@ -866,16 +867,16 @@ export default function LiveDeployScreen() {
               <strong>{STREAM_WORD[stream.status]}.</strong> {stream.detail}
             </p>
             <p className="oa-sub">
-              The stream refreshes the roster below, never the gates — reading the gates
-              re-proves the whole workforce, and nothing should do that on a signal.
+              Updates refresh your agent list below, never the three checks — running the
+              checks tests your whole workforce again, and nothing should do that on its own.
               {stream.changedAt === null
                 ? ""
                 : ` Last change seen at ${stream.changedAt.toLocaleTimeString()}.`}
             </p>
             {rosterFailure !== null && (
               <p className="oa-sub">
-                The roster did not answer: {rosterFailure} The lifecycle rows fall back to
-                the tags the checklist carried, by agent id.
+                Your agent list did not answer: {rosterFailure} The rows below fall back to
+                what the checks reported, without agent names.
               </p>
             )}
           </section>
@@ -884,20 +885,21 @@ export default function LiveDeployScreen() {
             <p className="oa-micro">What the button does</p>
             <ol className={styles.steps}>
               <li>
-                One <code>POST /api/runtime/activation</code> with the actor you typed. The
-                three gates are re-derived inside that request before anything is written.
+                Sends one request, recorded against the name you type. The three checks run
+                again inside it before anything is switched on.
               </li>
               <li>
-                Triggers first, then agent states, then the deployment record — in that order
-                so an interruption leaves work to finish rather than a record claiming work
-                that never happened.
+                Scheduled work first, then the agents themselves, then the record of the
+                go-live — in that order, so an interruption leaves work to finish rather than
+                a record claiming work that never happened.
               </li>
               <li>
-                A refusal is answered <code>409</code> with the whole checklist. Nothing is
-                written, and this screen shows which gate shut rather than a generic error.
+                If something is not ready you get the whole list back. Nothing is changed,
+                and this screen shows which check is holding things up rather than a generic
+                error.
               </li>
               <li>
-                Activating a plan version that is already live writes nothing at all and says
+                Going live on a version that is already live changes nothing at all and says
                 so, rather than reporting a second go-live.
               </li>
             </ol>
@@ -908,13 +910,13 @@ export default function LiveDeployScreen() {
             <div className={styles.linkRow}>
               <Link href="/app/pipeline" className="oa-btn oa-btn--ghost oa-btn--sm">
                 <Rocket size={13} aria-hidden />
-                Full pipeline pass
+                Import your plan
               </Link>
               <Link
                 href="/app/workspace/agents?live=1"
                 className="oa-btn oa-btn--ghost oa-btn--sm"
               >
-                Live agent roster
+                Your agents
               </Link>
             </div>
           </section>

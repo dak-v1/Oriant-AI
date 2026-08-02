@@ -113,11 +113,11 @@ const TONE_CLASS = {
   degraded: styles.streamDegraded,
 } as const;
 
-/** Which endpoint each `Loaded` came from, in the owner's language. */
+/** What each `Loaded` is CALLED on screen, in the owner's language. */
 const SOURCE_NAMES = {
-  scheduler: "the scheduler",
-  approvals: "the approvals inbox",
-  runs: "the run log",
+  scheduler: "the schedule",
+  approvals: "the approvals queue",
+  runs: "your recent activity",
 } as const;
 
 /** The three runtime reads this screen is assembled from, as one value. */
@@ -342,33 +342,39 @@ export default function LiveWorkspace({
     <main className="oa-page">
       <header className={`oa-between ${styles.head}`}>
         <div className={styles.headTitles}>
-          <p className="oa-eyebrow">Operate · Workspace · live runtime</p>
+          <p className="oa-eyebrow">Operate · Workspace</p>
           <h1 className="oa-h1">
             Your workforce, <span className="oa-serif">live</span>
           </h1>
           <p className="oa-lead">
-            Read from the running agent runtime — the same triggers, approvals and
-            runs the scheduler and the executor are working from. None of it comes
-            from the demo script.
+            Everything here is your own workforce — the same schedules, approvals
+            and runs your agents are working from. None of it is sample data.
           </p>
         </div>
 
         <div className={styles.headActions}>
+          {/* Three answers, not two. An unrecognised mode must not be dressed
+              as the safe one: "practice" is a promise that nothing leaves the
+              building, and this screen may only make it when it knows. */}
           {mode !== null && (
             <span className={styles.modeBadge}>
               <LayoutGrid size={12} aria-hidden />
-              {mode === "live" ? "Live runtime" : `${mode} runtime`}
+              {mode === "live"
+                ? "Actions are real"
+                : mode === "fixture"
+                  ? "Practice mode"
+                  : "Cannot tell whether actions are real"}
             </span>
           )}
           <div className={styles.headMeta}>
             <span className={styles.headStamp}>
-              {stamp === null ? "Server time unknown" : `Server time ${stamp}`}
+              {stamp === null ? "Current time unavailable" : `Now ${stamp}`}
             </span>
             <span className={styles.headZone}>
               Day grouped by {zone.id}
               {zone.ok
                 ? ""
-                : ` (the plan asked for "${zone.requested}", which is not a zone this browser knows)`}
+                : ` (your plan asked for "${zone.requested}", which is not a timezone this browser knows)`}
             </span>
           </div>
           {/* Never `disabled` while it works: disabling the control a keyboard
@@ -388,10 +394,10 @@ export default function LiveWorkspace({
       <div className={styles.headNotes}>
         <p className="oa-sub">
           {phase === "first"
-            ? "Reading the runtime…"
+            ? "Loading…"
             : stamp === null
-              ? "Loaded, but the runtime did not report its own clock."
-              : `Last read at ${stamp}.`}
+              ? "Loaded, but no clock came back with it."
+              : `Last updated ${stamp}.`}
         </p>
 
         {/* The connection's own health, in words.
@@ -422,17 +428,25 @@ export default function LiveWorkspace({
             </p>
             <p style={{ margin: 0 }}>{stale.message}</p>
             <p style={{ margin: 0 }}>
-              The figures below are what the runtime last confirmed
-              {stamp === null ? "" : `, at ${stamp}`} — not what it holds now.
+              The figures below are what was last confirmed
+              {stamp === null ? "" : `, at ${stamp}`} — not what is true now.
             </p>
           </div>
         )}
 
-        {mode !== null && mode !== "live" && (
+        {mode === "fixture" && (
           <p className={styles.footNote}>
-            The runtime is in {mode} mode: reason steps and tool calls are stubbed,
-            so no email is sent and no record is written. Runs, policy decisions,
-            approvals, pauses and resumes are real, and are what this page shows.
+            This workspace is in practice mode: nothing your agents do leaves the
+            building — no email is sent and no record is written anywhere else.
+            Everything else on this page is real: runs, decisions about your rules,
+            approvals, pauses and resumes.
+          </p>
+        )}
+
+        {mode !== null && mode !== "live" && mode !== "fixture" && (
+          <p className={styles.footNote}>
+            This workspace could not say whether what your agents do is real or
+            only practice. Until it can, treat everything here as real.
           </p>
         )}
       </div>
@@ -491,9 +505,9 @@ export default function LiveWorkspace({
       />
 
       <p className={styles.footNote}>
-        Plan {plan.planId} version {plan.planVersion}, approved {plan.approvedAt}.{" "}
+        Plan version {plan.planVersion}, approved {plan.approvedAt}.{" "}
         <Link href="/app/workspace?live=0" className={styles.inlineLink}>
-          Switch to the scripted demo view
+          See the sample workspace instead
         </Link>
         .
       </p>
@@ -502,7 +516,7 @@ export default function LiveWorkspace({
 }
 
 function listSources(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? "the runtime";
+  if (names.length <= 1) return names[0] ?? "this workspace";
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 

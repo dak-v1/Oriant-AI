@@ -33,6 +33,7 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, ClipboardCheck, Clock } from "lucide-react";
 import type { RiskLevel } from "@/lib/plan/types";
+import { operationPhrase } from "@/components/live/approvals/format";
 import { approvalsHref } from "./read-model";
 import type { Directory } from "./read-model";
 import type { ApprovalsSnapshot, Loaded, PendingApprovalRow } from "./runtime-api";
@@ -78,22 +79,22 @@ export default function ApprovalsPreview({
     >
       {approvals.error !== null && (
         <SourceError
-          source="The approvals inbox"
+          source="The approvals queue"
           message={approvals.error}
           retry={onRetry}
         />
       )}
 
       {snapshot === null && approvals.error === null && (
-        <LoadingNote>Reading the approval queue…</LoadingNote>
+        <LoadingNote>Loading the approvals queue…</LoadingNote>
       )}
 
       {snapshot !== null && snapshot.pending.length === 0 && (
         <EmptyNote>
-          Nothing is waiting on a decision. Agents running in{" "}
-          <strong>auto within limits</strong> act without asking while they stay
-          inside their limits, so an empty queue is a normal state rather than a
-          quiet one.
+          Nothing is waiting on a decision. Agents that{" "}
+          <strong>work within the limits you set</strong> act without asking while
+          they stay inside them, so an empty queue is normal rather than
+          suspicious.
         </EmptyNote>
       )}
 
@@ -112,7 +113,9 @@ export default function ApprovalsPreview({
                       {directory.workflowName(approval.agentId, approval.workflowId)}
                     </span>
                     <span className={styles.rowSub}>{approval.reason}</span>
-                    <span className={styles.mono}>{approval.operation}</span>
+                    <span className={styles.rowSub}>
+                      {operationPhrase(approval.operation) ?? approval.operation}
+                    </span>
                     <span className={styles.rowMeta}>
                       <span
                         className={`${styles.risk} ${RISK_CLASS[approval.risk]}`}
@@ -122,7 +125,7 @@ export default function ApprovalsPreview({
                       <Deadline approval={approval} />
                       {approval.breachedLimits.map((limit) => (
                         <span key={limit} className="oa-tag oa-tag--neutral">
-                          limit: {limit}
+                          Limit: {limit}
                         </span>
                       ))}
                     </span>

@@ -110,14 +110,14 @@ interface LoadFailure {
 
 const FAILURE_ADVICE: Record<LoadFailure["kind"], string> = {
   transport:
-    "The browser could not reach the runtime at all. Check that the app is running and that " +
-    "/api/runtime/agents is reachable from here.",
-  http: "The runtime answered, and the answer was a refusal. Its reason is above.",
+    "Your browser could not reach the app at all. Check that it is running and that you are " +
+    "still connected to it.",
+  http: "The app answered, and the answer was a refusal. Its reason is above.",
   malformed:
-    "The runtime answered with a shape this screen does not understand. Nothing was rendered " +
-    "from it on purpose: a half-read roster is worse than none, because you cannot see what is " +
-    "missing from it. This is a mismatch between the roster and /api/runtime/agents.",
-  unknown: "The failure did not identify itself, which is itself worth reporting.",
+    "The answer came back in a form this screen could not read, so nothing was shown from it " +
+    "on purpose: a half-read list of agents is worse than none, because you cannot see what " +
+    "is missing from it.",
+  unknown: "The failure did not say what it was, which is itself worth reporting.",
 };
 
 export default function LiveAgentRoster({ live }: { live: boolean }) {
@@ -197,32 +197,38 @@ export default function LiveAgentRoster({ live }: { live: boolean }) {
     <main className="oa-page">
       <header className={`oa-between ${styles.head}`}>
         <div className={styles.headTitles}>
-          <p className="oa-eyebrow">Operate · Agents · live runtime</p>
+          <p className="oa-eyebrow">Operate · Agents</p>
           <h1 className="oa-h1">
             Agent <span className="oa-serif">roster</span>
           </h1>
           <p className="oa-lead">
-            Every agent on the approved plan, with the state the runtime actually holds for
-            it: what it is doing now, when it next wakes up, what it has done, and the
-            configuration it is running under.
+            Every agent on your approved plan: what it is doing now, when it next wakes up,
+            what it has done, and the settings it is working under.
           </p>
         </div>
 
         <div className={styles.headActions}>
+          {/* Three answers, not two. An unrecognised mode must not be dressed
+              as the safe one: "practice" is a promise that nothing leaves the
+              building, and this screen may only make it when it knows. */}
           {mode !== null && (
             <span className={styles.modeBadge}>
               <LayoutGrid size={12} aria-hidden />
-              {mode === "live" ? "Live runtime" : `${mode} runtime`}
+              {mode === "live"
+                ? "Actions are real"
+                : mode === "fixture"
+                  ? "Practice mode"
+                  : "Cannot tell whether actions are real"}
             </span>
           )}
           <div className={styles.headMeta}>
             <span className={styles.headStamp}>
-              {stamp === null ? "Server time unknown" : `Server time ${stamp} · ${zone.id}`}
+              {stamp === null ? "Current time unavailable" : `Now ${stamp} · ${zone.id}`}
             </span>
             <span className={styles.headZone}>
               {readAt === null
-                ? "Not read yet"
-                : `This tab last read at ${readAt.toLocaleTimeString()}`}
+                ? "Not loaded yet"
+                : `Last updated ${readAt.toLocaleTimeString()}`}
             </span>
           </div>
           <button
@@ -250,27 +256,34 @@ export default function LiveAgentRoster({ live }: { live: boolean }) {
           </span>
           <span className={styles.streamRead}>
             {loading
-              ? "Reading the runtime now."
+              ? "Checking for updates now."
               : roster === null
-                ? "Nothing has been read yet."
-                : "It also re-reads when you come back to this tab, and on the button above."}
+                ? "Nothing has loaded yet."
+                : "It also updates when you come back to this page, and whenever you press Refresh."}
           </span>
         </p>
 
         {!zone.ok && (
           <p className={styles.footNote}>
-            The plan&apos;s org-wide quiet hours name the timezone{" "}
-            <code>{zone.requested}</code>, which this browser does not know, so the server
-            clock above is shown in UTC instead. Each agent&apos;s own times are stamped in
-            its own zone and say which.
+            Your plan&apos;s organisation-wide quiet hours name the timezone{" "}
+            <code>{zone.requested}</code>, which this browser does not know, so the time above
+            is shown in UTC instead. Each agent&apos;s own times are shown in its own timezone
+            and say which.
           </p>
         )}
 
-        {mode !== null && mode !== "live" && (
+        {mode === "fixture" && (
           <p className={styles.footNote}>
-            The runtime is in {mode} mode: reason steps and tool calls are stubbed, so no
-            email is sent and no record is written. States, triggers, runs, approvals,
-            pauses and resumes are real, and are what this page shows.
+            This workspace is in practice mode: nothing your agents do leaves the building — no
+            email is sent and no record is written anywhere else. Everything else on this page
+            is real: states, schedules, runs, approvals, pauses and resumes.
+          </p>
+        )}
+
+        {mode !== null && mode !== "live" && mode !== "fixture" && (
+          <p className={styles.footNote}>
+            This workspace could not say whether what your agents do is real or only practice.
+            Until it can, treat everything here as real.
           </p>
         )}
       </div>
@@ -279,13 +292,16 @@ export default function LiveAgentRoster({ live }: { live: boolean }) {
         <div className={styles.errorBox} role="alert">
           <p className={styles.errorTitle}>
             <AlertTriangle size={15} aria-hidden />
-            {roster === null ? "The roster could not be read" : "This roster is out of date"}
+            {roster === null ? "Your agents could not be loaded" : "This list is out of date"}
           </p>
-          <p className={styles.errorBody}>{error.message}</p>
+          {/* The raw reason, except when the answer was unreadable — there the
+              reason is a field path written for a developer, and the sentence
+              below it is the one an owner can act on. */}
+          {error.kind !== "malformed" && <p className={styles.errorBody}>{error.message}</p>}
           <p className={styles.errorBody}>{FAILURE_ADVICE[error.kind]}</p>
           {roster !== null && (
             <p className={styles.errorBody}>
-              The cards below are what the runtime last confirmed, at{" "}
+              The cards below are what was last confirmed, at{" "}
               {readAt === null ? "an earlier point" : readAt.toLocaleTimeString()}. States may
               have changed since.
             </p>
@@ -305,7 +321,7 @@ export default function LiveAgentRoster({ live }: { live: boolean }) {
       )}
 
       {roster === null && loading && (
-        <div className={styles.roster} aria-busy="true" aria-label="Loading the roster">
+        <div className={styles.roster} aria-busy="true" aria-label="Loading your agents">
           {[0, 1, 2].map((index) => (
             <div key={index} className={`oa-card ${styles.skelCard}`}>
               <div className={styles.skelLine} style={{ width: "38%" }} />
@@ -324,13 +340,13 @@ export default function LiveAgentRoster({ live }: { live: boolean }) {
             <div className={styles.stateBox}>
               <p className={styles.stateTitle}>
                 <Users size={17} aria-hidden />
-                This plan has no agents
+                Your plan has no agents
               </p>
               <p>
-                Plan {roster.planId} version {roster.planVersion} contains no agents, so there
+                Version {roster.planVersion} of your approved plan contains no agents, so there
                 is no workforce to run. Nothing failed and nothing is blocked — there is simply
-                nothing here. Activation refuses a plan in this state at its first gate rather
-                than putting an empty workforce live.
+                nothing here. Going live is refused for a plan in this state rather than putting
+                an empty workforce in front of your customers.
               </p>
             </div>
           ) : (
@@ -351,11 +367,11 @@ export default function LiveAgentRoster({ live }: { live: boolean }) {
           {roster.unplanned.length > 0 && <Unplanned roster={roster} />}
 
           <p className={styles.footNote}>
-            Plan {roster.planId} version {roster.planVersion}, approved {roster.approvedAt}.
+            Plan version {roster.planVersion}, approved {roster.approvedAt}.
             {roster.deployment !== null &&
-              ` Live deployment ${roster.deployment.deploymentId} (plan v${roster.deployment.planVersion}), activated by ${roster.deployment.activatedBy} at ${roster.deployment.activatedAt}.`}{" "}
+              ` Version ${roster.deployment.planVersion} has been live since ${roster.deployment.activatedAt}, put live by ${roster.deployment.activatedBy}.`}{" "}
             <Link href="/app/workspace/agents?live=0" className={styles.inlineLink}>
-              Switch to the scripted roster
+              See the sample agents instead
             </Link>
             .
           </p>
@@ -403,21 +419,21 @@ function NotActivated({ planVersion }: { planVersion: number }) {
           Blocked: none of these agents is live yet
         </p>
         <Link href="/app/deploy" className="oa-btn oa-btn--primary oa-btn--sm">
-          Open activation
+          Open the go-live checks
         </Link>
       </div>
       <p>
-        No triggers are registered for plan version {planVersion}, which means activation has
-        not run. The agents below are real — their roles, modes, limits and tool grants are
-        what the approved plan says — but nothing is scheduled, nothing will fire, and pausing
-        or resuming has nothing to act on. Refreshing will not change that; passing the gate
-        will.
+        Nothing is scheduled for plan version {planVersion}, which means it has never been put
+        live. The agents below are real — their roles, how they work, their limits and their
+        tool permissions are what your approved plan says — but nothing is scheduled, nothing
+        will start, and pausing or resuming has nothing to act on. Refreshing will not change
+        that; going live will.
       </p>
       <p>
-        The gate is <strong>activation</strong>. It checks that every agent is built, that the
-        sandbox passed and that the required integrations are connected, then registers the
-        triggers and flips each agent to active. Any one of the three can be the one holding
-        it up, and the checklist names which.
+        Going live runs three checks first: that every agent is ready, that it passed its test
+        run, and that the connections it needs are in place. Only then is the work scheduled
+        and each agent switched on. Any one of the three can be what is holding it up, and the
+        checklist names which.
       </p>
     </section>
   );
@@ -439,25 +455,26 @@ function Unplanned({ roster }: { roster: RosterView }) {
         <div className={styles.noticeTitle}>
           <Users size={16} className={styles.noticeIcon} aria-hidden />
           <h2 className="oa-h3" id="live-agents-unplanned">
-            Runtime state for agents this plan no longer contains
+            Still running, but no longer in your plan
           </h2>
         </div>
       </div>
       <div className={styles.noticeBody}>
         <p className="oa-sub">
-          These agent ids have a runtime record but no entry in plan {roster.planId} version{" "}
-          {roster.planVersion}. Triggers are frozen at activation, so any that are still
-          enabled will keep firing until the plan is re-activated or the agent is paused.
+          These agents are still set up to run, but version {roster.planVersion} of your plan
+          no longer includes them. Schedules are fixed at the moment a plan goes live, so any
+          that are still switched on will keep running until the plan is put live again or the
+          agent is paused.
         </p>
       </div>
       <div className={styles.list}>
         {roster.unplanned.map((entry) => (
           <div key={entry.agentId} className={styles.row}>
             <div className={styles.rowMain}>
-              <span className={`${styles.rowTitle} ${styles.mono}`}>{entry.agentId}</span>
+              <span className={styles.rowTitle}>Agent &ldquo;{entry.agentId}&rdquo;</span>
               <span className={styles.rowSub}>{entry.detail}</span>
               <span className={styles.rowSub}>
-                Activated at version {entry.agentVersion} · last changed {entry.updatedAt}
+                Went live at version {entry.agentVersion} · last changed {entry.updatedAt}
               </span>
             </div>
             <div className={styles.rowSide}>

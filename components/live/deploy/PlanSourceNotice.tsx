@@ -61,14 +61,13 @@ export default function PlanSourceNotice({
         </span>
         <div className={styles.sourceText}>
           <h2 className={styles.sourceTitle}>
-            Which workforce this would activate is not known yet
+            Which workforce this would put live is not known yet
           </h2>
           <p className={styles.sourceBody}>
-            The runtime has not told this screen whether the plan behind the gates below
-            is the one ingested from your handoff or the demo workforce standing in for
-            it. Until it does, nothing here says which — and the button will not send,
-            because the whole point of this notice is that the two are not
-            interchangeable.
+            Nothing has told this screen yet whether the plan behind the checks below is
+            your own imported plan or the sample workforce standing in for it. Until it
+            does, nothing here says which — and the button will not send, because the whole
+            point of this notice is that the two are not interchangeable.
           </p>
         </div>
       </section>
@@ -89,78 +88,79 @@ export default function PlanSourceNotice({
       <div className={styles.sourceText}>
         <h2 className={styles.sourceTitle}>
           {own
-            ? "This is the workforce ingested from your handoff"
-            : "This is NOT your workforce — the button below would put the demo live"}
+            ? "This is your own workforce, from the plan you imported"
+            : "This is NOT your workforce — the button below would put a sample workforce live"}
         </h2>
 
-        {/* The runtime's sentence, verbatim. It is the one written to explain
-            the fallback — it names which demo is standing in — and the
-            components must not paraphrase it. Shown only when the runtime sent
-            one: it sends none for a real plan, and inventing a reassuring
-            sentence to fill the space is the failure this component exists to
-            prevent. */}
-        {plan.fallbackReason !== null && (
-          <p className={styles.sourceBody}>{plan.fallbackReason}</p>
-        )}
-
-        {/* The qualifier the runtime's instruction needs. "Run a handoff
-            through the pipeline" is true and incomplete: the pipeline's most
-            prominent button runs a stored demo handoff that blocks at Ingest
-            on purpose, so an owner sent there without this sentence presses
-            the one control that cannot replace the demo. Editing the
-            runtime's sentence instead was rejected — see the comment above. */}
+        {/* THE DISCLOSURE, IN THIS SCREEN'S WORDS RATHER THAN THE SERVER'S.
+            The sentence that arrives with a stand-in plan is written for
+            whoever runs the machine — it talks about ingests, handoffs and the
+            pipeline — so it is no longer quoted here. What it is FOR survives
+            whole and at headline size: these are not your agents, and importing
+            your own plan is what replaces them. It is still gated on the server
+            having sent that sentence, because inventing this claim when nobody
+            made it is the failure this component exists to prevent. */}
         {!own && plan.fallbackReason !== null && (
           <p className={styles.sourceBody}>
-            Replacing it means ingesting a <em>real</em> handoff — pasted on the pipeline
-            page, or collected from Role B. The pipeline&apos;s built-in stored-handoff
-            button is a demonstration of the gap report and blocks at Ingest by design;
-            pressing it does not change which workforce this button would activate.
+            Your own plan has not been imported yet, so these are example agents standing
+            in for it. Everything below — the checks, the versions, the counts — describes
+            them and not your business.
+          </p>
+        )}
+
+        {/* Where the replacement actually happens, and the warning that the
+            obvious button there is not it: the example on the import page is a
+            demonstration that stops partway on purpose, so an owner sent there
+            without this sentence presses the one control that cannot replace
+            the sample. */}
+        {!own && plan.fallbackReason !== null && (
+          <p className={styles.sourceBody}>
+            Replacing it means importing a <em>real</em> plan of your own — pasted on the
+            import page, or brought over from your planning step. The example on that page
+            is a demonstration and stops partway by design; running it does not change
+            which workforce this button would put live.
           </p>
         )}
 
         {!own && plan.fallbackReason === null && (
           <p className={styles.sourceBody}>
-            The runtime reports the plan source as{" "}
-            <code>{plan.source}</code>, which this build does not recognise as an
-            ingested workforce, and it sent no explanation with it. Treat the plan
-            below as unidentified rather than as yours.
+            This screen does not recognise where the plan below came from, and nothing
+            explained it. Treat the plan below as unidentified rather than as yours.
           </p>
         )}
 
         {own && (
           <p className={styles.sourceBody}>
-            The gates below are judging this plan, and activating writes a deployment
-            for it. What is already RUNNING can be a different version — that is what
-            the lifecycle tags further down are for.
+            The checks below are judging this plan, and going live records it. What is
+            already RUNNING can be a different version — that is what the labels further
+            down are for.
           </p>
         )}
 
         <div className={styles.sourceFacts}>
           <span className={styles.sourceChip}>
-            <span className={styles.sourceChipLabel}>Plan</span>
-            <span className={styles.sourceChipValue}>{plan.planId}</span>
-          </span>
-          <span className={styles.sourceChip}>
             <span className={styles.sourceChipLabel}>Version</span>
             <span className={styles.sourceChipValue}>v{plan.version}</span>
           </span>
+          {/* The disclosure again, in two words, for somebody who scans chips
+              instead of reading. Never the raw value: an unfamiliar one reads
+              as a label rather than as a warning, which is the opposite of what
+              this chip is for. */}
           <span className={styles.sourceChip}>
-            <span className={styles.sourceChipLabel}>Source</span>
-            <span className={styles.sourceChipValue}>{plan.source}</span>
+            <span className={styles.sourceChipLabel}>Whose workforce</span>
+            <span className={styles.sourceChipValue}>
+              {own ? "yours" : "a sample, not yours"}
+            </span>
           </span>
           {/* What is RUNNING, which is a different question from which plan is
-              being gated — and the gap between them is the whole of the go-live
-              decision. Omitted rather than guessed when the read did not carry
-              it. */}
+              being checked — and the gap between them is the whole of the
+              go-live decision. Omitted rather than guessed when the read did
+              not carry it. */}
           {live !== null && (
             <span className={styles.sourceChip}>
-              <span className={styles.sourceChipLabel}>Deployed now</span>
+              <span className={styles.sourceChipLabel}>Live now</span>
               <span className={styles.sourceChipValue}>
-                {deployed && live.deploymentId !== null
-                  ? live.deploymentId
-                  : deployed
-                    ? "a deployment the runtime did not name"
-                    : "nothing"}
+                {deployed ? "a workforce is live" : "nothing"}
               </span>
             </span>
           )}

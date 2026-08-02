@@ -109,14 +109,13 @@ export default function GapReport({
     <section aria-labelledby="oa-pipe-gaps" className={styles.gapReport}>
       <div className={styles.gapGroupHead}>
         <h2 className={`oa-h2 ${styles.sectionTitle}`} id="oa-pipe-gaps">
-          What the ingest had to assume
+          What had to be assumed
         </h2>
         <p className="oa-sub">
-          Role B&apos;s handoff does not carry everything an enforceable plan needs. Where
-          it is silent the ingest takes the safe answer and records it here, attributed to
-          the agent it affects, with what would replace the guess with a decision. Nothing
-          in this list is a defect in the runtime; every line is a question nobody has been
-          asked yet.
+          Your plan does not carry everything a workable setup needs. Where it is silent the
+          safe answer is taken and recorded here, against the agent it affects, with what
+          would replace the guess with a decision. Nothing in this list is a fault; every
+          line is a question nobody has been asked yet.
         </p>
       </div>
 
@@ -127,11 +126,10 @@ export default function GapReport({
             Whether anything has been assumed here is not known.
           </p>
           <p>
-            The gap report is the ingest&apos;s record, read back from the runtime, and the
-            runtime has not answered. That is not the same as an ingest that assumed
-            nothing, and it is not the same as a server where no pass has run — this list
-            is blank because nobody has been able to ask, and it will stay blank until
-            somebody can.
+            This list is recorded as your plan is read in, and nothing has answered. That is
+            not the same as nothing having been assumed, and it is not the same as nothing
+            having been run here — this list is blank because nobody has been able to ask,
+            and it will stay blank until somebody can.
           </p>
         </div>
       )}
@@ -142,12 +140,12 @@ export default function GapReport({
             <Info size={17} aria-hidden />
             {running
               ? "Nothing had been assumed here when this screen last asked."
-              : "No pass has been run, so nothing has been assumed yet."}
+              : "Nothing has been run, so nothing has been assumed yet."}
           </p>
           <p>
             {running
-              ? "The gap report is produced by the ingest stage, and a pass is in the middle of one right now. Whatever it assumes appears here when the pass answers; until then this list is empty because of a question asked before it started."
-              : "The gap report is produced by the ingest stage. Run a pass and every assumption it makes appears here, grouped by how much it costs you."}
+              ? "This list is produced as a plan is read in, and a run is in the middle of doing that right now. Whatever it assumes appears here when the run answers; until then this list is empty because of a question asked before it started."
+              : "This list is produced as your plan is read in. Bring a plan through and every assumption made about it appears here, grouped by how much it costs you."}
           </p>
         </div>
       )}
@@ -156,14 +154,14 @@ export default function GapReport({
         <div className={styles.stateBox}>
           <p className={styles.stateTitle}>
             <AlertTriangle size={17} aria-hidden />
-            This pass recorded no assumptions at all.
+            This run recorded no assumptions at all.
           </p>
           <p>
-            That is worth a second look rather than a sigh of relief. A Role B handoff
-            carries no operating mode, no limits and no approval owner, so an ingest of one
-            normally records several assumptions — starting with the one that makes every
-            agent <code>draft_only</code>. An empty report usually means the pass did not
-            reach the ingest stage, not that the handoff was complete.
+            That is worth a second look rather than a sigh of relief. A plan carries no
+            operating mode, no limits and no approval owner, so reading one in normally
+            records several assumptions — starting with the one that makes every agent wait
+            for your approval. An empty list usually means the run did not get as far as
+            reading your plan, not that your plan was complete.
           </p>
         </div>
       )}
@@ -196,12 +194,14 @@ export default function GapReport({
                   className={`${styles.gap} ${GROUP_CLASS[severity]}`}
                 >
                   <div className={styles.gapMeta}>
+                    {/* The heading's word, not the raw severity: these lists are
+                        read by scrolling, and a gap that has scrolled away from
+                        its heading must still be legible on its own. */}
                     <span className={`oa-status oa-status--${SEVERITY_PILL[severity]}`}>
-                      {severity}
+                      {SEVERITY_META[severity].title}
                     </span>
-                    <span className={styles.gapCode}>{gap.code}</span>
                     {gap.agentId !== null && (
-                      <span className={styles.mono}>agent {gap.agentId}</span>
+                      <span className={styles.mono}>Agent: {gap.agentId}</span>
                     )}
                   </div>
 
@@ -225,7 +225,7 @@ export default function GapReport({
         <p className="oa-sub">
           {plural(gaps.length, "assumption", "assumptions")} recorded. None of them are
           guesses about what an agent may do unattended — that question has one answer for
-          every agent here, and it is <code>draft_only</code>.
+          every agent here: it waits for your approval.
         </p>
       )}
     </section>

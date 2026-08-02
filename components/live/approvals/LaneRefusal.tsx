@@ -8,18 +8,22 @@
  * fixtures, with no sign of the difference, is the kind of failure that is only
  * discovered when a decision turns out not to have been made.
  *
+ * THE SETTING'S OWN NAME IS NOT PRINTED. `setting` is either "?live=" or an
+ * environment variable's name, and neither is something the owner of a workforce
+ * types, owns or can act on. What they need is the value that was not
+ * understood, what is accepted instead, and a way back — all three of which are
+ * below.
+ *
  * A server component: no state, no effects, nothing to hydrate.
  */
+import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import styles from "./live-approvals.module.css";
 
 export default function LaneRefusal({
-  setting,
   value,
   accepted,
 }: {
-  /** The switch that could not be read — "?live=" or the env var's name. */
-  setting: string;
   value: string;
   /** The forms this build does accept, in the owner's words. */
   accepted: string;
@@ -36,35 +40,35 @@ export default function LaneRefusal({
       <div className={styles.errorBox} role="alert">
         <p className={styles.errorTitle}>
           <AlertTriangle size={15} aria-hidden />
-          This route was asked for a screen that does not exist
+          This address asked for an inbox that does not exist
         </p>
         <p className={styles.errorDetail}>
-          {setting}
-          {value}
+          It asked for <strong>{value === "" ? "(blank)" : value}</strong>, and what is
+          accepted is {accepted}.
         </p>
         <p>
-          Two screens answer this URL: the scripted demo inbox and the live one backed by the agent
-          runtime. Accepted values are {accepted}.
+          Two inboxes answer this address: a set of sample approvals, and your own, which
+          decides real work your agents have paused.
         </p>
         <p>
-          Nothing was rendered instead, on purpose. Falling back to the demo would put scripted
-          cards in front of someone who asked in writing for the live queue, and those cards decide
-          nothing.
+          Nothing was chosen for you, on purpose. Falling back to the samples would put
+          decisions that change nothing in front of someone who asked for their own.
         </p>
       </div>
 
-      <div className={styles.stateBox} style={{ marginTop: 14 }}>
-        <p className={styles.stateTitle}>Where to go from here</p>
-        <ol className={styles.stateSteps}>
-          <li>
-            The scripted demo: <code>/app/workspace/approvals</code>, or{" "}
-            <code>/app/workspace/approvals?live=0</code> if a deployment has switched the default
-            over.
-          </li>
-          <li>
-            The live inbox: <code>/app/workspace/approvals?live=1</code>.
-          </li>
-        </ol>
+      <div className="oa-cluster" style={{ marginTop: 14 }}>
+        <Link
+          href="/app/workspace/approvals?live=1"
+          className="oa-btn oa-btn--primary oa-btn--sm"
+        >
+          Open your approvals
+        </Link>
+        <Link
+          href="/app/workspace/approvals?live=0"
+          className="oa-btn oa-btn--ghost oa-btn--sm"
+        >
+          Open the sample approvals
+        </Link>
       </div>
     </main>
   );

@@ -41,9 +41,18 @@ import Link from "next/link";
 import { AlertTriangle, History, ShieldCheck, Workflow as WorkflowIcon } from "lucide-react";
 import type { Zone } from "@/components/live/workspace/read-model";
 import { approvalsHref } from "@/components/live/workspace/read-model";
+import { operationPhrase } from "@/components/live/approvals/format";
+import { integrationLabel } from "@/components/live/integrations/format";
 import type { AgentView, RunView, WorkflowView } from "./api";
 import { RunStatusPill } from "./pills";
-import { MODE_LABEL, WAITING_FOR, describeQuietHours, workflowNames } from "./read-model";
+import {
+  KIND_LABEL,
+  LIMIT_OP_WORD,
+  MODE_LABEL,
+  WAITING_FOR,
+  describeQuietHours,
+  workflowNames,
+} from "./read-model";
 import styles from "./live-agents.module.css";
 
 export default function AgentDetail({
@@ -111,7 +120,7 @@ function WorkflowRow({ workflow, zone }: { workflow: WorkflowView; zone: Zone })
   const state = !workflow.enabled
     ? { label: "Off in the plan", cls: "neutral" as const }
     : trigger === null
-      ? { label: "No trigger", cls: "failed" as const }
+      ? { label: "Nothing starts it", cls: "failed" as const }
       : trigger.enabled
         ? { label: "Live", cls: "active" as const }
         : { label: "Stood down", cls: "pending" as const };
@@ -127,12 +136,12 @@ function WorkflowRow({ workflow, zone }: { workflow: WorkflowView; zone: Zone })
         <span className={styles.rowTitle}>{workflow.name}</span>
         <span className={styles.rowSub}>{workflow.description}</span>
         <span className={styles.rowSub}>
-          {workflow.label} · <span className={styles.mono}>{workflow.kind}</span>
+          {workflow.label} · {KIND_LABEL[workflow.kind]}
         </span>
         {workflow.enabled && trigger === null && (
           <span className={styles.rowSub}>
-            The plan enables this workflow but no trigger is registered for it, so nothing
-            will ever start it. Re-activating the plan is what registers one.
+            Your plan turns this workflow on, but nothing is set up to start it, so it will
+            never run. Putting the plan live again is what sets that up.
           </span>
         )}
         {trigger !== null && trigger.enabled && next === null && (
@@ -187,8 +196,8 @@ function RunHistory({
 
       {agent.runs.length === 0 ? (
         <p className={styles.emptyNote}>
-          This agent has never started a run. A run appears when one of its triggers fires
-          and the scheduler is turned — either by the poller or by a scheduler pass.
+          This agent has never started a run. One appears here the first time a trigger fires
+          and the work is actually picked up.
         </p>
       ) : (
         <div className={styles.list}>
@@ -229,9 +238,8 @@ function RunRow({
             it. Rendered verbatim rather than recomposed here. */}
         <span className={styles.rowSub}>{run.detail}</span>
         <span className={styles.rowSub}>
-          Started {started ?? "at an instant this browser cannot read"}
-          {ended === null ? " · not finished" : ` · ended ${ended}`} ·{" "}
-          <span className={styles.mono}>{run.runId}</span>
+          Started {started ?? "at a time this browser cannot read"}
+          {ended === null ? " · not finished" : ` · ended ${ended}`}
         </span>
       </div>
 
@@ -266,15 +274,15 @@ function Configuration({
     <section className={styles.section} aria-label={`${agent.name} configuration`}>
       <div className={styles.sectionHead}>
         <h3 className={styles.sectionTitle}>
-          <ShieldCheck size={13} aria-hidden /> Configuration
+          <ShieldCheck size={13} aria-hidden /> Settings
         </h3>
         <span className={styles.emptyNote}>
-          From the approved plan · read-only here
+          From your approved plan · you cannot change them here
         </span>
       </div>
 
       <dl className={styles.configGrid}>
-        <ConfigItem term="Operating mode" value={MODE_LABEL[config.operatingMode]} />
+        <ConfigItem term="How it works" value={MODE_LABEL[config.operatingMode]} />
         <ConfigItem term="Approvals go to" value={config.approvalOwner} />
         <ConfigItem
           term="Escalates after"
@@ -294,22 +302,22 @@ function Configuration({
 
       {quiet !== null && (
         <p className={styles.emptyNote}>
-          Quiet hours are enforced as the union of this window and the plan&apos;s org-wide
-          one — it is quiet if either says quiet, so a narrower agent window does not buy
-          an exemption from the org-wide floor.
+          Quiet hours are this window plus your organisation-wide one, taken together — it is
+          quiet if either says quiet, so a narrower window for one agent does not buy it an
+          exemption.
         </p>
       )}
 
       {/* ── Limits ── */}
       <div className={styles.section}>
-        <h4 className={styles.sectionTitle}>Policy limits</h4>
+        <h4 className={styles.sectionTitle}>Limits</h4>
         {config.limits.length === 0 ? (
           <p className={styles.emptyNote}>
             {config.operatingMode === "auto_within_limits"
-              ? "This agent acts automatically and declares no limits, which the plan validator " +
-                "treats as an error — an automatic agent with no limits has nothing to escalate on."
-              : "No limits declared. Limits gate automatic action, and this agent does not act " +
-                "automatically."}
+              ? "This agent acts on its own but has no limits set, which your plan should not " +
+                "allow — an agent acting on its own with no limits has nothing to stop it."
+              : "No limits set. Limits govern what an agent may do on its own, and this one " +
+                "does not act on its own."}
           </p>
         ) : (
           <div className={styles.list}>
@@ -317,14 +325,13 @@ function Configuration({
               <div key={limit.id} className={styles.row}>
                 <div className={styles.rowMain}>
                   <span className={styles.rowTitle}>
-                    <span className={styles.mono}>{limit.metric}</span> {limit.op}{" "}
-                    {limit.value}
+                    {limit.metric} — {LIMIT_OP_WORD[limit.op]} {limit.value}
                     {limit.unit === null ? "" : ` ${limit.unit}`}
                   </span>
                   <span className={styles.rowSub}>
                     {limit.onBreach === "block"
-                      ? "Over this, the operation is refused outright."
-                      : "Over this, the run pauses and waits for a decision."}
+                      ? "Past this, the action is refused outright."
+                      : "Past this, the run pauses and waits for your decision."}
                   </span>
                 </div>
                 <div className={styles.rowSide}>
@@ -345,20 +352,20 @@ function Configuration({
       {/* ── Always-approve, and the agent's own denies ── */}
       <dl className={styles.configGrid}>
         <OperationList
-          term="Always needs approval"
+          term="Always needs your approval"
           operations={config.alwaysApprove}
-          absent="Nothing is forced to an approval beyond what the operating mode and the limits already require."
+          absent="Nothing extra always needs you, beyond what the way this agent works and its limits already require."
         />
         <OperationList
-          term="Forbidden for this agent"
+          term="This agent may never do"
           operations={config.forbidden}
-          absent="Nothing denied at the agent level."
+          absent="Nothing is blocked for this agent in particular."
           deny
         />
         <OperationList
-          term="Forbidden org-wide"
+          term="No agent may ever do"
           operations={globalForbidden}
-          absent="The plan denies nothing organisation-wide."
+          absent="Your plan blocks nothing organisation-wide."
           deny
         />
       </dl>
@@ -373,15 +380,16 @@ function Configuration({
         </div>
         {config.tools.length === 0 ? (
           <p className={styles.emptyNote}>
-            This agent is granted no tools, so every <code>fetch</code> and <code>act</code>{" "}
-            step it has would be refused at run time.
+            This agent is connected to no tools, so any step that needed one would be refused.
           </p>
         ) : (
           <div className={styles.list}>
             {config.tools.map((grant) => (
               <div key={grant.integrationId} className={styles.toolCard}>
                 <div className={styles.toolHead}>
-                  <span className={styles.toolName}>{grant.integrationId}</span>
+                  <span className={styles.toolName}>
+                    {integrationLabel(grant.integrationId)}
+                  </span>
                   <span
                     className={`oa-status oa-status--${grant.required ? "required" : "optional"}`}
                   >
@@ -391,16 +399,16 @@ function Configuration({
                 <p className={styles.rowSub}>{grant.purpose}</p>
                 <div className={styles.chipList}>
                   {grant.operations.map((operation) => (
-                    <span key={operation} className={`${styles.chip} ${styles.mono}`}>
-                      {operation}
+                    <span key={operation} className={styles.chip}>
+                      {operationPhrase(operation) ?? operation}
                     </span>
                   ))}
                 </div>
                 <p className={styles.emptyNote}>
                   {grant.required
-                    ? "A missing connection here blocks activation."
-                    : "The agent degrades gracefully without this connection."}{" "}
-                  Anything not listed is refused at run time, even if the model asks for it.
+                    ? "Without this connection, the workforce cannot go live."
+                    : "Your plan marks this one optional."}{" "}
+                  Anything not listed here is refused, even if the agent asks for it.
                 </p>
               </div>
             ))}
@@ -409,10 +417,10 @@ function Configuration({
       </div>
 
       <p className={styles.emptyNote}>
-        <AlertTriangle size={12} aria-hidden /> None of this can be edited here. Mode,
-        limits and grants are part of the approved plan; changing one is a plan edit that
-        goes back through approval and re-activation, so that the packages and sandbox
-        gates see it.
+        <AlertTriangle size={12} aria-hidden /> None of this can be changed here. How an agent
+        works, its limits and its tool permissions are part of your approved plan; changing one
+        means editing the plan, approving it again and putting it live again, so the change goes
+        through the same checks.
       </p>
     </section>
   );
@@ -462,9 +470,9 @@ function OperationList({
             {operations.map((operation) => (
               <span
                 key={operation}
-                className={`${styles.chip} ${styles.mono} ${deny ? styles.chipDeny : ""}`}
+                className={`${styles.chip} ${deny ? styles.chipDeny : ""}`}
               >
-                {operation}
+                {operationPhrase(operation) ?? operation}
               </span>
             ))}
           </span>

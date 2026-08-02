@@ -48,6 +48,27 @@ import styles from "./pipeline.module.css";
 
 const DRAFT_ONLY = "draft_only";
 
+/**
+ * A mode as an owner would say it, or the raw value when this build has never
+ * heard of it.
+ *
+ * Deliberately NOT total and deliberately not a refusal. The two modes that
+ * exist today get a sentence; anything else is shown exactly as it arrived,
+ * because an unfamiliar mode is precisely the case where inventing a friendly
+ * phrase would describe something nobody here understands — and the row it sits
+ * on is already flagged "can act". See the module header.
+ */
+function modeLabel(mode: string): string {
+  switch (mode) {
+    case DRAFT_ONLY:
+      return "waits for your approval";
+    case "auto_within_limits":
+      return "works within the limits you set";
+    default:
+      return mode;
+  }
+}
+
 export default function DraftOnlyNotice({
   plan,
   /** False while the runtime has not answered — see the header. */
@@ -91,26 +112,25 @@ export default function DraftOnlyNotice({
       <div className={styles.draftText}>
         <h2 className={styles.draftTitle} id="oa-pipe-draft-title">
           {unexpected
-            ? `Not every agent is draft_only — ${plural(other.length, "agent", "agents")} can act`
-            : "Every agent from this pipeline prepares work and stops"}
+            ? `Not every agent waits for you — ${plural(other.length, "agent", "agents")} can act on its own`
+            : "Every agent here prepares work and waits for you"}
         </h2>
 
         {unexpected ? (
           <p className={styles.draftBody}>
-            The ingest is supposed to make every agent <code>draft_only</code>, because
-            Role B&apos;s handoff carries no approval boundaries and that is the only mode
-            that is correct under ignorance. The pass below did not do that. Until it is
-            explained, treat this workforce as capable of acting unattended and do not
-            demonstrate it as one that always asks.
+            Every agent is supposed to wait for your approval, because your plan carries no
+            approval limits and waiting is the only safe assumption when nobody has said
+            otherwise. The run below did not do that. Until it is explained, treat this
+            workforce as able to act unattended, and do not present it as one that always
+            asks.
           </p>
         ) : (
           <p className={styles.draftBody}>
-            Nothing here acts on its own. Role B&apos;s handoff carries no approval
-            boundaries at all — no operating mode, no limits, no owner — so the ingest
-            assigns <code>draft_only</code> to every agent and records the assumption in
-            the gap report below. A <code>draft_only</code> agent drafts the work and
-            raises an approval; a person decides. Writes are granted so the agent is
-            useful, and the runtime pauses before every one of them.
+            Nothing here acts on its own. Your plan carries no approval limits at all — no
+            operating mode, no spending limits, no owner — so every agent is set to wait for
+            your approval, and that assumption is recorded in the list below. Such an agent
+            drafts the work and asks; a person decides. It is allowed to make changes so
+            that it is useful, and it pauses before every one of them.
           </p>
         )}
 
@@ -124,11 +144,12 @@ export default function DraftOnlyNotice({
                   className={`${styles.modeChip} ${isDraft ? "" : styles.modeChipOther}`}
                 >
                   <span className={styles.modeName}>{agent.name}</span>
-                  {/* The mode as the runtime wrote it. A mode this build has
-                      never heard of must read as "not draft_only", which is why
-                      the comparison is by value and the string is shown raw. */}
-                  <span className={styles.modeValue}>{agent.operatingMode}</span>
-                  {!isDraft && <span>can act</span>}
+                  {/* The comparison is still by value against the raw mode — a
+                      mode this build has never heard of must read as NOT
+                      waiting for approval — and `modeLabel` only changes how the
+                      answer is worded, never what counts as one. */}
+                  <span className={styles.modeValue}>{modeLabel(agent.operatingMode)}</span>
+                  {!isDraft && <span>can act on its own</span>}
                 </li>
               );
             })}
@@ -137,17 +158,17 @@ export default function DraftOnlyNotice({
 
         {agents.length === 0 && known && !running && (
           <p className={styles.draftBody}>
-            No pass has produced a plan yet, so there are no agents to list. The sentence
-            above is what the ingest will do, not a report of what it did.
+            No run has produced a plan yet, so there are no agents to list. The sentence
+            above is what will happen, not a report of what did.
           </p>
         )}
 
         {agents.length === 0 && known && running && (
           <p className={styles.draftBody}>
-            No pass had produced a plan here when this screen last asked, and the one in
-            flight has not answered, so there is nothing to list yet. The sentence above is
-            what the ingest is doing to the agents it is reading right now, and it is the
-            reason this list will be safe to read when it arrives.
+            No run had produced a plan here when this screen last asked, and the one under
+            way has not answered, so there is nothing to list yet. The sentence above is
+            what is being done to the agents being read right now, and it is the reason this
+            list will be safe to read when it arrives.
           </p>
         )}
 
@@ -155,10 +176,10 @@ export default function DraftOnlyNotice({
           <p className={`${styles.draftBody} ${styles.draftUnknown}`}>
             <HelpCircle size={14} aria-hidden />
             <span>
-              Whether a pass has produced a plan here is not known — the runtime has not
-              answered, so there is no list to show and no basis for saying there is
-              nothing to list. The sentence above is what the ingest does to every agent it
-              takes in, and it holds whether or not this server has ever run one.
+              Whether a run has produced a plan here is not known — nothing has answered, so
+              there is no list to show and no basis for saying there is nothing to list. The
+              sentence above is what happens to every agent that comes in, and it holds
+              whether or not anything has ever been run here.
             </span>
           </p>
         )}

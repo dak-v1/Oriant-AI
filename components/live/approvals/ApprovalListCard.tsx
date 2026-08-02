@@ -116,14 +116,16 @@ function ApprovalListCard({
         {item.reason}
       </p>
 
-      <p className={styles.opLine} title={`${item.proposed.operation} · ${item.proposed.integrationId}`}>
-        {item.proposed.operation} · {action.integration}
+      {/* The exact action alongside the plain sentence above it. The sentence is a
+          translation and can be missing; this is what will actually run. */}
+      <p className={styles.opLine}>
+        {action.integration} · {item.proposed.operation}
       </p>
 
       {!action.named && (
         <span className={styles.unnamedOp}>
           <ShieldAlert size={12} aria-hidden />
-          No plain-language description for this operation — read the arguments before deciding.
+          There is no plain description of this action — read its details before deciding.
         </span>
       )}
 

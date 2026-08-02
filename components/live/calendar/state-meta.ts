@@ -78,7 +78,7 @@ export const STATE_META: Record<CalendarEventState, StateMeta> = {
     borderStyle: "solid",
     pressing: false,
     description:
-      "The next firing the scheduler is holding for this workflow. This instant is stored, not worked out here.",
+      "The next time this workflow is due to run. This is the time being held for it, not one worked out on this page.",
   },
   projected: {
     label: "Projected",
@@ -89,7 +89,7 @@ export const STATE_META: Record<CalendarEventState, StateMeta> = {
     borderStyle: "dashed",
     pressing: false,
     description:
-      "A later occurrence worked out from the schedule the workflow was activated with. It happens only if the agent stays live and something turns the scheduler.",
+      "A later run worked out from the schedule this workflow went live with. It only happens if the agent stays live and the schedule keeps running.",
   },
   running: {
     label: "Running",
@@ -133,7 +133,7 @@ export const STATE_META: Record<CalendarEventState, StateMeta> = {
     description: "A run that ended in failure. The reason is on the event.",
   },
   refused: {
-    label: "Refused by policy",
+    label: "Blocked by your rules",
     icon: Ban,
     fg: "var(--oa-red-ink)",
     bg: "var(--oa-surface)",
@@ -141,7 +141,7 @@ export const STATE_META: Record<CalendarEventState, StateMeta> = {
     borderStyle: "solid",
     pressing: false,
     description:
-      "Policy stopped the operation and ended the run. The guardrail worked; the workflow still did not happen.",
+      "Your rules stopped the action and ended the run. The guardrail worked; the workflow still did not happen.",
   },
   cancelled: {
     label: "Cancelled",
@@ -162,7 +162,7 @@ export const STATE_META: Record<CalendarEventState, StateMeta> = {
     borderStyle: "solid",
     pressing: false,
     description:
-      "An approval waiting on you, shown at its deadline — created plus the agent's escalateAfterMins.",
+      "An approval waiting on you, shown at the time it needs to be decided by.",
   },
   overdue: {
     label: "Overdue",
@@ -172,7 +172,8 @@ export const STATE_META: Record<CalendarEventState, StateMeta> = {
     border: "var(--oa-amber-border)",
     borderStyle: "solid",
     pressing: true,
-    description: "An approval past its deadline. The runtime judged this, not the browser.",
+    description:
+      "An approval past its deadline. This was judged where your agents run, not in your browser.",
   },
 };
 
@@ -204,7 +205,7 @@ export const KIND_META: Record<CalendarEventKind, KindMeta> = {
   scheduled: {
     label: "Going to happen",
     tag: "Schedule",
-    source: "Registered triggers, at the time they are due to fire.",
+    source: "Scheduled workflows, at the time they are next due.",
     states: ["scheduled", "projected"],
   },
   run: {
@@ -216,7 +217,7 @@ export const KIND_META: Record<CalendarEventKind, KindMeta> = {
   approval: {
     label: "Waiting on you",
     tag: "Approval",
-    source: "Pending approvals, at the deadline they must be decided by.",
+    source: "Decisions waiting on you, at the time they must be decided by.",
     states: ["awaiting_decision", "overdue"],
   },
 };

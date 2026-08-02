@@ -121,9 +121,32 @@ const BUILD_POLL_MS = 2_000;
 /** The connection, in one word, before the sentence explaining it. */
 const STREAM_WORD = {
   connecting: "Connecting",
-  live: "Live",
+  live: "Updating automatically",
   reconnecting: "Reconnecting",
-  unsupported: "Not live",
+  unsupported: "Manual refresh",
+} satisfies Record<RuntimeEventsStatus, string>;
+
+/**
+ * What each connection state means for the person reading the page.
+ *
+ * The hook's own `detail` sentence is NOT rendered here. It is written in the
+ * vocabulary of the transport that produced it, and this screen is the one the
+ * owner reads; what survives is its meaning — whether the page keeps itself up
+ * to date, and what to do when it does not. `unsupported` in particular must
+ * keep saying that what is on screen can be behind, because a page that is
+ * quietly stale is the failure this line exists to prevent.
+ */
+const STREAM_MEANING = {
+  connecting:
+    "Setting up automatic updates. Until that finishes, press Refresh to be sure you " +
+    "are looking at the latest.",
+  live: "This page updates itself when something in your workspace changes.",
+  reconnecting:
+    "The connection dropped and is being set up again, so what you are looking at may " +
+    "be behind. Press Refresh for the latest.",
+  unsupported:
+    "This page is not being updated automatically, so what you are looking at can be " +
+    "out of date. Press Refresh to see anything newer.",
 } satisfies Record<RuntimeEventsStatus, string>;
 
 /**
@@ -145,48 +168,47 @@ interface Failure {
 
 const FAILURE_TITLE = {
   read: {
-    refused: "The runtime would not report what it has built",
-    unreachable: "The runtime could not be reached",
-    malformed: "The build status came back in a shape this screen does not understand",
+    refused: "This page could not load what has been built",
+    unreachable: "The app could not be reached",
+    malformed: "The answer came back in a form this page does not understand",
   },
   run: {
-    refused: "The runtime refused the build",
-    unreachable: "The build request never got an answer",
-    malformed: "The build answered in a shape this screen does not understand",
+    refused: "The build was turned down",
+    unreachable: "The build never came back with an answer",
+    malformed: "The build replied in a form this page does not understand",
   },
 } satisfies Record<FailurePhase, Record<ApiFailure["kind"], string>>;
 
 const FAILURE_ADVICE = {
   read: {
     refused:
-      "This was a read, which builds nothing and changes nothing — so it is not a report " +
-      "about the workforce, it is this screen failing to ask. What is built, and for which " +
-      "plan, is unknown until the read succeeds. The runtime's own sentence is above.",
+      "This was only a check — it built nothing and changed nothing — so it is not a " +
+      "report about your workforce, it is this page failing to ask. What is built, and for " +
+      "which plan, is unknown until it loads. The exact wording that came back is above.",
     unreachable:
-      "Nothing was sent but the question, and the answer never arrived. This screen " +
-      "therefore knows nothing about this runtime — not that it is empty, not that nothing " +
-      "is built. Check that the app is running and that /api/runtime/build is reachable " +
-      "from this machine, then try again.",
+      "Only the question went out, and no answer came back. So this page knows nothing " +
+      "about your workforce — not that it is empty, not that nothing is built. Check that " +
+      "the app is running and reachable from this computer, then try again.",
     malformed:
-      "Nothing was rendered from it on purpose: a partly-read status would be missing " +
-      "exactly the failure you cannot see is missing. This is a mismatch between this " +
-      "screen and /api/runtime/build, and it leaves the state of the packages unread rather " +
-      "than known to be fine.",
+      "Nothing was shown from it on purpose: a half-read answer would be missing exactly " +
+      "the failure you would have no way of noticing was missing. This leaves the state of " +
+      "your agents unread, rather than known to be fine.",
   },
   run: {
     refused:
-      "Do not read this as “nothing was built”. The Factory stores each package as it " +
-      "finishes, so a request refused part-way can still have left some of them behind. The " +
-      "read that follows this failure is the only thing that says what is actually stored.",
+      "Do not read this as “nothing was built”. Each agent is saved the moment it " +
+      "finishes, so a build turned down part-way through can still have left some agents " +
+      "built. The refresh that follows this message is the only thing that says what is " +
+      "actually there now.",
     unreachable:
-      "The browser never got an answer, so nothing here knows whether the build ran. A " +
-      "build that landed and lost its reply has still compiled and stored packages. Check " +
-      "that the app is running, then read the cards below rather than pressing Build again " +
-      "on the assumption that nothing happened.",
+      "Your browser never got an answer, so nothing here knows whether the build ran. A " +
+      "build that arrived and lost its reply has still built and saved agents. Check that " +
+      "the app is running, then read the cards below rather than pressing Build again on " +
+      "the assumption that nothing happened.",
     malformed:
-      "The request itself landed, so treat this as a build whose result is unknown rather " +
-      "than one that did not happen. Nothing was rendered from the reply on purpose: a " +
-      "partly-read report would be missing exactly the agent that failed.",
+      "The request itself arrived, so treat this as a build whose result is unknown rather " +
+      "than one that never happened. Nothing was shown from the reply on purpose: a " +
+      "half-read report would be missing exactly the agent that failed.",
   },
 } satisfies Record<FailurePhase, Record<ApiFailure["kind"], string>>;
 
@@ -476,31 +498,41 @@ export default function AgentFactoryScreen() {
     <main className="oa-page">
       <header className={`oa-between ${styles.head}`}>
         <div className={styles.headTitles}>
-          <p className="oa-eyebrow">Runtime · Agent Factory</p>
+          <p className="oa-eyebrow">Build</p>
           <h1 className="oa-h1">
             Agent <span className="oa-serif">Factory</span>
           </h1>
           <p className="oa-lead">
-            One card per agent in the plan this runtime holds. There is no simulation on
-            this page: every state, log line, checksum and failure below came from{" "}
-            <code>/api/runtime/build</code>.
+            One card for every agent in your plan. Everything below — each status, each log
+            line, each failure — is what the build actually did. Nothing on this page is
+            made up.
           </p>
           <div className={styles.headTags}>
             {view === null ? (
-              <span className="oa-tag oa-tag--neutral">Runtime mode unknown</span>
+              <span className="oa-tag oa-tag--neutral">
+                Not yet known whether these agents can act for real
+              </span>
             ) : view.mode === "live" ? (
-              <span className="oa-tag oa-tag--amber">Live runtime · calls are real</span>
+              <span className="oa-tag oa-tag--amber">
+                Connected to your real tools — what these agents do, they really do
+              </span>
             ) : view.mode === "fixture" ? (
-              <span className="oa-tag oa-tag--teal">Fixture runtime · tools stubbed</span>
+              <span className="oa-tag oa-tag--teal">
+                Sample tools — nothing these agents do leaves this workspace
+              </span>
             ) : (
-              <span className="oa-tag oa-tag--neutral">Runtime mode “{view.mode}”</span>
+              /* An unrecognised word must not be read as the safe one, so this
+                 says the cautious thing rather than naming the word. */
+              <span className="oa-tag oa-tag--amber">
+                Unrecognised setup — treat what these agents do as real
+              </span>
             )}
             {view !== null &&
               (view.ready ? (
-                <span className="oa-tag oa-tag--teal">Every agent has a current package</span>
+                <span className="oa-tag oa-tag--teal">Every agent is built and ready</span>
               ) : (
                 <span className="oa-tag oa-tag--amber">
-                  {plural(view.missing.length, "agent", "agents")} without a current package
+                  {plural(view.missing.length, "agent", "agents")} not ready yet
                 </span>
               ))}
           </div>
@@ -519,7 +551,7 @@ export default function AgentFactoryScreen() {
               ) : (
                 <Hammer size={15} aria-hidden />
               )}
-              {building ? "Building…" : force ? "Rebuild every agent" : "Build the plan"}
+              {building ? "Building…" : force ? "Rebuild every agent" : "Build agents"}
             </button>
             <button
               type="button"
@@ -539,12 +571,13 @@ export default function AgentFactoryScreen() {
               disabled={building}
             />
             <span>
-              Rebuild agents whose stored package is already current
-              <span className="oa-micro"> — off, the Factory skips them</span>
+              Rebuild agents that are already up to date
+              <span className="oa-micro"> — normally these are left alone</span>
             </span>
           </label>
           <p className="oa-micro">
-            Building writes packages Activation gates on. Nothing here builds on its own.
+            Building is what makes an agent ready to go live. Nothing is built unless you
+            press the button.
           </p>
         </div>
       </header>
@@ -564,17 +597,18 @@ export default function AgentFactoryScreen() {
           <StreamIcon status={stream.status} />
           <span className={styles.streamWord}>{STREAM_WORD[stream.status]}</span>
           <span className={styles.streamDetail}>
-            {stream.detail} Builds themselves are not pushed by anything: a build started
-            elsewhere reaches this page when you come back to this tab, when you press
-            Refresh, or when a go-live moves one of the topics this screen listens to.
+            {STREAM_MEANING[stream.status]} Builds are the one exception either way: a
+            build started somewhere else never appears here by itself — it shows up when
+            you come back to this page, when you press Refresh, or when something goes
+            live.
           </span>
         </span>
         <span className={styles.streamRead}>
           {reading
-            ? "Reading now."
+            ? "Checking now."
             : readAt === null
-              ? "Nothing has been read yet."
-              : `Last read at ${readAt.toLocaleTimeString()}.`}
+              ? "Nothing has loaded yet."
+              : `Last updated at ${readAt.toLocaleTimeString()}.`}
         </span>
       </p>
 
@@ -583,27 +617,27 @@ export default function AgentFactoryScreen() {
           are the permanent record of what one build did, and a read of the store
           is a different fact rather than a newer version of this one. */}
       {report !== null && (
-        <section className={`oa-card ${styles.reportBox}`} aria-label="The last build this tab ran">
+        <section className={`oa-card ${styles.reportBox}`} aria-label="The last build you ran here">
           <p className={styles.reportTitle}>
             <Boxes size={16} aria-hidden />
-            The last build this tab ran
+            The last build you ran here
           </p>
           <div className={styles.reportGrid}>
             <ReportStat label="Built" value={String(report.built)} />
-            <ReportStat label="Skipped" value={String(report.skipped)} />
+            <ReportStat label="Already up to date" value={String(report.skipped)} />
             <ReportStat label="Failed" value={String(report.failed)} />
-            <ReportStat label="Plan ready" value={report.ready ? "yes" : "no"} />
+            <ReportStat label="Ready to go live" value={report.ready ? "Yes" : "No"} />
           </div>
           <p className={styles.reportBody}>
             {report.jobs.length === 0
               ? agents.length > 0
                 ? PLAN_REFUSED_NOTE
-                : "The runtime reported no job rows, and the plan it is holding has no agents in it. There was nothing to compile."
+                : "Nothing was built, and your plan has no agents in it — so there was nothing to build."
               : report.failed > 0
-                ? `${plural(report.failed, "agent", "agents")} failed to build. Each one carries the runtime's own reason on its card; an agent that failed has no current package and cannot be activated.`
+                ? `${plural(report.failed, "agent", "agents")} failed to build. Each card below says why. An agent that failed is not built and cannot go live.`
                 : report.built === 0 && report.skipped > 0
-                  ? "Nothing needed building: every stored package already matched its spec, so the Factory reused them. Tick the box above to compile them again anyway."
-                  : "Every job in this build reported a green outcome. What is stored for each agent is on its card below."}
+                  ? "Nothing needed building — every agent already matched its settings, so they were left as they were. Tick the box above to build them again anyway."
+                  : "Every agent in this build finished cleanly. What each one ended up with is on its card below."}
           </p>
         </section>
       )}
@@ -612,13 +646,12 @@ export default function AgentFactoryScreen() {
         <div className={styles.warnBox} role="alert">
           <p className={styles.boxTitle}>
             <AlertTriangle size={16} aria-hidden />
-            A build was sent from this tab and its reply was lost
+            A build was started here and we never heard how it ended
           </p>
           <p>
-            The Factory stores each package as it finishes, so that build may have compiled
-            some or all of this plan. Nothing below is a report on it — the cards are
-            whatever the job store held when it was last read, which may have been before
-            that build finished writing.
+            Each agent is saved the moment it finishes, so that build may have built some
+            or all of your workforce. Nothing below is a report on it — the cards show what
+            was last loaded, which may have been before that build finished.
           </p>
         </div>
       )}
@@ -639,18 +672,20 @@ export default function AgentFactoryScreen() {
         <div className={styles.errorBox} role="alert">
           <p className={styles.boxTitle}>
             <AlertTriangle size={16} aria-hidden />
-            {view !== null ? "This view is out of date" : FAILURE_TITLE.read[readFailure.kind]}
+            {view !== null
+              ? "What you are seeing may be out of date"
+              : FAILURE_TITLE.read[readFailure.kind]}
           </p>
           <p className={styles.boxDetail}>{readFailure.message}</p>
           {readFailure.hint !== null && <p>{readFailure.hint}</p>}
           <p>{FAILURE_ADVICE.read[readFailure.kind]}</p>
           {view !== null && (
             <p>
-              The cards below are what the runtime last confirmed
+              The cards below are what was last confirmed
               {readAt === null ? "" : `, at ${readAt.toLocaleTimeString()}`}. An agent may
-              have been built or edited since, and this screen would not know. They are kept
-              on purpose: an empty page would read as &ldquo;nothing is built and nothing is
-              wrong&rdquo;.
+              have been built or changed since, and this page would not know. They are kept
+              on screen on purpose: a blank page would read as &ldquo;nothing is built and
+              nothing is wrong&rdquo;.
             </p>
           )}
           <div>
@@ -679,19 +714,19 @@ export default function AgentFactoryScreen() {
               <HelpCircle size={17} aria-hidden />
             )}
             {reading
-              ? "Reading the plan and everything built for it…"
-              : "What this runtime has built is not known"}
+              ? "Loading your plan and everything built for it…"
+              : "What has been built is not known"}
           </p>
           <p>
-            No cards are shown, on purpose. An empty page here would say this plan has no
-            agents and nothing is built, and this is the absence of an answer rather than
-            an answer.
+            No cards are shown, on purpose. A blank page here would say your plan has no
+            agents and nothing is built — and that is not what happened. Nothing has
+            answered yet, which is a different thing entirely.
           </p>
           {!reading && (
             <p>
-              A workforce may be fully built on this server, or nothing may ever have been
-              compiled. The banner above says which request went unanswered, and until one
-              answers, nothing on this tab can tell the two apart.
+              Your workforce may be fully built, or nothing may ever have been built. The
+              message above says what went unanswered, and until something answers, this
+              page cannot tell the two apart.
             </p>
           )}
         </div>
@@ -699,16 +734,16 @@ export default function AgentFactoryScreen() {
         <div className={styles.stateBox}>
           <p className={styles.boxTitle}>
             <Info size={17} aria-hidden />
-            This plan contains no agents
+            Your plan has no agents in it
           </p>
           <p>
-            The runtime answered, and the plan it is holding — <code>{view?.planId}</code>,
-            version {view?.planVersion} — has nothing in it to compile. This is not a build
-            failure; there is simply no workforce here yet.
+            Your plan loaded without a problem — version {view?.planVersion} — and there is
+            nothing in it to build. This is not a build failure: there is simply no
+            workforce here yet.
           </p>
           <div>
             <Link href="/app/pipeline" className="oa-btn oa-btn--soft oa-btn--sm">
-              Ingest a handoff
+              Import your plan
               <ArrowRight size={13} aria-hidden />
             </Link>
           </div>
@@ -718,12 +753,12 @@ export default function AgentFactoryScreen() {
           {/* ── The mock's overview strip, carrying the store's real coverage ── */}
           <section
             className={`oa-card oa-card--flat ${ui.overview}`}
-            aria-label="Package coverage for this plan"
+            aria-label="How much of your workforce is built"
           >
             <div className={ui.overviewMeta}>
-              <span className="oa-micro">Plan {view?.planId}</span>
+              <span className="oa-micro">Your workforce</span>
               <strong className={ui.overviewCount}>
-                {withPackage} of {agents.length} agents have a current package
+                {withPackage} of {agents.length} agents are built and ready
               </strong>
             </div>
             <div
@@ -732,7 +767,7 @@ export default function AgentFactoryScreen() {
               aria-valuenow={coveragePct}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label="Share of agents with a current, validated package"
+              aria-label="Share of agents built and ready"
             >
               <span style={{ width: `${coveragePct}%` }} />
             </div>
@@ -740,14 +775,14 @@ export default function AgentFactoryScreen() {
               {coveragePct}%
             </span>
             <p className={ui.overviewNote}>
-              Per-agent bars are stage-based — the runtime reports states, not percentages,
-              so each state sits at a fixed position: queued 5% · generating 40% ·
-              validating 75% · done 100%. A failed bar stays where the build died.
+              Each agent&apos;s own bar marks the step it reached — waiting, building,
+              checking, done — rather than a measured percentage. A bar on an agent that
+              failed stops at the step the build got to.
             </p>
           </section>
 
           {/* ── The mock's job grid, one card per agent in the plan's order ── */}
-          <section className={ui.grid} aria-label="Agent build jobs">
+          <section className={ui.grid} aria-label="Agents in your plan">
             {agents.map((agent, index) => {
               const job = jobsByAgent.get(agent.id) ?? null;
               return (
@@ -774,19 +809,24 @@ export default function AgentFactoryScreen() {
       )}
 
       {strays.length > 0 && (
-        <section className={styles.straySection} aria-label="Jobs for agents outside this plan">
+        <section
+          className={styles.straySection}
+          aria-label="Builds for agents that are no longer in your plan"
+        >
           <h2 className={`oa-h2 ${styles.sectionTitle}`}>
-            Jobs for agents this plan no longer contains
+            Builds for agents that are no longer in your plan
           </h2>
           <p className="oa-sub">
-            The store keeps every job recorded against this plan id, and these belong to
-            agent ids the current plan does not list. They are shown rather than dropped:
-            each one is a real record of real work, and hiding them is how a workforce
-            comes to look fully built when part of what was built is no longer planned.
+            These were built for this workforce earlier, and your plan does not list them
+            any more. They are shown rather than hidden: each one is a real record of real
+            work, and hiding them is how a workforce comes to look fully built when part of
+            what was built is no longer planned.
           </p>
           <ul className={styles.strayList}>
             {strays.map((job) => (
               <li key={job.jobId} className={styles.strayRow}>
+                {/* The plan no longer carries these agents, so their own name is
+                    gone with it and the identifier is the only handle left. */}
                 <code className={styles.mono}>{job.agentId}</code>
                 <span className={`oa-status oa-status--${STATUS_META[job.status].cls}`}>
                   {STATUS_META[job.status].label}
@@ -820,11 +860,10 @@ export default function AgentFactoryScreen() {
  * better than either inventing a cause or leaving four zeros unexplained.
  */
 const PLAN_REFUSED_NOTE =
-  "The runtime built nothing and returned no job rows at all. That is what the Factory " +
-  "answers when the plan itself fails the plan contract: it refuses the whole plan in " +
-  "front of the build rather than compiling agents out of one the validator has already " +
-  "judged unrunnable. This endpoint does not carry those errors, so the reasons are not " +
-  "on this screen — the validate stage of the pass reports them.";
+  "Nothing was built, and no agent was even attempted. That is what happens when the plan " +
+  "itself does not pass its checks: the whole plan is turned down before the build starts, " +
+  "rather than building agents out of a plan already judged unworkable. The reasons are " +
+  "not on this page — they are listed where your plan is checked.";
 
 function StreamIcon({ status }: { status: RuntimeEventsStatus }) {
   if (status === "live") return <Radio size={14} aria-hidden />;

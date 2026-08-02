@@ -25,8 +25,8 @@ export type { LaneInput };
 
 const SURFACE = {
   envVar: CALENDAR_LANE_ENV,
-  liveLabel: "the live calendar",
-  demoLabel: "the scripted calendar",
+  liveLabel: "your own calendar",
+  demoLabel: "the sample calendar",
 } as const;
 
 export function resolveCalendarLane(input: LaneInput): CalendarLane {

@@ -56,6 +56,16 @@
  * the paragraphs above describe. Both doors now call the one function, and verify
  * M7-7 drives both and requires the sweeps they report to match.
  *
+ * THE POST BODY NOW NAMES ITS OWN PLAN AND CARRIES THE SWEEP'S ROWS. Both were
+ * already on `SandboxVerdict` and both were dropped on the way out, and the two
+ * omissions cost the same thing: a caller could not tell what it was holding. A
+ * bare `ready: true` cannot say which workforce it is about, and a sweep reduced
+ * to three numbers cannot say whether `passed < total` means a guardrail leaked
+ * or means the sweep never walked that boundary — a distinction
+ * lib/runtime/sandbox/smoke-stress.ts creates on purpose and this body used to
+ * erase. Both additions are fields, not changes: every field this response
+ * carried before it carries still, in the same shape.
+ *
  * NOTHING HERE MAKES THE GATE EASIER TO OPEN. `runSuite` still treats an agent
  * with no scenarios as not ready and still refuses a verdict with no sweep, so a
  * plan generation cannot cover — no enabled workflow, or no agents at all —
@@ -173,6 +183,17 @@ export async function POST(request: Request) {
   const verdict = await runSuite(suite, plan, { ...deps, stress });
 
   return NextResponse.json({
+    /* ── WHICH workforce this verdict is about ──
+       `SandboxVerdict` has carried these two fields since M3 and this body
+       dropped them, which left every caller holding a verdict it could not
+       attribute. The GET above publishes `planId`/`planVersion` for the library;
+       a caller that read the library, POSTed, and got back a bare `ready: true`
+       had to ASSUME the two requests straddled no ingest — the same assumption
+       the "one plan per verdict" comment above refuses to make on the server
+       side. A green verdict that cannot name its own workforce is precisely the
+       substitution this file's header is about, so it names it. */
+    planId: verdict.planId,
+    planVersion: verdict.planVersion,
     ready: verdict.ready,
     total: verdict.total,
     passed: verdict.passed,
@@ -184,7 +205,22 @@ export async function POST(request: Request) {
     blockers: verdict.blockers,
     byAgent: verdict.byAgent,
     stress: verdict.stress
-      ? { total: verdict.stress.total, passed: verdict.stress.passed, passRate: verdict.stress.passRate }
+      ? {
+          total: verdict.stress.total,
+          passed: verdict.stress.passed,
+          passRate: verdict.stress.passRate,
+          /* ── The sweep's own rows, which this body used to drop ──
+             lib/runtime/sandbox/smoke-stress.ts reports a sweep that could not
+             walk the whole space as `cases` whose ids begin `coverage-`, and its
+             header names this response as the surface where that reporting still
+             did not arrive: three numbers cannot tell a guardrail that does not
+             hold apart from a boundary nobody crossed. Both drag `passed` below
+             `total` and both shut the gate, but only one of them is a bug in the
+             workforce — and the person deciding whether to go live is the one who
+             needs to know which. The rows are the runtime's, verbatim; nothing
+             here summarises or filters them. */
+          cases: verdict.stress.cases,
+        }
       : null,
     // Trimmed for transport: the full event stream is available per scenario.
     results: verdict.results.map((r) => ({

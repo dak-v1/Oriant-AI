@@ -34,7 +34,7 @@ export default function AutopilotButton({
         {running ? (
           <>
             <Square size={15} aria-hidden />
-            Stop auto-play
+            Stop
           </>
         ) : (
           <>
@@ -51,12 +51,12 @@ export default function AutopilotButton({
       type="button"
       className={`oa-btn ${running ? "oa-btn--danger" : "oa-btn--dark"} oa-btn--sm`}
       onClick={running ? stop : start}
-      title={running ? "Stop the auto-play demo" : "Auto-play the whole demo"}
+      title={running ? "Stop" : "Run through the whole thing for me"}
     >
       {running ? (
         <>
           <Square size={13} aria-hidden />
-          Stop demo
+          Stop
         </>
       ) : (
         <>

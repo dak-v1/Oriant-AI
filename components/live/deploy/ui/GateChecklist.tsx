@@ -89,14 +89,14 @@ export default function GateChecklist({ checklist }: { checklist: ChecklistView 
           behind it. Said out loud in a row of its own rather than rendered as
           a clean, empty section. */}
       {total === 0 && (
-        <section className={`oa-card oa-card--flat ${shell.item}`} aria-label="No gates reported">
+        <section className={`oa-card oa-card--flat ${shell.item}`} aria-label="No checks reported">
           <span className={`${shell.lead} ${shell.leadWait}`} aria-hidden>
             <AlertTriangle size={16} />
           </span>
           <div className={shell.body}>
             <div className={shell.head}>
               <div className={shell.titleWrap}>
-                <h2 className={shell.title}>The runtime reported no gates</h2>
+                <h2 className={shell.title}>No checks were reported</h2>
               </div>
               <StatusBadge status="pending" label="Unproven" />
             </div>
@@ -104,10 +104,10 @@ export default function GateChecklist({ checklist }: { checklist: ChecklistView 
               <p className={shell.evLine}>
                 <AlertTriangle size={14} className={shell.evIconWarn} aria-hidden />
                 <span>
-                  This response carried an empty gate list. An empty list satisfies
-                  &ldquo;every gate passed&rdquo; without anything having been checked, so
-                  nothing on this screen will treat it as a workforce that is ready —
-                  whatever the checklist&apos;s own <code>ready</code> flag says.
+                  Nothing came back with any checks in it. An empty list counts as
+                  &ldquo;everything passed&rdquo; without anything having been checked, so
+                  nothing on this screen will treat this workforce as ready — whatever it
+                  claims.
                 </span>
               </p>
             </div>
@@ -154,7 +154,7 @@ function GateItem({
                 "Step 1 of 8" from a list it owned, and this list is the
                 runtime's. */}
             <span className={shell.stepNo}>
-              Gate {index + 1} of {total}
+              Check {index + 1} of {total}
             </span>
             {/* The runtime's own label, verbatim. */}
             <h2 id={`gate-title-${gate.id}`} className={shell.title}>
@@ -169,9 +169,9 @@ function GateItem({
           </div>
           {/* The demo's badge component, the runtime's verdict words. */}
           {gate.satisfied ? (
-            <StatusBadge status="ready" label="Satisfied" />
+            <StatusBadge status="ready" label="Passed" />
           ) : (
-            <StatusBadge status="pending" label="Blocked" />
+            <StatusBadge status="pending" label="Not ready" />
           )}
         </div>
 
@@ -191,22 +191,20 @@ function GateItem({
             <div key={`${gate.id}-${blockerIndex}`} className={shell.warnPanel}>
               <p className={shell.warnTitle}>
                 <AlertTriangle size={14} aria-hidden />
-                Blocker {blockerIndex + 1} of {gate.blockers.length}
+                What to fix ({blockerIndex + 1} of {gate.blockers.length})
               </p>
               {/* Verbatim. This is the whole point of the component. */}
               <p className={shell.warnBody}>{blocker.message}</p>
               <span className={live.blockerMeta}>
                 {blocker.agentId !== null && (
-                  <span className={live.blockerTag}>agent {blocker.agentId}</span>
+                  <span className={live.blockerTag}>Agent: {blocker.agentId}</span>
                 )}
                 {blocker.integrationId !== null && (
-                  <span className={live.blockerTag}>
-                    integration {blocker.integrationId}
-                  </span>
+                  <span className={live.blockerTag}>Tool: {blocker.integrationId}</span>
                 )}
                 {/* The runtime's own route to the fix, not ours. */}
                 <Link href={blocker.href} className="oa-btn oa-btn--ghost oa-btn--sm">
-                  Open {blocker.href}
+                  Take me there
                   <ArrowRight size={13} aria-hidden />
                 </Link>
               </span>
