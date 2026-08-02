@@ -853,6 +853,8 @@ export async function activate(
       agentVersion: agent.version,
     })),
     triggerIds: registration.registered.map((trigger) => trigger.triggerId),
+    // Frozen, not referenced: the plan object is the record of what went live.
+    plan,
     evidence: {
       // Read off the gates rather than hardcoded to true: if the checklist ever
       // grows a way to be ready with a soft gate, this record must not lie.

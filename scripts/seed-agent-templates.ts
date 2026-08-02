@@ -43,7 +43,13 @@ async function insertRow<T = Record<string, unknown>>(
   return data[0];
 }
 
-interface TemplateRow {
+/**
+ * A type alias rather than an interface on purpose. `insertRow` takes
+ * `Record<string, unknown>`, and only a type alias carries the implicit index
+ * signature that makes it assignable; an interface does not, so declaring this
+ * with `interface` fails at the call site below.
+ */
+type TemplateRow = {
   key: string;
   name: string;
   category: string;
@@ -55,7 +61,7 @@ interface TemplateRow {
   est_tokens_per_task: number;
   required_tools: string[];
   default_runtime_model: string;
-}
+};
 
 function toolsYaml(tools: string[]): string {
   return ["tools:", ...tools.map((t) => `  - id: ${t}\n    scope: read_write`)].join("\n");
@@ -519,3 +525,9 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
+// A standalone script, not a module — but tsconfig includes **/*.ts, so
+// without this the top-level `const url`, `serviceRoleKey` and `REST_URL` in
+// each seed script land in one shared global scope and collide with each
+// other. `export {}` makes the file a module and gives it its own scope.
+export {};

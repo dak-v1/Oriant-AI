@@ -75,3 +75,9 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
+// A standalone script, not a module — but tsconfig includes **/*.ts, so
+// without this the top-level `const url`, `serviceRoleKey` and `REST_URL` in
+// each seed script land in one shared global scope and collide with each
+// other. `export {}` makes the file a module and gives it its own scope.
+export {};

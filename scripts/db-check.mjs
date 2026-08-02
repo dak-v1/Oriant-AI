@@ -174,7 +174,23 @@ try {
   await sql.end({ timeout: 5 }).catch(() => {});
 
   const advice = [];
-  if (/ENOTFOUND|EAI_AGAIN/.test(message)) {
+  // Checked BEFORE the ENOTFOUND branch below, and deliberately so. Supabase's
+  // pooler reports an unknown tenant with an ENOTFOUND-shaped error even though
+  // the host resolved and the TCP connection succeeded, so matching on the code
+  // alone sends you to look at DNS for a problem that is not there.
+  if (/tenant|Tenant or user not found/i.test(message)) {
+    advice.push(
+      "The host resolved and answered — it is the POOLER rejecting this project,",
+      "not a DNS failure. Almost always the wrong pooler hostname:",
+      "",
+      "  - the aws-N prefix. Projects sit on aws-0 OR aws-1 and the two are not",
+      "    interchangeable; copying an example from the docs gets this wrong.",
+      "  - the region. It must match the project's own region exactly.",
+      "",
+      "Copy the URI from Supabase → Connect → Transaction pooler rather than",
+      "editing an existing one, since that page always names the right host.",
+    );
+  } else if (/ENOTFOUND|EAI_AGAIN/.test(message)) {
     advice.push("The host did not resolve. Check the project reference in the URI.");
   } else if (/ENETUNREACH|EHOSTUNREACH/.test(message)) {
     advice.push(

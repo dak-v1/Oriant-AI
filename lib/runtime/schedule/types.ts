@@ -32,7 +32,7 @@
  * run outliving the process is the whole point of the approval interrupt.
  */
 
-import type { TriggerSpec } from "../../plan/types";
+import type { ApprovedPlan, TriggerSpec } from "../../plan/types";
 import type { TriggerEvent } from "../types";
 
 /* ═══════════════════════ Agent runtime state ═══════════════════════ */
@@ -148,6 +148,18 @@ export interface Deployment {
   activatedBy: string;
   /** Agent versions as activated — what is actually live, not what is planned. */
   agents: { agentId: string; agentVersion: number }[];
+  /**
+   * The plan exactly as deployed, frozen.
+   *
+   * Recorded because a deployment is the answer to "what is running", and
+   * planId plus a version cannot answer it: an ingested plan is derived from a
+   * handoff that lives in another lane's database and may since have changed.
+   * Without this, the Operate surface has to be TOLD which plan is live, which
+   * is how it ended up serving the demo fixture while an ingested workforce was
+   * the thing actually deployed. It is also the audit record — what exactly was
+   * live on the day someone asks.
+   */
+  plan: ApprovedPlan;
   triggerIds: string[];
   /** The evidence the checklist was satisfied by, frozen for audit. */
   evidence: {

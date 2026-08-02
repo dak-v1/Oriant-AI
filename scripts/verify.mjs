@@ -93,6 +93,18 @@ const TARGETS = {
     label: "M7 — hardening",
     expectedChecks: 7,
   },
+  ingest: {
+    entry: "lib/plan/verify/ingest.ts",
+    out: "lib/plan/verify/ingest.js",
+    label: "INGEST — Role B handoff into Role C",
+    expectedChecks: 9,
+  },
+  e2e: {
+    entry: "lib/runtime/verify/e2e.ts",
+    out: "lib/runtime/verify/e2e.js",
+    label: "E2E — handoff to a live workforce",
+    expectedChecks: 10,
+  },
   integration: {
     entry: "lib/runtime/verify/integration.ts",
     out: "lib/runtime/verify/integration.js",
