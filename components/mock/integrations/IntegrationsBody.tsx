@@ -13,9 +13,10 @@
  * disabled per the earlier product decision.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
-import { Cable, LoaderCircle, Search, TriangleAlert } from "lucide-react";
+import { ArrowRight, Cable, LoaderCircle, Search, TriangleAlert } from "lucide-react";
 import { useDemoStore } from "@/lib/mock/store";
 import { INTEGRATIONS, INTEGRATION_TAB_ORDER } from "@/lib/mock/fixtures/integrations";
 import { RECOMMENDED_APP_IDS } from "@/lib/mock/fixtures/ids";
@@ -183,6 +184,18 @@ export default function IntegrationsBody() {
                 <span style={{ width: `${(readyCount / Math.max(tools.length, 1)) * 100}%` }} />
               </div>
             </div>
+            {/* The way out of this step, mirroring the plan page's "Continue to
+                integrations". It appears only once every connection the plan
+                actually requires is live: a Continue that is always available
+                would walk an owner into the Factory to build agents whose tools
+                cannot answer, and the Activation gate would refuse them later
+                with the reason three screens behind. */}
+            {readyCount === tools.length && (
+              <Link href="/app/build" className="oa-btn oa-btn--primary">
+                Continue to Agent Factory
+                <ArrowRight size={15} aria-hidden />
+              </Link>
+            )}
           </div>
         )}
 
