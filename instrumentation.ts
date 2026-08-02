@@ -74,7 +74,11 @@ export async function register(): Promise<void> {
 
     try {
       const { startPollerHost } = await import("./lib/runtime/schedule/poller-host");
-      startPollerHost();
+      // Awaited: the host reads the current plan from the store before it can
+      // compose a worker, so starting is asynchronous now. Left un-awaited, a
+      // rejection would surface as an unhandled rejection instead of the line
+      // below, which is the one case this hook exists to make impossible.
+      await startPollerHost();
     } catch (error) {
       // Reached only if the module itself fails to load; every decision inside it
       // reports for itself. Named as the scheduler so the line is searchable

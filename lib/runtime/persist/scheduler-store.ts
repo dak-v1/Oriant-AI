@@ -43,8 +43,8 @@
 
 import { createHash } from "node:crypto";
 import path from "node:path";
-import type { AgentRuntimeConfig, TriggerSpec } from "../../plan/types";
-import { assertConcurrencyStorable } from "../schedule/types";
+import type { AgentRuntimeConfig, ApprovedPlan, TriggerSpec } from "../../plan/types";
+import { assertConcurrencyStorable, assertCurrentPlanStorable } from "../schedule/types";
 import type {
   AgentRuntimeRecord,
   Deployment,
@@ -100,6 +100,24 @@ function triggerFileId(triggerId: string): string {
   return createHash("sha256").update(triggerId, "utf8").digest("hex");
 }
 
+/* ═══════════════════════ The current plan's file ═══════════════════════ */
+
+/**
+ * The whole table is one record, so its id is a constant rather than derived
+ * from the plan.
+ *
+ * Keying the file by `planId` was the alternative and it is wrong in a way that
+ * only shows up after the second handoff: the directory would then hold every
+ * plan ever ingested with nothing saying which is current, and answering
+ * `getCurrentPlan` would mean inventing an ordering over files whose only
+ * timestamp (`approvedAt`) comes from another lane's clock. One row that is
+ * overwritten cannot develop that ambiguity — and the audit trail it appears to
+ * lose is already kept, by `role_c_handoffs` upstream and `deployments/` here.
+ *
+ * "current" survives `recordFileName`: letters only, no reserved device name.
+ */
+const CURRENT_PLAN_RECORD_ID = "current";
+
 /* ═══════════════════════════ Scheduler store ═══════════════════════════ */
 
 export class FileSchedulerStore implements SchedulerStore {
@@ -108,6 +126,7 @@ export class FileSchedulerStore implements SchedulerStore {
   private readonly deployments: Table<Deployment>;
   private readonly agentStates: Table<AgentRuntimeRecord>;
   private readonly agentConfigs: Table<AgentRuntimeConfig>;
+  private readonly currentPlan: Table<ApprovedPlan>;
   private readonly claimLockFile: string;
 
   constructor(readonly root: string) {
@@ -126,6 +145,11 @@ export class FileSchedulerStore implements SchedulerStore {
       path.join(root, "agent-runtime-config"),
       "agent_runtime_config",
     );
+    // Its own table rather than a field on the newest deployment, which is the
+    // whole distinction: `deployments/` records what went LIVE, this records
+    // what is INTENDED, and a plan is intended from the moment it validates —
+    // hours or days before anything deploys it, and sometimes instead of that.
+    this.currentPlan = new Table<ApprovedPlan>(path.join(root, "current-plan"), "current_plan");
     // Outside every table directory, so a lock can never be listed as a record
     // and `reset()` cannot delete one that is currently held.
     this.claimLockFile = path.join(root, ".locks", "queue-jobs.claim");
@@ -306,6 +330,36 @@ export class FileSchedulerStore implements SchedulerStore {
     }
   }
 
+  /* ── The current plan ── */
+
+  /**
+   * Upsert of the single "what we intend" record. The newest write wins, so a
+   * re-ingest replaces the file rather than appending beside it.
+   *
+   * `write` rather than `create` or `update`, and unlike the queue there is
+   * nothing to protect against: the pipeline is the only writer, a second pass
+   * is meant to overwrite the first, and there is no in-flight claim for a
+   * concurrent writer to trample. The atomic rename inside `Table.write` is what
+   * makes a reader see the old plan or the new one and never half of each — a
+   * half-decoded current plan would make every agent read `retired`.
+   */
+  async saveCurrentPlan(plan: ApprovedPlan): Promise<void> {
+    // JSON would hold version 2.5 or an approvedAt of "soon"; Postgres would
+    // not. The shared guard is what keeps the two stores interchangeable.
+    assertCurrentPlanStorable(plan, "FileSchedulerStore.saveCurrentPlan");
+    await this.currentPlan.write(CURRENT_PLAN_RECORD_ID, plan);
+  }
+
+  /**
+   * Null covers both "no file" and "no table yet", which are the same fact:
+   * nothing has been ingested, so there is no plan the customer intends. A clean
+   * clone never creates the directory, and `Table.read` answers a missing table
+   * with null rather than an error precisely so that stays unremarkable.
+   */
+  async getCurrentPlan(): Promise<ApprovedPlan | null> {
+    return this.currentPlan.read(CURRENT_PLAN_RECORD_ID);
+  }
+
   /* ── Deployments ── */
 
   /** Upsert, keyed by deployment id. */
@@ -414,9 +468,14 @@ export class FileSchedulerStore implements SchedulerStore {
   /* ── Development helper ── */
 
   /**
-   * Drops every trigger, job, deployment, agent state and agent config on disk.
-   * The claim lock is left alone: it lives outside these tables and may be held
-   * right now.
+   * Drops every trigger, job, deployment, agent state, agent config and the
+   * current plan on disk. The claim lock is left alone: it lives outside these
+   * tables and may be held right now.
+   *
+   * The current plan goes with the rest deliberately. Leaving it would produce
+   * the one state no real system can reach — an intended workforce with no
+   * deployment, no packages and no triggers behind it — and every agent would
+   * read `planned` against a runtime that had just been emptied.
    */
   async reset(): Promise<void> {
     await Promise.all([
@@ -425,6 +484,7 @@ export class FileSchedulerStore implements SchedulerStore {
       this.deployments.clear(),
       this.agentStates.clear(),
       this.agentConfigs.clear(),
+      this.currentPlan.clear(),
     ]);
   }
 }

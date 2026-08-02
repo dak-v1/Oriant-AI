@@ -30,8 +30,15 @@ import type { Sql } from "./client";
  * it costs nothing but a boot: `migrate()` is IF NOT EXISTS throughout, the new
  * table references nothing and nothing references it, and no existing row
  * changes shape.
+ *
+ * 3 added `oriant_current_plan` — the newest plan ingested from Role B, which is
+ * what the workforce is INTENDED to be, as against `oriant_deployments.record`,
+ * which is what actually went live. Adopting it is the same free boot as 2: the
+ * table is created empty, every store method awaits the migration before its
+ * first query (./index.ts), and an empty table reads as "nothing ingested yet",
+ * which is true of a database that has been running since before this version.
  */
-export const PG_SCHEMA_VERSION = 2;
+export const PG_SCHEMA_VERSION = 3;
 
 /**
  * Table names are namespaced so the runtime can share a Supabase project with
@@ -50,6 +57,7 @@ export const TABLES = [
   "oriant_deployments",
   "oriant_agent_runtime_state",
   "oriant_agent_runtime_config",
+  "oriant_current_plan",
 ] as const;
 
 const DDL: string[] = [
@@ -208,6 +216,26 @@ const DDL: string[] = [
      concurrency integer NOT NULL,
      queue       text NOT NULL,
      record      jsonb NOT NULL
+   )`,
+
+  // WHAT WE INTEND, beside oriant_deployments' WHAT IS RUNNING. The two are
+  // separate tables because drift is the difference between them: fold either
+  // into the other and every agent reads "running" forever, which is the exact
+  // report the lifecycle machinery exists to stop being automatic.
+  //
+  // ONE ROW, and the CHECK is what makes that the database's rule rather than
+  // the store's convention — the same move as the three primary keys named at
+  // the top of this file. "Current" is a single fact; a table that could hold
+  // two of them would need an ordering to pick between them, and the only
+  // instant available (`approved_at`) is stamped by another lane's clock.
+  //
+  // No index. One row addressed by its primary key is every query there is.
+  `CREATE TABLE IF NOT EXISTS oriant_current_plan (
+     id           text PRIMARY KEY CHECK (id = 'current'),
+     plan_id      text NOT NULL,
+     plan_version integer NOT NULL,
+     approved_at  timestamptz NOT NULL,
+     record       jsonb NOT NULL
    )`,
 ];
 

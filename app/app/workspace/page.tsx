@@ -61,7 +61,12 @@ export default async function WorkspacePage({
   // Reached only on the live lane, so a demo render never constructs a runtime
   // session or touches the file-backed stores.
   const session = getRuntimeSession();
-  return <LiveWorkspace plan={planFacts(session.plan)} live />;
+  // The CURRENT plan, not `seedPlan`. This screen is the roster an owner reads,
+  // and the construction seed is always BrightPath — rendering it here is the
+  // precise "showing the demo as though it were theirs" substitution that
+  // lib/runtime/current-plan.ts exists to remove.
+  const plan = await session.currentPlan();
+  return <LiveWorkspace plan={planFacts(plan)} live />;
 }
 
 /**

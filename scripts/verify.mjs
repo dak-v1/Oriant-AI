@@ -18,6 +18,9 @@
  *   npm run verify:int    real modules end to end
  *   npm run verify        all of the above
  *
+ * Targets with no npm alias are reached by name — `node scripts/verify.mjs
+ * planstate` — and are swept by `npm run verify` like everything else.
+ *
  * Two things this file asserts beyond "every check passed", because a harness
  * that only reports what it was handed cannot notice what it was not handed:
  *
@@ -109,6 +112,18 @@ const TARGETS = {
     label: "M7 — hardening",
     expectedChecks: 7,
   },
+  /*
+   * The key is `planstate` rather than `plan-state` because the runner resolves
+   * `run${key.toUpperCase()}Verification`, and a hyphen cannot appear in a
+   * JavaScript identifier. The entry file keeps the repo's hyphenated file
+   * naming; only the target key is squashed.
+   */
+  planstate: {
+    entry: "lib/runtime/verify/plan-state.ts",
+    out: "lib/runtime/verify/plan-state.js",
+    label: "PLAN STATE — the current plan versus the deployed one",
+    expectedChecks: 7,
+  },
   ingest: {
     entry: "lib/plan/verify/ingest.ts",
     out: "lib/plan/verify/ingest.js",
@@ -126,6 +141,20 @@ const TARGETS = {
     out: "lib/runtime/verify/collect.js",
     label: "COLLECT — the handoff seam's protocol",
     expectedChecks: 7,
+  },
+  /*
+   * NOT OPT-IN, deliberately, even though the code under test is the only thing
+   * in this runtime that can send a real email. The target injects a fake
+   * Composio SDK and deletes COMPOSIO_API_KEY from the environment for the one
+   * check that needs it absent, so it never reaches the network and never needs
+   * a key — which is the whole point: the refusals it proves are exactly the
+   * ones that must hold on a machine where nothing is configured.
+   */
+  tools: {
+    entry: "lib/runtime/verify/tools.ts",
+    out: "lib/runtime/verify/tools.js",
+    label: "TOOLS — Composio execution, mapping and refusals",
+    expectedChecks: 10,
   },
   pg: {
     entry: "lib/runtime/verify/pg.ts",

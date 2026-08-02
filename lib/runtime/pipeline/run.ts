@@ -26,6 +26,13 @@
  * without a sandbox verdict is precisely the thing every check in this
  * repository was written to prevent, and an orchestrator with an override would
  * make all of them optional.
+ *
+ * ONE SIDE EFFECT SITS BETWEEN TWO STAGES: once `validate` passes, the plan is
+ * written as the CURRENT plan (`SchedulerStore.saveCurrentPlan`) — what the
+ * owner intends, as against `Deployment.plan`, what is running. It happens
+ * there rather than at either end of the pass, and the comment at the write says
+ * why in full; the short version is that a plan is intended from the moment it
+ * is valid, so a pass that later stops at `build` still moved what we intend.
  */
 
 import type { ApprovedPlan } from "../../plan/types";
@@ -169,9 +176,54 @@ export async function runPipeline(
     );
     return stop("validate");
   }
+  /*
+   * THE PLAN BECOMES THE CURRENT PLAN HERE, AND THIS IS THE ONLY WRITE OF IT.
+   *
+   * "Current" means WHAT WE INTEND, as against `Deployment.plan`, which is what
+   * is actually running. Everything that reports drift compares the two
+   * (lib/runtime/current-plan.ts), so the instant chosen for this write decides
+   * what drift can ever mean.
+   *
+   * AFTER VALIDATE, NOT AFTER INGEST. Ingest succeeding only means the handoff
+   * converted into something plan-shaped; `validateApprovedPlan` is what says it
+   * is a plan. A conversion carrying a rule-0 or rule-9 error can never be
+   * built, so recording it as what we intend would put an unrunnable workforce
+   * in front of the owner as the current one and make every drift row a
+   * comparison against something no deployment could ever match.
+   *
+   * BEFORE BUILD, PROVE AND ACTIVATE, equally deliberately, and this is the
+   * half that is easy to get backwards. A plan is intended from the moment it is
+   * approved and valid — whether or not the Factory can compile it today,
+   * whether or not the sandbox passes, and whether or not anyone has activated
+   * it yet. Writing it only on a completed pass would make the current plan a
+   * copy of the deployment, which makes drift permanently zero and deletes
+   * `planned` and `drifted` from a lifecycle that still lists them. An agent
+   * that is planned but not yet live is precisely the state this ordering
+   * exists to make visible.
+   *
+   * A FAILED WRITE STOPS THE PASS. There is no "carry on and activate anyway":
+   * the surface would then compare a fresh deployment against the PREVIOUS
+   * current plan and report drift that was already resolved, or none where there
+   * is some. It is reported on the validate stage rather than as a seventh one,
+   * so the six-row shape every caller renders does not change with the outcome.
+   */
+  try {
+    await deps.scheduler.store.saveCurrentPlan(plan);
+  } catch (err) {
+    stages.push(
+      stage("validate", "failed", "The plan is valid but could not be recorded as current.", [
+        err instanceof Error ? err.message : String(err),
+        "Nothing was built or activated: a workforce whose intended plan cannot be " +
+          "stored is one the Operate surface would report drift against wrongly.",
+      ]),
+    );
+    return stop("validate");
+  }
+
   stages.push(
     stage("validate", "ok", "The plan satisfies the contract.", [
       `0 errors, ${findings.length} warning(s)`,
+      `recorded as the current plan (${plan.planId} v${plan.version})`,
     ]),
   );
 

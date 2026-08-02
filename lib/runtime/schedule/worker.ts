@@ -837,6 +837,15 @@ export interface Poller {
 }
 
 /**
+ * Re-asked before every pass, so a daemon can follow what is deployed.
+ *
+ * `null` means "nothing to run right now", which is the ordinary state of a
+ * runtime with no active deployment — not an error and not worth waking anyone
+ * for.
+ */
+export type WorkerDepsResolver = () => Promise<WorkerDeps | null>;
+
+/**
  * The long-lived wrapper. Deliberately the thinnest thing that could work,
  * because everything interesting is in `runDueWork` and anything that accretes
  * here is behaviour no test can reach.
@@ -846,16 +855,38 @@ export interface Poller {
  * would stop the two double-claiming a job, but they would still both poll the
  * schedule, both advance the same triggers and both compete for the job budget.
  */
-export function startPoller(deps: WorkerDeps, options: PollerOptions = {}): Poller {
+export function startPoller(
+  deps: WorkerDeps | WorkerDepsResolver,
+  options: PollerOptions = {},
+): Poller {
   const intervalMs = positiveInt(options.intervalMs, DEFAULT_POLL_INTERVAL_MS);
   let busy = false;
   let stopped = false;
 
+  /*
+   * A plain `deps` is captured once, which is what a caller pinning its own
+   * world wants and what every existing caller passes.
+   *
+   * A RESOLVER IS RE-ASKED EVERY PASS, and that is the option an unattended host
+   * needs. The plan a daemon should be serving changes the moment somebody
+   * activates one; a poller that resolved its plan at startup goes on serving
+   * the previous workforce — or, on a runtime where nothing was deployed yet,
+   * serving nothing — until the process restarts. Nobody watches an unattended
+   * poller closely enough to notice that.
+   */
+  const resolve: WorkerDepsResolver = typeof deps === "function" ? deps : async () => deps;
+
   const timer = setInterval(() => {
     if (busy || stopped) return;
     busy = true;
-    void runDueWork(deps)
-      .then((summary) => options.onPass?.(summary))
+    void resolve()
+      // Null is a quiet tick, not a failure. Reporting "nothing is deployed"
+      // through `onError` would page somebody once per interval for a runtime
+      // that is merely idle.
+      .then((current) => (current === null ? null : runDueWork(current)))
+      .then((summary) => {
+        if (summary !== null) options.onPass?.(summary);
+      })
       .catch((error: unknown) => options.onError?.(error))
       .finally(() => {
         busy = false;

@@ -581,7 +581,14 @@ export async function GET(request: Request) {
   // ONCE — every deadline, age and severity below is judged against this single
   // instant, which is the first reason this route exists at all.
   const now = session.executor.clock.now();
-  const directory = createDirectory(session.plan);
+  /* The plan every name and every gate below is read against — `currentPlan()`,
+     because this list goes in front of the owner and the seed is BrightPath.
+     Read ONCE for the same reason `now` is: the directory that names an agent and
+     the checklist that blocks on it must be about one workforce, or a single
+     response could name agents from the plan before an ingest while reporting
+     gates from the one after it. */
+  const plan = await session.currentPlan();
+  const directory = createDirectory(plan);
 
   const actionRequired: NotificationItem[] = [];
   const attention: NotificationItem[] = [];
@@ -632,7 +639,7 @@ export async function GET(request: Request) {
      Two of the three. See the header: the sandbox gate is not funded here, comes
      back shut on evidence nobody gathered, and is filtered out by id. */
   const activation = await attempt("activation", "Activation gates", () =>
-    activationChecklist(session.plan, {
+    activationChecklist(plan, {
       scheduler: session.scheduler,
       packages: session.build,
       integrations: session.tools,

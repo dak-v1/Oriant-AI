@@ -20,9 +20,16 @@
  * of the go-live decision — an owner about to press this button needs to know
  * which agents are new, which are about to be replaced mid-flight, and which
  * will be left running for a plan that no longer contains them. `live` and
- * `lifecycle` answer it, reconciled by lib/runtime/active-plan.ts, and they are
- * the same four words `/api/runtime/agents` tags its roster with, so the deploy
- * screen and the roster cannot disagree about what is running.
+ * `lifecycle` answer it, reconciled by `session.planState()` — one read of both
+ * plans — and they are the same four words `/api/runtime/agents` tags its roster
+ * with, so the deploy screen and the roster cannot disagree about what is
+ * running.
+ *
+ * EVERYTHING BELOW IS ABOUT THE CURRENT PLAN, `session.currentPlan()`, and each
+ * handler resolves it exactly once. The gates, the reconciliation and the
+ * go-live have to be about one workforce or the response contradicts itself:
+ * a checklist judging the plan as it was before an ingest, attached to a
+ * deployment of the plan as it is after, is a go-live nobody authorised.
  *
  * `checklist.activeDeployment` IS NOT `live.deploymentId`, DELIBERATELY. The
  * first is set only when THIS plan version is already live; the second is
@@ -51,7 +58,7 @@
  * belongs with whoever owns the deployment.
  */
 import { NextResponse } from "next/server";
-import { reconcileAgents, resolveActivePlan } from "@/lib/runtime/active-plan";
+import type { ApprovedPlan } from "@/lib/plan/types";
 import { runSuite } from "@/lib/runtime/sandbox/runner";
 import { BRIGHTPATH_SCENARIOS } from "@/lib/runtime/sandbox/scenarios";
 import { runStressSweep } from "@/lib/runtime/sandbox/stress";
@@ -84,33 +91,41 @@ export const dynamic = "force-dynamic";
  * about to deploy is the one that was proved, and an equivalent recompilation is
  * a weaker, different claim — the same reasoning lib/runtime/sandbox/runner.ts
  * gives for preferring the stored package.
+ *
+ * THE PLAN IS HANDED IN, NOT RESOLVED HERE. It has to be the same object the
+ * checklist is judging and, on GET, the same one the reconciliation below
+ * describes — resolving it a second time inside `latestVerdict` would let an
+ * ingest land between the two and produce a verdict about a workforce this
+ * response never mentions.
  */
 class SessionSandboxEvidence implements SandboxEvidence {
   private readonly session: RuntimeSession;
+  private readonly plan: ApprovedPlan;
 
-  constructor(session: RuntimeSession) {
+  constructor(session: RuntimeSession, plan: ApprovedPlan) {
     this.session = session;
+    this.plan = plan;
   }
 
   async latestVerdict(): Promise<SandboxVerdict> {
     const packages = this.session.build;
-    const stress = await runStressSweep(this.session.plan, { packages });
-    return runSuite(BRIGHTPATH_SCENARIOS, this.session.plan, { packages, stress });
+    const stress = await runStressSweep(this.plan, { packages });
+    return runSuite(BRIGHTPATH_SCENARIOS, this.plan, { packages, stress });
   }
 }
 
 /**
- * The three gates' inputs, assembled per request.
+ * The three gates' inputs, assembled per request, for one plan.
  *
  * Cheap on its own — the expense is inside the evidence, and only when a gate
  * actually reads it.
  */
-function gateInputs(session: RuntimeSession): ActivationDeps {
+function gateInputs(session: RuntimeSession, plan: ApprovedPlan): ActivationDeps {
   return {
     scheduler: session.scheduler,
     packages: session.build,
     integrations: session.tools,
-    sandbox: new SessionSandboxEvidence(session),
+    sandbox: new SessionSandboxEvidence(session, plan),
   };
 }
 
@@ -118,21 +133,39 @@ function gateInputs(session: RuntimeSession): ActivationDeps {
 
 export async function GET() {
   const session = getRuntimeSession();
-  const checklist = await activationChecklist(session.plan, gateInputs(session));
 
-  /* ── The pre-flight diff ──
-     `session.plan` stays the CURRENT plan and the gates above still judge it —
-     reading the deployed plan here instead would gate a go-live against the
-     workforce already running, which can never fail and would prove nothing.
-     The reconciliation is added alongside and reads both. */
-  const active = await resolveActivePlan(session.schedulerStore);
-  const lifecycle = reconcileAgents(
-    active.source === "deployment" ? active.plan : null,
-    session.plan,
-  );
+  /* ── Both plans, in one read ──
+     `planState()` resolves what the owner intends, what is actually deployed
+     and the reconciliation between them together. This handler used to resolve
+     the active plan itself and call `reconcileAgents` by hand, which left the
+     gates judging one plan and the diff describing another whenever an ingest
+     landed between the two reads — inside a single response about a single
+     button. One read, one workforce. */
+  const state = await session.planState();
+  const plan = state.current.plan;
+  const lifecycle = state.lifecycle;
+
+  /* ── The gates judge what is INTENDED ──
+     The current plan, never the deployed one: gating a go-live against the
+     workforce already running can never fail and would prove nothing. The
+     reconciliation above reads both and is what makes the difference visible. */
+  const checklist = await activationChecklist(plan, gateInputs(session, plan));
 
   return NextResponse.json({
     mode: session.mode,
+    /**
+     * WHICH workforce this checklist is about. `source: "fixture"` means nothing
+     * has been ingested and this button would put the BrightPath demo live —
+     * `fallbackReason` is the sentence to show for it. A deploy screen that
+     * renders a plan without saying where it came from is the screen that lets
+     * a demo be mistaken for the owner's own workforce.
+     */
+    plan: {
+      planId: plan.planId,
+      version: plan.version,
+      source: state.current.source,
+      fallbackReason: state.current.fallbackReason,
+    },
     /**
      * What is RUNNING right now, and what pressing the button would change.
      * `planned` is what this activation would start, `drifted` what it would
@@ -140,8 +173,8 @@ export async function GET() {
      * dropped it — the last of which is the one nobody expects.
      */
     live: {
-      source: active.source,
-      deploymentId: active.deploymentId,
+      source: state.active.source,
+      deploymentId: state.active.deploymentId,
       running: lifecycle.filter((row) => row.lifecycle === "running").length,
       drifted: lifecycle.filter((row) => row.lifecycle === "drifted").length,
       planned: lifecycle.filter((row) => row.lifecycle === "planned").length,
@@ -204,7 +237,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await activate(session.plan, gateInputs(session), { activatedBy });
+  /* ── The workforce going live ──
+     Read once, after the body checks so a malformed request fails cheaply, and
+     handed to both the gates and `activate` itself. Two reads here would be the
+     worst version of this bug available: the checklist in the success body would
+     describe the plan as it was, and the deployment beside it would freeze the
+     plan as it is. */
+  const plan = await session.currentPlan();
+  const result = await activate(plan, gateInputs(session, plan), { activatedBy });
 
   if (!result.activated) {
     return NextResponse.json(

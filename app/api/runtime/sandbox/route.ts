@@ -11,6 +11,24 @@
  *
  * Runs are fully stubbed and deterministic, so this endpoint is safe to call
  * repeatedly and never reaches a real customer system.
+ *
+ * WHAT IS PROVED IS THE CURRENT PLAN — `session.currentPlan()`, what the owner
+ * actually intends — and no longer the seed fixture. Proving the fixture while
+ * Activation deploys the ingested plan would be the one thing a pre-flight gate
+ * must never do: a green verdict about a workforce that is not the one going
+ * live. Each handler resolves it once; see the POST for why once matters.
+ *
+ * THE SCENARIO LIBRARY IS STILL THE FIXTURE'S, AND THE PLAN NO LONGER IS. Every
+ * scenario in `BRIGHTPATH_SCENARIOS` names a BrightPath agent id, and the stress
+ * sweep names `finance-followup` outright, so against an ingested plan the
+ * runner answers `Agent "…" is not in the plan` for each one and every agent
+ * comes back with no scenarios. The verdict is therefore RED for a real
+ * workforce, which is the safe direction — absence of evidence reads as absence
+ * of safety, exactly as lib/runtime/sandbox/runner.ts intends — but it is a shut
+ * activation gate rather than a judgement of the owner's agents. Deriving
+ * scenarios for an ingested plan is the missing piece and it is not this
+ * route's to invent; pairing a real plan with the demo library silently would
+ * be worse than being unable to prove it at all.
  */
 import { NextResponse } from "next/server";
 import { runScenario, runSuite } from "@/lib/runtime/sandbox/runner";
@@ -52,6 +70,14 @@ export async function POST(request: Request) {
     // An empty body means "run everything".
   }
 
+  /* ── One plan per verdict ──
+     Resolved once and handed to the single scenario, the sweep and the suite
+     alike. Three separate reads could straddle an ingest, and a verdict whose
+     sweep proved one workforce and whose scenarios proved another is worse than
+     no verdict: `SandboxVerdict.planId` would name one of them and the results
+     would be about both. */
+  const plan = await session.currentPlan();
+
   if (body.scenarioId) {
     const scenario = BRIGHTPATH_SCENARIOS.find((s) => s.id === body.scenarioId);
     if (!scenario) {
@@ -63,7 +89,7 @@ export async function POST(request: Request) {
         { status: 404 },
       );
     }
-    const result = await runScenario(scenario, session.plan, { packages: session.build });
+    const result = await runScenario(scenario, plan, { packages: session.build });
     return NextResponse.json({ result });
   }
 
@@ -74,8 +100,8 @@ export async function POST(request: Request) {
   const stress =
     body.stress === false
       ? null
-      : await runStressSweep(session.plan, { packages: session.build });
-  const verdict = await runSuite(BRIGHTPATH_SCENARIOS, session.plan, {
+      : await runStressSweep(plan, { packages: session.build });
+  const verdict = await runSuite(BRIGHTPATH_SCENARIOS, plan, {
     stress,
     packages: session.build,
   });

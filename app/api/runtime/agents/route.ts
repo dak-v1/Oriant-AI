@@ -67,7 +67,6 @@ import type {
 } from "@/lib/runtime/schedule/types";
 import { agentTimezone, countRunsToday } from "@/lib/runtime/schedule/worker";
 import { getRuntimeSession } from "@/lib/runtime/session";
-import { reconcileAgents, resolveActivePlan } from "@/lib/runtime/active-plan";
 import type { RunState } from "@/lib/runtime/types";
 
 export const dynamic = "force-dynamic";
@@ -201,7 +200,29 @@ export async function GET() {
   // once so every deadline, day boundary and next-fire on this page was judged
   // against the same instant.
   const now = session.executor.clock.now();
-  const plan = session.plan;
+
+  /*
+   * BOTH PLANS IN ONE READ, which is what `planState()` is for.
+   *
+   * This route used to take the planned side from the session synchronously and
+   * then resolve the deployed side separately, several awaits later. Two reads
+   * of a pair that is meant to be compared can straddle an ingest, and a roster
+   * that reconciles a deployment against a plan nobody was looking at is worse
+   * than one that is merely a second old.
+   *
+   *   current    what the owner INTENDS — the newest plan ingested from Role B,
+   *              or the fixture with a stated reason. Every row below is derived
+   *              from this, and everything that guards a transition keeps
+   *              reading it: replacing it with the deployed plan made drift
+   *              invisible and broke M6-1, which exists to catch exactly that.
+   *   active     what is actually RUNNING, and which deployment says so.
+   *   lifecycle  the per-agent difference between the two, so a row can say
+   *              "running v3, the plan now says v4" instead of showing one
+   *              number and meaning the other.
+   */
+  const { current, active, lifecycle } = await session.planState();
+  const plan = current.plan;
+  const lifecycleById = new Map(lifecycle.map((row) => [row.agentId, row]));
 
   const [triggers, jobs, states, deployment, runs, pending] = await Promise.all([
     session.schedulerStore.listTriggers({ planId: plan.planId }),
@@ -255,24 +276,6 @@ export async function GET() {
         .length,
     }));
 
-  /*
-   * Two plans, deliberately.
-   *
-   * `plan` above is the CURRENT one and everything that guards a transition
-   * keeps reading it — replacing it with the deployed plan made drift invisible
-   * and broke M6-1, which exists to catch exactly that.
-   *
-   * `deployedPlan` is what is actually running. Comparing the two is what lets
-   * a row say "running v3, the plan now says v4" instead of silently showing
-   * one number and meaning the other.
-   */
-  const active = await resolveActivePlan(session.schedulerStore);
-  const lifecycle = reconcileAgents(
-    active.source === "deployment" ? active.plan : null,
-    plan,
-  );
-  const lifecycleById = new Map(lifecycle.map((row) => [row.agentId, row]));
-
   return NextResponse.json({
     mode: session.mode,
     now: now.toISOString(),
@@ -290,6 +293,16 @@ export async function GET() {
       planId: plan.planId,
       planVersion: plan.version,
       approvedAt: plan.approvedAt,
+      /**
+       * "ingested" when this is the owner's own workforce, "fixture" when
+       * nothing has crossed the seam from Role B yet and this is BrightPath
+       * standing in. Carried rather than left implicit because a screen that
+       * renders the plan without it is claiming the demo is theirs — the exact
+       * substitution `lib/runtime/current-plan.ts` exists to remove.
+       */
+      source: current.source,
+      /** The sentence explaining a fixture fallback. Null when it is real. */
+      fallbackReason: current.fallbackReason,
     },
     /**
      * Judged from the triggers, not from a stored flag: `activate()` writes
@@ -313,9 +326,10 @@ export async function GET() {
       forbidden: plan.globalPolicy.forbidden,
     },
     // Each roster row gains its tag. Attached here rather than inside the row
-    // builder so the builder stays a pure function of the CURRENT plan and the
-    // reconciliation stays the one place the two plans are compared.
-    agents: agents.map((row: { agentId: string }) => {
+    // builder so the builder stays a pure function of the CURRENT plan, and the
+    // reconciliation inside `planState()` stays the one place the two plans are
+    // compared.
+    agents: agents.map((row) => {
       const tag = lifecycleById.get(row.agentId);
       return {
         ...row,
@@ -650,7 +664,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ mode: session.mode, action, change });
   }
 
-  const change = await resumeAgent(agentId, session.plan, session.scheduler, { resumedBy: by });
+  /* The CURRENT plan, not the construction seed. `resumeAgent` judges membership
+     and version against whatever plan it is handed, so handing it the fixture
+     would refuse a real agent for not being in BrightPath — and let a BrightPath
+     agent through on a runtime that has never seen one. Read here rather than at
+     the top of the handler because the pause branch above has already returned
+     and does not need a plan at all. */
+  const plan = await session.currentPlan();
+  const change = await resumeAgent(agentId, plan, session.scheduler, { resumedBy: by });
 
   /* Every `changed: false` path out of `resumeAgent` is a refusal — not in the
      plan, never activated, version drifted since activation, or in a state resume

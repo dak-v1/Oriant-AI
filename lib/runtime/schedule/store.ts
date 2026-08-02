@@ -39,8 +39,8 @@
  * is using, and contains no `Date.now()` for the determinism check to find.
  */
 
-import type { AgentRuntimeConfig, TriggerSpec } from "../../plan/types";
-import { assertConcurrencyStorable } from "./types";
+import type { AgentRuntimeConfig, ApprovedPlan, TriggerSpec } from "../../plan/types";
+import { assertConcurrencyStorable, assertCurrentPlanStorable } from "./types";
 import type {
   AgentRuntimeRecord,
   Deployment,
@@ -89,6 +89,12 @@ export class InMemorySchedulerStore implements SchedulerStore {
   private readonly deployments = new Map<string, Deployment>();
   private readonly agentStates = new Map<string, AgentRuntimeRecord>();
   private readonly agentConfigs = new Map<string, AgentRuntimeConfig>();
+  /**
+   * Not a Map, because "current" is one fact rather than a keyed collection.
+   * Null until something is ingested, and that null is the ordinary state of a
+   * fresh clone rather than a missing row.
+   */
+  private currentPlan: ApprovedPlan | null = null;
 
   /* ── Triggers ── */
 
@@ -260,6 +266,30 @@ export class InMemorySchedulerStore implements SchedulerStore {
     return clone(claimed);
   }
 
+  /* ── The current plan ── */
+
+  /**
+   * Upsert of the single "what we intend" row. The newest write wins, including
+   * one that lowers the version — see `SchedulerStore.saveCurrentPlan`.
+   *
+   * Cloned on the way in like everything else here, and for a sharper reason
+   * than usual: the caller's plan is the same object the pipeline is about to
+   * hand to `buildPlan` and `activate`, and an alias stored here would let a
+   * later stage mutate the record drift is measured against. The two plans would
+   * then agree by accident rather than by fact.
+   */
+  async saveCurrentPlan(plan: ApprovedPlan): Promise<void> {
+    // Same guard as the file and Postgres stores. A field a Map would hold and
+    // an integer column would not is how a green suite lies about production.
+    assertCurrentPlanStorable(plan, "InMemorySchedulerStore.saveCurrentPlan");
+    this.currentPlan = clone(plan);
+  }
+
+  /** Null means nothing has been ingested yet. Never the fixture; see the interface. */
+  async getCurrentPlan(): Promise<ApprovedPlan | null> {
+    return this.currentPlan === null ? null : clone(this.currentPlan);
+  }
+
   /* ── Deployments ── */
 
   /** Upsert, keyed by deployment id. Insertion order is go-live order. */
@@ -377,6 +407,9 @@ export class InMemorySchedulerStore implements SchedulerStore {
     this.deployments.clear();
     this.agentStates.clear();
     this.agentConfigs.clear();
+    // Back to null rather than back to the fixture: "nothing ingested" is the
+    // state a fresh store is in, and it is the resolver's job to say so.
+    this.currentPlan = null;
   }
 
   /** Every job in enqueue order, finished ones included. */

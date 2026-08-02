@@ -28,22 +28,43 @@
  * with the same four words, so the roster and the queue cannot describe one
  * drifted agent in two vocabularies.
  *
- * `session.plan` REMAINS THE CURRENT PLAN EVERYWHERE IT ALREADY WAS — the trigger
- * filter below, and the resume guard in POST. Reading the deployed plan instead
- * is precisely what makes drift invisible, which is the failure M6-1 exists to
- * catch. The reconciliation is added ALONGSIDE it and reads both.
+ * THE CURRENT PLAN IS WHAT THE TRIGGER FILTER AND THE RESUME GUARD READ, and it
+ * now comes from `session.currentPlan()` rather than a field assigned at session
+ * construction — that field was the BrightPath fixture, so this list was filtered
+ * to the demo's `planId` on every runtime, including ones where a real plan had
+ * been ingested. Reading the DEPLOYED plan instead would be the opposite mistake
+ * and is precisely what makes drift invisible, which is the failure M6-1 exists
+ * to catch. The reconciliation is alongside it and reads both.
  *
- * THE `now` OVERRIDE IS HONOURED ONLY IN FIXTURE MODE, and that guard is the
- * most important line in this file. It exists so the Friday sweep can be shown
- * on a Tuesday: move the clock to Friday 09:00, turn the worker once, watch a run
- * appear. In live mode the same parameter would let any caller replay a schedule
- * against real customer systems — every trigger whose `nextFireAt` falls before
- * the instant they name comes due at once, and the runs that follow send real
- * email to real people. So it is refused there rather than clamped or ignored,
- * and the refusal is a 409: the request is well formed and the server's mode is
- * what conflicts with it. `session.mode !== "fixture"` rather than
- * `=== "live"` — anything this build does not recognise as the sandboxed mode is
- * treated as the dangerous one.
+ * ONE READ COVERS BOTH HALVES OF THE GET. `session.planState()` returns the
+ * current plan, the deployed one and the reconciliation between them together, so
+ * the triggers listed here and the `live`/`lifecycle` block describing them are
+ * scoped to the SAME plan by construction. Two separate reads could straddle a
+ * concurrent ingest, and this response would then filter triggers by one plan's
+ * id while tagging them with another plan's drift — a row reading "running" under
+ * a heading counted from a workforce it is not part of.
+ *
+ * THE `now` OVERRIDE IS HONOURED ONLY WHEN NOTHING REAL CAN BE REACHED, and that
+ * guard is the most important line in this file. It exists so the Friday sweep
+ * can be shown on a Tuesday: move the clock to Friday 09:00, turn the worker
+ * once, watch a run appear. Otherwise the same parameter is a replay button
+ * pointed at real customer systems — every trigger whose `nextFireAt` falls
+ * before the instant they name comes due at once, and the runs that follow send
+ * real email to real people. Worse, the overridden instant is what quiet hours
+ * are evaluated against, so it can walk a run straight through the window the
+ * owner set. It is refused rather than clamped or ignored, and the refusal is a
+ * 409: the request is well formed and the server's configuration conflicts.
+ *
+ * THE GUARD ASKS TWO QUESTIONS, and it used to ask one. `session.mode !==
+ * "fixture"` was sufficient only while live tools implied live mode. They no
+ * longer do: `ORIANT_RUNTIME_TOOLS=composio` mounts a real Composio client under
+ * a session still reporting `mode: "fixture"`, which is a supported
+ * configuration — real hands, cheap brain. A mode-only check would have passed
+ * there while `session.tools` could send. So `session.toolsLive` is the half
+ * that actually means "this can reach a person", and both are asked.
+ *
+ * `!== "fixture"` rather than `=== "live"` is kept for the mode half: anything
+ * this build does not recognise as the sandboxed mode is treated as dangerous.
  *
  * WHEN THE CLOCK MOVES, IT MOVES FOR BOTH LAYERS. The override replaces the
  * scheduler's clock AND the executor's, because handing them separate clocks
@@ -58,7 +79,6 @@
  * deployment.
  */
 import { NextResponse } from "next/server";
-import { reconcileAgents, resolveActivePlan } from "@/lib/runtime/active-plan";
 import { pauseAgent, resumeAgent } from "@/lib/runtime/schedule/activation";
 import type { JobStatus } from "@/lib/runtime/schedule/types";
 import { runDueWork } from "@/lib/runtime/schedule/worker";
@@ -107,27 +127,32 @@ export async function GET(request: Request) {
     );
   }
 
-  // Filtered to this plan, matching what the worker itself polls
-  // (`dueScheduleTriggers` filters the same way), so what this endpoint lists is
-  // what a pass would actually consider — not every trigger the store has ever held.
+  /* ── Both plans and the drift between them, in ONE read ──
+     `planState()` resolves the current plan, the deployed one and
+     `reconcileAgents` over the pair, which is exactly what `/api/runtime/agents`
+     reports — so the roster and the queue cannot describe one drifted agent in
+     two vocabularies. It also keeps the `null` right: with nothing deployed the
+     fixture stands in for the ACTIVE plan, and calling its agents "running" would
+     claim a go-live that never happened.
+
+     The trigger filter below reads `state.current.plan` from this same result
+     rather than resolving the plan again, so the list and the lifecycle tags on
+     it are scoped to the SAME plan. Two reads could straddle an ingest — see the
+     header. */
+  const state = await session.planState();
+  const lifecycle = state.lifecycle;
+  const lifecycleById = new Map(lifecycle.map((row) => [row.agentId, row]));
+
+  // Filtered to the current plan, matching what the worker itself polls
+  // (`dueScheduleTriggers` filters by the plan POST hands it, which is the same
+  // one), so what this endpoint lists is what a pass would actually consider —
+  // not every trigger the store has ever held.
   const triggers = await session.schedulerStore.listTriggers({
-    planId: session.plan.planId,
+    planId: state.current.plan.planId,
   });
   const jobs = await session.schedulerStore.listJobs(
     status === null ? undefined : { status },
   );
-
-  /* ── What is RUNNING, versus what is merely PLANNED ──
-     Derived exactly as `/api/runtime/agents` derives it, from the same two
-     functions. `active.source === "deployment" ? active.plan : null` rather than
-     `active.plan`: with nothing deployed the fixture is standing in, and calling
-     its agents "running" would claim a go-live that never happened. */
-  const active = await resolveActivePlan(session.schedulerStore);
-  const lifecycle = reconcileAgents(
-    active.source === "deployment" ? active.plan : null,
-    session.plan,
-  );
-  const lifecycleById = new Map(lifecycle.map((row) => [row.agentId, row]));
 
   return NextResponse.json({
     mode: session.mode,
@@ -136,8 +161,8 @@ export async function GET(request: Request) {
     now: session.scheduler.clock.now().toISOString(),
     /** What is RUNNING, versus what the owner has currently planned. */
     live: {
-      source: active.source,
-      deploymentId: active.deploymentId,
+      source: state.active.source,
+      deploymentId: state.active.deploymentId,
       running: lifecycle.filter((row) => row.lifecycle === "running").length,
       drifted: lifecycle.filter((row) => row.lifecycle === "drifted").length,
       planned: lifecycle.filter((row) => row.lifecycle === "planned").length,
@@ -306,7 +331,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ mode: session.mode, action: "pause", change });
     }
 
-    const change = await resumeAgent(agentId, session.plan, session.scheduler, {
+    // `currentPlan()`, resolved HERE rather than at the top of the handler, so the
+    // pause branch above keeps its property of consulting no plan at all: a plan
+    // store that will not answer must not be able to refuse a pause, because
+    // stopping is never the unsafe direction. Resume re-derives triggers from the
+    // plan it is given, so it has to be the one the owner currently intends — the
+    // seed would re-derive BrightPath's crons onto somebody else's agent.
+    const plan = await session.currentPlan();
+    const change = await resumeAgent(agentId, plan, session.scheduler, {
       resumedBy: by,
     });
     // Every one of `resumeAgent`'s `changed: false` paths is a refusal — not in
@@ -347,16 +379,23 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    if (session.mode !== "fixture") {
-      // See the header. In live mode this parameter is a replay button pointed at
-      // real customer systems.
+    if (session.mode !== "fixture" || session.toolsLive) {
+      // See the header. This parameter is a replay button, and `session.toolsLive`
+      // is the half of the guard that says whether it is pointed at real people.
+      // Checking the mode alone was correct only while live tools implied live
+      // mode; ORIANT_RUNTIME_TOOLS=composio breaks that implication.
       return NextResponse.json(
         {
-          error:
-            `now is honoured only in fixture mode; this runtime is in "${session.mode}" mode. ` +
-            `Moving the clock forward makes every trigger due before that instant fire at once, ` +
-            `and against live integrations those runs reach real customers.`,
+          error: session.toolsLive
+            ? `now is refused because this runtime holds live tool clients ` +
+              `(ORIANT_RUNTIME_TOOLS), whatever its reasoner mode. Moving the clock forward ` +
+              `makes every trigger due before that instant fire at once, and those runs would ` +
+              `reach real customers through real integrations.`
+            : `now is honoured only in fixture mode; this runtime is in "${session.mode}" mode. ` +
+              `Moving the clock forward makes every trigger due before that instant fire at once, ` +
+              `and against live integrations those runs reach real customers.`,
           mode: session.mode,
+          toolsLive: session.toolsLive,
         },
         { status: 409 },
       );
@@ -364,11 +403,47 @@ export async function POST(request: Request) {
     clock = new FixedClock(body.now);
   }
 
+  /* ── The plan this pass serves ──
+     THE DEPLOYED PLAN, NOT THE CURRENT ONE, and that is a safety boundary.
+     A plan becomes "current" the moment it validates — before it is built,
+     before the sandbox has proved anything, before any gate has passed. Turning
+     the worker against `currentPlan()` therefore executes a revision that failed
+     `prove` and was never activated: the pipeline stops, nothing is deployed,
+     and the live schedule runs the unproved version anyway. `deployedPlan()` is
+     what actually went live, and null means nothing has.
+
+     Resolved once, and the SAME object is handed to the worker and used to build
+     the executor deps below. `runDueWork` reads agent policy, the global quiet
+     window and the set of agents that may run from `plan`, so a second read here
+     could serve one plan's triggers under another plan's policy. */
+  const plan = await session.deployedPlan();
+  if (plan === null) {
+    // Not an error. A runtime with nothing activated has no schedule to serve,
+    // and saying so is the honest answer — inventing a plan here is precisely
+    // the substitution this route was changed to remove.
+    return NextResponse.json({
+      mode: session.mode,
+      now: clock.now().toISOString(),
+      overridden: body.now !== undefined,
+      ran: false,
+      reason:
+        "Nothing is deployed, so there is no live schedule to turn. Activate a plan " +
+        "first — a plan that has only been ingested is what the owner intends, not " +
+        "what is running, and the worker deliberately will not run it.",
+    });
+  }
+
   const summary = await runDueWork({
-    plan: session.plan,
+    plan,
     // One clock for both layers — see the header.
     scheduler: { ...session.scheduler, clock },
-    executor: { ...session.executor, clock },
+    // `executorFor(plan)`, NOT `session.executor`: this pass starts real runs, and
+    // `session.executor` carries the SEED plan's `globalPolicy` — the fixture's
+    // org-wide denies and its quiet window. Executing this plan's work under those
+    // would mean a capability THIS owner forbade is not forbidden, which is a
+    // safety bug rather than a cosmetic one. Same `plan` the worker is given, so
+    // the policy enforced is the policy of the workforce being run.
+    executor: { ...session.executorFor(plan), clock },
     build: session.build,
   });
 

@@ -59,12 +59,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "A JSON body with agentId is required." }, { status: 400 });
   }
 
-  const spec = session.plan.agents.find((a) => a.id === body.agentId);
+  /* ── The workforce this request is about ──
+     The plan the owner currently intends, read ONCE and reused for the lookup,
+     for the refusal's `available` list and for the executor below. Two reads
+     could straddle a concurrent ingest and produce a response that names the
+     agents of one plan while running an agent from another. */
+  const plan = await session.currentPlan();
+
+  const spec = plan.agents.find((a) => a.id === body.agentId);
   if (!spec) {
     return NextResponse.json(
       {
         error: `Unknown agent "${String(body.agentId)}".`,
-        available: session.plan.agents.map((a) => a.id),
+        available: plan.agents.map((a) => a.id),
       },
       { status: 400 },
     );
@@ -105,7 +112,13 @@ export async function POST(request: Request) {
     idempotencyKey: session.executor.newId("trig"),
   };
 
-  const outcome = await startRun(bundle, trigger, session.executor);
+  // Executed with THIS plan's deps, not the session's seeded ones.
+  // `ExecutorOptions.globalPolicy` is the org-wide denies and the quiet window,
+  // and `session.executor` carries the fixture's copy of both — starting a real
+  // agent with it would leave a capability the owner forbade unforbidden. The
+  // clock and id factory above are shared either way; only the policy differs,
+  // which is the whole reason `executorFor` exists.
+  const outcome = await startRun(bundle, trigger, session.executorFor(plan));
 
   return NextResponse.json({
     runId: outcome.run.runId,

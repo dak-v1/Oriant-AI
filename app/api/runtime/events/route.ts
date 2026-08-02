@@ -273,13 +273,21 @@ function digest(parts: string[]): string {
  * the runtime moved, not that the world did.
  */
 async function readSnapshot(session: RuntimeSession): Promise<Snapshot> {
+  // The deployment topic is scoped to a plan, and it has to be the plan the owner
+  // currently intends rather than the construction-time seed. Read off the seed,
+  // this asked "is the BRIGHTPATH fixture deployed?" on every runtime — so on one
+  // where a real plan had been ingested the answer was a constant, and a go-live
+  // was a change no screen was ever told about. A read that throws propagates and
+  // becomes a `stalled` frame, which is the honest report.
+  const plan = await session.currentPlan();
+
   const [runs, approvals, triggers, jobs, states, deployment] = await Promise.all([
     session.runStore.listRuns(),
     session.runStore.listPendingApprovals(),
     session.schedulerStore.listTriggers(),
     session.schedulerStore.listJobs(),
     session.schedulerStore.listAgentStates(),
-    session.schedulerStore.getActiveDeployment(session.plan.planId),
+    session.schedulerStore.getActiveDeployment(plan.planId),
   ]);
 
   return {

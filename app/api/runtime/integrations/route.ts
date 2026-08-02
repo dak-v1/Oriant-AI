@@ -372,7 +372,13 @@ const UNAVAILABLE = [
 
 export async function GET() {
   const session = getRuntimeSession();
-  const plan = session.plan;
+  // The plan the owner currently intends, not the construction-time seed. Every
+  // row below is a grant walked out of this plan and a blocker attributed back to
+  // it, so a fixture here would tell an owner which connections BrightPath needs
+  // and stay silent about the ones their own workforce cannot go live without.
+  // One read, reused for the walk and for the checklist: two could not be shown
+  // to be about the same set of grants.
+  const plan = await session.currentPlan();
   const provider = session.tools;
 
   /* ── The blocking rule, borrowed rather than restated ──

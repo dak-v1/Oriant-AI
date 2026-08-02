@@ -207,7 +207,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const spec = session.plan.agents.find((a) => a.id === approval.agentId);
+  /* ── The plan this decision is judged and carried out against ──
+     Read ONCE. The spec below, the dependency fan-out and the executor's
+     `globalPolicy` all have to describe the same workforce; separate reads could
+     straddle an ingest and resume a run under one plan's policy while reporting
+     another plan's agent back to the inbox. */
+  const plan = await session.currentPlan();
+
+  const spec = plan.agents.find((a) => a.id === approval.agentId);
   if (!spec) {
     return NextResponse.json(
       { error: `Agent ${approval.agentId} is no longer in the approved plan.` },
@@ -230,7 +237,7 @@ export async function POST(request: Request) {
   const deadline = approvalDeadline(approval, decidedAt);
 
   // See the header: a resumed run is the one completion no worker pass sees.
-  const fanOut = dependencyFanOut({ plan: session.plan, scheduler: session.scheduler });
+  const fanOut = dependencyFanOut({ plan, scheduler: session.scheduler });
 
   const decision: ApprovalDecision = {
     approvalId: body.approvalId,
@@ -242,8 +249,16 @@ export async function POST(request: Request) {
   };
 
   try {
+    // `executorFor(plan)`, not `session.executor`: approving is what makes the
+    // held invocation actually execute, and the seeded executor carries the
+    // FIXTURE's `globalPolicy`. The org-wide denies and the quiet window that
+    // gate this send have to be the ones belonging to the plan the spec and the
+    // bundle above came from, or an owner's forbidden capability is not
+    // forbidden at the one moment it is about to be used. Reading the current
+    // plan here rather than the plan the run started under is deliberate and the
+    // safe direction: a deny added since the pause applies to the resume.
     const outcome = await decideAndResume(decision, bundle, {
-      ...session.executor,
+      ...session.executorFor(plan),
       onRunResumed: fanOut.onRunResumed,
     });
 

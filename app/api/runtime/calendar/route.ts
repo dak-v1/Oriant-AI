@@ -423,7 +423,18 @@ export async function GET(request: Request) {
     );
   }
 
-  const zoneChoice = businessZone(session.plan);
+  /* ── The plan this whole projection is built from ──
+     `currentPlan()`, not the construction-time seed: a calendar is something a
+     person reads, and reading it off the fixture would put BrightPath's zone and
+     BrightPath's agent names over another business's triggers.
+
+     Resolved ONCE and reused for the zone, the names and the trigger filter
+     below. Three separate reads could straddle an ingest and disagree inside one
+     response — a month grouped in one plan's timezone, labelled with a second
+     plan's agent names, over a third plan's triggers. */
+  const plan = await session.currentPlan();
+
+  const zoneChoice = businessZone(plan);
   const zone = createCalendarZone(zoneChoice.timezone);
 
   const todayKey = zone.dayKey(nowMs);
@@ -492,14 +503,16 @@ export async function GET(request: Request) {
   const inRange = (dayKey: string | null): dayKey is string =>
     dayKey !== null && dayKey >= range.from && dayKey <= range.to;
 
-  const names = createNames(session.plan.agents);
+  const names = createNames(plan.agents);
   const events: CalendarEvent[] = [];
   const unplaceable: UnplaceableItem[] = [];
   let truncated = false;
 
   /* ═══ (a) SCHEDULED — what is going to happen ═══ */
 
-  const triggers = await session.schedulerStore.listTriggers({ planId: session.plan.planId });
+  // Same `plan` the zone and the names came from, so the grid, its headings and
+  // the rows on it are all about one workforce.
+  const triggers = await session.schedulerStore.listTriggers({ planId: plan.planId });
   const enabled = triggers.filter((trigger) => trigger.enabled);
   const scheduleTriggers = enabled.filter((trigger) => trigger.spec.kind === "schedule");
 

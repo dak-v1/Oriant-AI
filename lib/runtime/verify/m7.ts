@@ -153,6 +153,8 @@ import { InMemorySchedulerStore } from "../schedule/store";
 import { triggerIdFor } from "../schedule/triggers";
 import type { SchedulerDeps } from "../schedule/types";
 import { countRunsToday, runDueWork } from "../schedule/worker";
+import { currentPlan, resolvePlanState } from "../current-plan";
+import { resolveActivePlan } from "../active-plan";
 import type { RuntimeSession } from "../session";
 import { FixedClock, InMemoryRunStore, createIdFactory } from "../store";
 import { StubIntegrationProvider } from "../tools";
@@ -416,12 +418,40 @@ function install(world: World): void {
   (globalThis as unknown as SessionGlobal).__oriantRuntime = world.session;
 }
 
+/**
+ * `world.plan` is the SEED here, and the current plan is read from the store.
+ *
+ * `session.plan` is gone; the routes resolve `session.currentPlan()` out of
+ * `SchedulerStore.getCurrentPlan`, so `makeWorld` seeds the store and this
+ * delegates to the real resolver rather than stubbing it. Stubbing would leave
+ * every check below green even if `resolveCurrentPlan` returned the wrong plan
+ * outright, which is the one failure M7's gates are meant to be sensitive to.
+ *
+ * Note this is called again by `withRegistry` on a world that shares the SAME
+ * scheduler store, so the rebuilt session keeps reading the same stored plan —
+ * which is correct: swapping the integrations registry does not change what the
+ * owner intends.
+ */
 function sessionFor(world: Omit<World, "session">): RuntimeSession {
   return {
     mode: "fixture",
+    // Nothing in M7 holds a live tool client, and a check that did would be
+    // reaching a real customer from the test suite.
+    toolsLive: false,
     storage: "memory",
     dataDir: null,
-    plan: world.plan,
+    seedPlan: world.plan,
+    currentPlan: () => currentPlan(world.scheduler.store),
+    planState: () => resolvePlanState(world.scheduler.store),
+    // Read through the store as production does. Answering with `world.plan`
+    // would claim a deployment exists before anything is activated, and M7
+    // walks the whole go-live path — when activation happens is the point.
+    deployedPlan: async () => {
+      const active = await resolveActivePlan(world.scheduler.store);
+      return active.source === "deployment" ? active.plan : null;
+    },
+    // Mirrors `executorWith` in lib/runtime/session.ts.
+    executorFor: (forPlan) => ({ ...world.executor, globalPolicy: forPlan.globalPolicy }),
     runStore: world.runStore,
     buildStore: world.build.store,
     schedulerStore: world.scheduler.store,
@@ -465,6 +495,11 @@ async function makeWorld(seed: string, options: WorldOptions = {}): Promise<Worl
     sleep: async () => {},
     globalPolicy: plan.globalPolicy,
   };
+
+  // Seeds what the routes read as the CURRENT plan, exactly as an ingest through
+  // the pipeline would. See `sessionFor` for why this is a real store write and
+  // not a stubbed accessor.
+  await scheduler.store.saveCurrentPlan(plan);
 
   const parts = { clock, build, runStore, scheduler, integrations, executor, plan };
   return { ...parts, session: sessionFor(parts) };

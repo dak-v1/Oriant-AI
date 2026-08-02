@@ -24,9 +24,24 @@
  * NO SENTENCE HERE IS THIS SCREEN'S OWN. Messages and resolutions are the
  * ingest's words, verbatim. The group headings say what a severity means, and
  * that is the whole of this component's editorial content.
+ *
+ * AN EMPTY REPORT HAS THREE CAUSES AND THEY ARE NOT INTERCHANGEABLE. A pass ran
+ * and recorded nothing; no pass has ever run here; or nobody has managed to ask.
+ * `known` and `ran` are two booleans rather than one because the first two are
+ * conclusions the runtime handed us and the third is the absence of any handing
+ * over at all. Collapsing the third into "no pass has been run, so nothing has
+ * been assumed yet" — which this component used to do, on the strength of an
+ * empty array and a false `ran` — states as fact the one thing a failed read
+ * cannot establish. `known` is checked first and wins, so the pair cannot render
+ * a claim it has no basis for even if a caller passes a contradiction.
+ *
+ * AND THE SECOND CAUSE HAS A TENSE. "No pass has been run" was true when the read
+ * came back and stops being true somewhere inside the pass that is running now;
+ * a reader watching an ingest stage they cannot see should not be told nothing
+ * has been assumed. `running` puts that one sentence in the past — see the prop.
  */
 
-import { AlertTriangle, ArrowRight, Info, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ArrowRight, HelpCircle, Info, ShieldAlert } from "lucide-react";
 import type { GapSeverity } from "@/lib/plan/ingest/types";
 import type { GapView } from "./api";
 import { SEVERITY_ORDER } from "./api";
@@ -62,9 +77,26 @@ export default function GapReport({
   gaps,
   /** False before any pass — the difference between "none" and "not asked yet". */
   ran,
+  /**
+   * False while the runtime has not answered at all. Outranks `ran`: nothing
+   * below may report on a pass, or on the absence of one, until this is true.
+   */
+  known,
+  /**
+   * True while a pass is in flight, and it changes exactly one branch: the one
+   * that reports there is nothing here because no pass has run. That sentence is
+   * a claim about the ABSENCE of a pass, and the request now running is the one
+   * thing that can be falsifying it as it is read — the ingest stage may already
+   * have recorded every assumption below. The branches that report on a pass we
+   * hold need nothing here: they are the previous answer, kept and labelled as
+   * such by the running banner above, which is rule 4 on `PipelineScreen`.
+   */
+  running,
 }: {
   gaps: GapView[];
   ran: boolean;
+  known: boolean;
+  running: boolean;
 }) {
   const grouped = new Map<GapSeverity, GapView[]>();
   for (const gap of gaps) {
@@ -88,20 +120,39 @@ export default function GapReport({
         </p>
       </div>
 
-      {!ran && (
-        <div className={styles.stateBox}>
+      {!known && (
+        <div className={`${styles.stateBox} ${styles.stateUnknown}`}>
           <p className={styles.stateTitle}>
-            <Info size={17} aria-hidden />
-            No pass has been run, so nothing has been assumed yet.
+            <HelpCircle size={17} aria-hidden />
+            Whether anything has been assumed here is not known.
           </p>
           <p>
-            The gap report is produced by the ingest stage. Run a pass and every assumption
-            it makes appears here, grouped by how much it costs you.
+            The gap report is the ingest&apos;s record, read back from the runtime, and the
+            runtime has not answered. That is not the same as an ingest that assumed
+            nothing, and it is not the same as a server where no pass has run — this list
+            is blank because nobody has been able to ask, and it will stay blank until
+            somebody can.
           </p>
         </div>
       )}
 
-      {ran && gaps.length === 0 && (
+      {known && !ran && (
+        <div className={styles.stateBox}>
+          <p className={styles.stateTitle}>
+            <Info size={17} aria-hidden />
+            {running
+              ? "Nothing had been assumed here when this screen last asked."
+              : "No pass has been run, so nothing has been assumed yet."}
+          </p>
+          <p>
+            {running
+              ? "The gap report is produced by the ingest stage, and a pass is in the middle of one right now. Whatever it assumes appears here when the pass answers; until then this list is empty because of a question asked before it started."
+              : "The gap report is produced by the ingest stage. Run a pass and every assumption it makes appears here, grouped by how much it costs you."}
+          </p>
+        </div>
+      )}
+
+      {known && ran && gaps.length === 0 && (
         <div className={styles.stateBox}>
           <p className={styles.stateTitle}>
             <AlertTriangle size={17} aria-hidden />
@@ -170,7 +221,7 @@ export default function GapReport({
         );
       })}
 
-      {ran && gaps.length > 0 && (
+      {known && ran && gaps.length > 0 && (
         <p className="oa-sub">
           {plural(gaps.length, "assumption", "assumptions")} recorded. None of them are
           guesses about what an agent may do unattended — that question has one answer for

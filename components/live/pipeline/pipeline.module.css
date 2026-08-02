@@ -128,6 +128,29 @@
   max-width: 96ch;
 }
 
+/* Where the agent list would be if the runtime had answered.
+
+   Set in a bordered well rather than as another paragraph of the notice,
+   because it stands where the evidence stands and has to read as the evidence
+   being MISSING — a plain sentence in the same amber flow gets skimmed as more
+   of the reassurance above it. The icon is inline with the text and
+   `aria-hidden`; the words carry the whole meaning on their own. */
+.draftUnknown {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 2px;
+  padding: 10px 12px;
+  border: 1px dashed var(--oa-amber-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+}
+
+.draftUnknown svg {
+  flex: none;
+  margin-top: 2px;
+}
+
 /* The agents, each with the mode the pass actually recorded for it. Evidence
    for the claim above rather than a restatement of it. */
 .modeList {
@@ -680,14 +703,16 @@
 }
 
 /* ── Page-level states ─────────────────────────────────────────────────────
-   Four treatments, because a reader has to tell them apart before reading
+   Five treatments, because a reader has to tell them apart before reading
    them:
 
-     .errorBox    something failed and may work on the next press — red, alert
-     .blockedBox  nothing failed; a gate refused, and refreshing changes
-                  nothing — amber, with the stage that stopped it named
-     .stateBox    nothing has been run yet — dashed, quiet, instructional
-     .runningBox  a pass is in flight and nothing is known yet             */
+     .errorBox      something failed and may work on the next press — red, alert
+     .blockedBox    nothing failed; a gate refused, and refreshing changes
+                    nothing — amber, with the stage that stopped it named
+     .stateBox      nothing has been run yet — dashed, quiet, instructional
+     .stateUnknown  a modifier on .stateBox: the runtime has not answered, so
+                    this box reports nothing about it
+     .runningBox    a pass is in flight and nothing is known yet           */
 
 .errorBox {
   display: grid;
@@ -780,6 +805,24 @@
 .stateBox p {
   margin: 0;
   max-width: 92ch;
+}
+
+/* The runtime has not answered.
+
+   It shares .stateBox's shape because it is the same size of interruption in
+   the same place, and then differs in the two ways a reader picks up before
+   reading: a solid left rule where the idle box has none, and the page's
+   secondary surface instead of the card white. The idle box is instructional —
+   press the button — and this one has nothing to instruct, so it must not be
+   mistakable for it at a glance. It is deliberately NOT red or amber either:
+   nothing has failed in the workforce, and dressing "we could not ask" as a
+   failure of the pipeline is the mirror image of the bug this state exists to
+   prevent. The red banner above it is where the transport failure is reported. */
+.stateUnknown {
+  border-style: dashed;
+  border-color: var(--oa-border-strong);
+  border-left: 4px solid var(--oa-border-strong);
+  background: var(--oa-bg-alt);
 }
 
 .runningBox {

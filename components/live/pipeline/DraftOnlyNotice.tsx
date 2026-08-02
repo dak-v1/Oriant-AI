@@ -26,16 +26,45 @@
  * particular subject is worse than no notice at all. That case should be
  * impossible today; a component that renders it is how anyone would find out it
  * had stopped being impossible.
+ *
+ * THE HEADLINE IS A POLICY, THE LIST IS A REPORT, AND `known` KEEPS THEM APART.
+ * "Every agent from this pipeline prepares work and stops" is what the ingest
+ * does to anything it takes in, so it is true on an empty screen and is shown in
+ * every state. "No pass has produced a plan yet" is a different kind of sentence
+ * — a claim about this server, right now — and it used to be printed off the
+ * back of an empty agent list, which is also what a runtime that never answered
+ * looks like. So a null `plan` no longer speaks for itself: with `known` false
+ * the empty branch says the plan is unread rather than absent, and the headline
+ * carries on saying the only thing it was ever entitled to say. `running` is the
+ * same distinction one step along: "no plan yet" was a report when it was made
+ * and is being overtaken while it is read, so it goes into the past tense for as
+ * long as a pass is on the wire.
  */
 
-import { Hand, ShieldAlert } from "lucide-react";
+import { Hand, HelpCircle, ShieldAlert } from "lucide-react";
 import type { PlanView } from "./api";
 import { plural } from "./format";
 import styles from "./pipeline.module.css";
 
 const DRAFT_ONLY = "draft_only";
 
-export default function DraftOnlyNotice({ plan }: { plan: PlanView | null }) {
+export default function DraftOnlyNotice({
+  plan,
+  /** False while the runtime has not answered — see the header. */
+  known,
+  /**
+   * True while a pass is in flight, and it reaches exactly one branch: the one
+   * that says no pass has produced a plan. That is a claim about the ABSENCE of
+   * a plan, and the pass now running may have ingested one several stages ago.
+   * The list itself needs nothing here — it is the previous pass's plan, kept
+   * and labelled as such by the banner above it.
+   */
+  running,
+}: {
+  plan: PlanView | null;
+  known: boolean;
+  running: boolean;
+}) {
   const agents = plan?.agents ?? [];
   const other = agents.filter((agent) => agent.operatingMode !== DRAFT_ONLY);
   const unexpected = other.length > 0;
@@ -106,10 +135,31 @@ export default function DraftOnlyNotice({ plan }: { plan: PlanView | null }) {
           </ul>
         )}
 
-        {agents.length === 0 && (
+        {agents.length === 0 && known && !running && (
           <p className={styles.draftBody}>
             No pass has produced a plan yet, so there are no agents to list. The sentence
             above is what the ingest will do, not a report of what it did.
+          </p>
+        )}
+
+        {agents.length === 0 && known && running && (
+          <p className={styles.draftBody}>
+            No pass had produced a plan here when this screen last asked, and the one in
+            flight has not answered, so there is nothing to list yet. The sentence above is
+            what the ingest is doing to the agents it is reading right now, and it is the
+            reason this list will be safe to read when it arrives.
+          </p>
+        )}
+
+        {agents.length === 0 && !known && (
+          <p className={`${styles.draftBody} ${styles.draftUnknown}`}>
+            <HelpCircle size={14} aria-hidden />
+            <span>
+              Whether a pass has produced a plan here is not known — the runtime has not
+              answered, so there is no list to show and no basis for saying there is
+              nothing to list. The sentence above is what the ingest does to every agent it
+              takes in, and it holds whether or not this server has ever run one.
+            </span>
           </p>
         )}
       </div>

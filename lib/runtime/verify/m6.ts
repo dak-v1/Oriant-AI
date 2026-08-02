@@ -119,6 +119,8 @@ import { InMemorySchedulerStore } from "../schedule/store";
 import { triggerIdFor } from "../schedule/triggers";
 import type { SchedulerDeps } from "../schedule/types";
 import type { SandboxVerdict } from "../sandbox/types";
+import { currentPlan, resolvePlanState } from "../current-plan";
+import { resolveActivePlan } from "../active-plan";
 import type { RuntimeSession } from "../session";
 import { runDueWork } from "../schedule/worker";
 import { FixedClock, InMemoryRunStore, createIdFactory } from "../store";
@@ -336,6 +338,24 @@ async function makeWorld(seed: string, options: WorldOptions = {}): Promise<Worl
     globalPolicy: plan.globalPolicy,
   };
 
+  /*
+   * THE PLAN LIVES IN THE STORE NOW, not in a session field.
+   *
+   * `session.plan` used to be the whole mechanism: the routes read it
+   * synchronously and a test changed it by rebuilding the session. It is gone,
+   * and the routes read `session.currentPlan()` — which resolves out of
+   * `SchedulerStore.getCurrentPlan`. So the world seeds the store, exactly as an
+   * ingest through the pipeline would.
+   *
+   * Deliberately NOT stubbed as `currentPlan: async () => plan`. That would keep
+   * these checks green even if `resolveCurrentPlan` were broken outright, and
+   * M6-1's entire job is to notice when the roster stops reading the plan the
+   * owner intends. The store is already a real in-memory store here, so seeding
+   * it is the same substitution the harness makes everywhere else: real
+   * component, fake environment.
+   */
+  await scheduler.store.saveCurrentPlan(plan);
+
   return {
     clock,
     build,
@@ -346,9 +366,27 @@ async function makeWorld(seed: string, options: WorldOptions = {}): Promise<Worl
     plan,
     session: {
       mode: "fixture",
+      // No world in this file holds a live tool client, and a check that ran
+      // against one would be reaching a real customer from the test suite.
+      toolsLive: false,
       storage: "memory",
       dataDir: null,
-      plan,
+      // The construction seed. Same value as the current plan here because this
+      // world has exactly one plan, but read through the store like production.
+      seedPlan: plan,
+      currentPlan: () => currentPlan(scheduler.store),
+      planState: () => resolvePlanState(scheduler.store),
+      // Read through the store exactly as production does, rather than returned
+      // as `plan`. A stub answering with the world's plan would report a
+      // deployment where there is none, and M6 asserts drift — which is the
+      // difference between what is deployed and what is intended.
+      deployedPlan: async () => {
+        const active = await resolveActivePlan(scheduler.store);
+        return active.source === "deployment" ? active.plan : null;
+      },
+      // Mirrors `executorWith` in lib/runtime/session.ts: the same deps, carrying
+      // the policy of whichever plan is being executed.
+      executorFor: (forPlan) => ({ ...executor, globalPolicy: forPlan.globalPolicy }),
       runStore,
       buildStore: build.store,
       schedulerStore: scheduler.store,
@@ -360,6 +398,19 @@ async function makeWorld(seed: string, options: WorldOptions = {}): Promise<Worl
       reset: async () => {},
     },
   };
+}
+
+/**
+ * Swap what the owner currently intends, mid-check.
+ *
+ * The drift case in M6-1 needs the plan to move AFTER activation froze a
+ * version, which is what makes a resume a 409 rather than a no-op. It used to be
+ * done by re-installing a session with a different `plan` field; now the plan is
+ * a stored fact, so moving it is a write. Same session, same stores — only the
+ * intended plan changes, which is precisely the fact drift is measured against.
+ */
+async function setCurrentPlan(world: World, plan: ApprovedPlan): Promise<void> {
+  await world.scheduler.store.saveCurrentPlan(plan);
 }
 
 function activationDeps(world: World, verdict: SandboxVerdict): ActivationDeps {
@@ -735,7 +786,15 @@ export async function runM6Verification(): Promise<Check[]> {
             agent.id === MARKETING ? { ...agent, version: agent.version + 1 } : agent,
           ),
         };
-        install({ ...world, plan: driftedPlan, session: { ...world.session, plan: driftedPlan } });
+        /* The plan the owner intends moves; the deployment does not. Written to
+           the store rather than swapped onto the session, because the route now
+           reads it from there — see `makeWorld`. The refusal below is still the
+           version guard in `resumeAgent` firing on a plan whose MARKETING agent
+           is now v3 against a runtime record frozen at v2 by activation, and
+           `driftedRecord.agentVersion === 2` on the line after it is what proves
+           the refusal came from the drift rather than from the record being
+           quietly rewritten to agree. */
+        await setCurrentPlan(world, driftedPlan);
         const drifted = await submitTransition({ agentId: MARKETING, action: "resume" });
         const driftedRecord = await world.scheduler.store.getAgentState(MARKETING);
         const driftRefused =
@@ -747,6 +806,9 @@ export async function runM6Verification(): Promise<Check[]> {
           driftedRecord.agentVersion === 2;
 
         /* ── A body the route cannot read is a 400 naming the problem ── */
+        // The stored plan goes back with the session. `install` alone no longer
+        // undoes the drift above, because the drift is not in the session.
+        await setCurrentPlan(world, world.plan);
         install(world);
         const malformed = await agentsPOST(
           new Request(`${LINK_BASE}/api/runtime/agents`, {

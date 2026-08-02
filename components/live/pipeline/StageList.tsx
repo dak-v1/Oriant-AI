@@ -17,6 +17,15 @@
  * button a leap of faith, and the shape of the pass is the thing somebody
  * demoing it most needs to have seen before pressing anything.
  *
+ * WHICH MAKES `stages === null` A CLAIM, AND THE CALLER'S TO MAKE. Six rows
+ * saying "not run yet" is this component reporting that the runtime has run no
+ * pass — an answer, and the wrong one if the runtime has said nothing at all.
+ * `PipelineScreen` therefore renders its own absence-of-information state
+ * instead of mounting this one while its `unheard` predicate holds, and only
+ * passes null once the runtime has confirmed there is nothing. Nothing here can
+ * enforce that from the inside: null cannot tell the two apart, which is exactly
+ * why the distinction lives one level up and is written down in both places.
+ *
  * NOT-RUN AND SKIPPED ARE NOT ALLOWED TO LOOK ALIKE. One is "this pass has not
  * happened", the other is "this pass stopped before here" — different facts,
  * different next actions, and the second one is a report about a workforce that
@@ -67,11 +76,19 @@ export default function StageList({
   stoppedAt,
   superseded,
 }: {
-  /** Null before any pass has been read — the six rows render as "not run yet". */
+  /**
+   * Null ONLY when the runtime has answered and said no pass has run — the six
+   * rows then render as "not run yet". Never null merely because a read failed;
+   * see the header.
+   */
   stages: StageView[] | null;
   /** The stage that stopped the pass, marked in place as well as named above. */
   stoppedAt: StageId | null;
-  /** True while a newer pass is in flight and this one is the previous answer. */
+  /**
+   * True while a newer pass is in flight, which makes everything here the
+   * previous answer — six "not run yet" rows included. Those are a report the
+   * runtime made too, and the pass on the wire is busy replacing it.
+   */
   superseded: boolean;
 }) {
   const byId = new Map((stages ?? []).map((stage) => [stage.stage, stage]));

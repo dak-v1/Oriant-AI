@@ -59,8 +59,8 @@
  */
 
 import type postgres from "postgres";
-import type { AgentRuntimeConfig, TriggerSpec } from "../../../plan/types";
-import { assertConcurrencyStorable } from "../../schedule/types";
+import type { AgentRuntimeConfig, ApprovedPlan, TriggerSpec } from "../../../plan/types";
+import { assertConcurrencyStorable, assertCurrentPlanStorable } from "../../schedule/types";
 import type {
   AgentRuntimeRecord,
   Deployment,
@@ -85,6 +85,16 @@ const ENTITY_JOBS = "queue_jobs";
 const ENTITY_DEPLOYMENTS = "deployments";
 const ENTITY_AGENT_STATES = "agent_runtime_state";
 const ENTITY_AGENT_CONFIGS = "agent_runtime_config";
+const ENTITY_CURRENT_PLAN = "current_plan";
+
+/**
+ * The whole table is one row, so its key is a constant rather than the plan's
+ * id — and the `CHECK (id = 'current')` in ./schema.ts is what makes that a
+ * property of the database instead of a habit of this file. It is the same
+ * literal `FileSchedulerStore` names its record with, so the two stores address
+ * the one current plan identically.
+ */
+const CURRENT_PLAN_ROW_ID = "current";
 
 /**
  * The denormalised copy of `ScheduledTrigger.spec` gets its own tag rather than
@@ -123,6 +133,11 @@ interface AgentStateRow {
 
 interface AgentConfigRow {
   agent_id: string;
+  record: unknown;
+}
+
+interface CurrentPlanRow {
+  id: string;
   record: unknown;
 }
 
@@ -486,6 +501,66 @@ export class PostgresSchedulerStore implements SchedulerStore {
 
       return claimedJob;
     });
+  }
+
+  /* ── The current plan ── */
+
+  /**
+   * Upsert of the single "what we intend" row. The newest write wins.
+   *
+   * `ON CONFLICT (id) DO UPDATE` on a constant key is the whole mechanism, and
+   * it is what makes concurrent writers safe without a transaction: two pipeline
+   * passes finishing at once serialise on the row lock and the second one's plan
+   * is the one that survives, which is exactly "newest ingested wins". An
+   * INSERT-if-absent plus an UPDATE would need the transaction and could still
+   * interleave into a row holding one pass's `plan_id` beside another's `record`.
+   *
+   * `plan_id`, `plan_version` and `approved_at` are denormalised for the reason
+   * every table here denormalises: an operator can read `SELECT plan_id,
+   * plan_version FROM oriant_current_plan` and see what the workforce is
+   * supposed to be without decoding a jsonb blob. Nothing filters on them —
+   * `record` is still the truth on read.
+   */
+  async saveCurrentPlan(plan: ApprovedPlan): Promise<void> {
+    // The shared guard first, so the message names the plan and the field and
+    // reads identically whichever store is mounted. The column helpers below
+    // stay as each column's own last line of defence.
+    assertCurrentPlanStorable(plan, "PostgresSchedulerStore.saveCurrentPlan");
+    await this.sql<WriteResult>`
+      INSERT INTO oriant_current_plan (id, plan_id, plan_version, approved_at, record)
+      VALUES (
+        ${CURRENT_PLAN_ROW_ID},
+        ${plan.planId},
+        ${integerColumn(plan.version, `plan "${plan.planId}" version`)},
+        ${instantColumn(plan.approvedAt, `plan "${plan.planId}" approvedAt`)},
+        ${this.jsonb(ENTITY_CURRENT_PLAN, plan)}
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        plan_id      = EXCLUDED.plan_id,
+        plan_version = EXCLUDED.plan_version,
+        approved_at  = EXCLUDED.approved_at,
+        record       = EXCLUDED.record
+    `;
+  }
+
+  /**
+   * Null means nothing has been ingested, which on a fresh database is the
+   * ordinary answer rather than the error one. Nothing here substitutes a
+   * fixture; `resolveCurrentPlan` owns that decision and returns a source
+   * discriminant with it, exactly as in the other two stores.
+   */
+  async getCurrentPlan(): Promise<ApprovedPlan | null> {
+    const rows = await this.sql<CurrentPlanRow[]>`
+      SELECT id, record FROM oriant_current_plan WHERE id = ${CURRENT_PLAN_ROW_ID}
+    `;
+
+    const row = rows.at(0);
+    if (row === undefined) return null;
+    return fromJsonb<ApprovedPlan>(
+      ENTITY_CURRENT_PLAN,
+      row.record,
+      rowRef("oriant_current_plan", row.id),
+    );
   }
 
   /* ── Deployments ── */

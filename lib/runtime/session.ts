@@ -57,12 +57,41 @@ import { InMemorySchedulerStore } from "./schedule/store";
 import type { SchedulerDeps, SchedulerStore } from "./schedule/types";
 import { InMemoryRunStore, SystemClock, createIdFactory } from "./store";
 import { StubIntegrationProvider } from "./tools";
+import { createComposioIntegrationProvider } from "./tools/composio-sdk";
+import { currentPlan, resolvePlanState, type PlanState } from "./current-plan";
+import { resolveActivePlan } from "./active-plan";
 import type { IntegrationProvider, Reasoner, RunStore } from "./types";
 
 export type RuntimeMode = "fixture" | "live";
 
 export function runtimeMode(): RuntimeMode {
   return process.env.ORIANT_RUNTIME_MODE === "live" ? "live" : "fixture";
+}
+
+/**
+ * Whether the runtime executes tools for real. ITS OWN SWITCH, ASKED FOR BY NAME.
+ *
+ *   unset / anything but "composio" → StubIntegrationProvider
+ *   "composio"                      → real Composio clients
+ *
+ * DELIBERATELY NOT COUPLED TO `ORIANT_RUNTIME_MODE`, and the first attempt got
+ * this wrong. `.env.example` has always promised that live mode means a real
+ * model AND real tool clients, so the obvious repair was to make the promise
+ * true — live implies live hands. That is the wrong repair. Somebody who set
+ * `ORIANT_RUNTIME_MODE=live` was asking for a better model; they were not asking
+ * to send email to customers, and a deployment already running that way would
+ * have started doing so on the next deploy with no line in any diff naming the
+ * change. Sending is not a side effect of a reasoning flag.
+ *
+ * So the documentation was wrong rather than the code, and it now says so. The
+ * default here is the safe one whatever the mode, and reaching real customers
+ * takes a variable whose only purpose is to say that is what you want.
+ *
+ * `mode` is still taken as a parameter: callers read it alongside this, and a
+ * signature that hides the pairing would invite the coupling straight back.
+ */
+export function liveTools(_mode: RuntimeMode): boolean {
+  return (process.env.ORIANT_RUNTIME_TOOLS ?? "").trim() === "composio";
 }
 
 /* ═══════════════════════════ Storage ═══════════════════════════ */
@@ -132,10 +161,67 @@ export function runtimeDataDir(): string {
 
 export interface RuntimeSession {
   mode: RuntimeMode;
+  /**
+   * Whether `tools` can reach a real customer.
+   *
+   * SEPARATE FROM `mode`, and every safety guard must ask THIS one. `mode` is
+   * about the reasoner; since `ORIANT_RUNTIME_TOOLS` was split out, a session
+   * can report `mode: "fixture"` while holding a live Composio client. Any
+   * check written as `mode !== "fixture"` to mean "this could affect the real
+   * world" is now wrong — /api/runtime/scheduler's clock override was exactly
+   * that, and it would have let a caller move the clock past the owner's quiet
+   * hours and send for real.
+   */
+  toolsLive: boolean;
   storage: RuntimeStorage;
   /** Absolute directory backing the stores; null when storage is "memory". */
   dataDir: string | null;
-  plan: ApprovedPlan;
+  /**
+   * THE CONSTRUCTION-TIME SEED, AND ALMOST CERTAINLY NOT WHAT YOU WANT.
+   *
+   * This is the BrightPath fixture, always. It exists because a session is built
+   * synchronously and a stored plan can only be read with an `await`, so
+   * something has to fill `executor.globalPolicy` at construction.
+   *
+   * It is NOT the workforce the owner asked for. Anything a person reads —
+   * a roster, a checklist, a calendar, a notification — must come from
+   * `currentPlan()`, which returns what was actually ingested. This field was
+   * called `plan` until routes started showing it to people as though it were
+   * theirs; the rename is deliberate, so that every use has to be looked at.
+   */
+  seedPlan: ApprovedPlan;
+  /**
+   * The plan the owner currently intends: the newest one ingested from Role B,
+   * or the fixture with a stated reason when nothing has been ingested yet.
+   */
+  currentPlan(): Promise<ApprovedPlan>;
+  /** Current plan, running plan, and the per-agent drift between them. */
+  planState(): Promise<PlanState>;
+  /**
+   * The plan that is actually DEPLOYED, or null when nothing has gone live.
+   *
+   * WHAT THE WORKER MUST RUN, and the distinction is a safety boundary rather
+   * than a nicety. `currentPlan()` is what the owner INTENDS, and a plan becomes
+   * current the moment it validates — before it is built, before the sandbox has
+   * proved anything, before any gate has been passed. A worker resolving its
+   * schedule from `currentPlan()` will therefore execute a revision that failed
+   * `prove` and was never activated: the pass stops, nothing is deployed, and
+   * the live schedule quietly starts running the unproved version anyway.
+   *
+   * Null is a real answer and callers must honour it. Nothing deployed means
+   * nothing to run — inventing a fallback here would restore the exact bug.
+   */
+  deployedPlan(): Promise<ApprovedPlan | null>;
+  /**
+   * Executor dependencies carrying THAT plan's global policy.
+   *
+   * `globalPolicy` is org-wide DENIES and the quiet window, so running an agent
+   * with another plan's copy is a safety bug, not an inaccuracy: a capability
+   * the owner forbade would not be forbidden. Any caller that actually executes
+   * must build its deps from the plan it is executing, which is what this is
+   * for. `executor` below is the seeded one and must not be used to run work.
+   */
+  executorFor(plan: ApprovedPlan): ExecutorOptions;
   runStore: RunStore;
   buildStore: BuildStore;
   schedulerStore: SchedulerStore;
@@ -217,7 +303,29 @@ function createSession(): RuntimeSession {
   const mode = runtimeMode();
   const storage = runtimeStorage();
   const stores = createStores(storage);
-  const tools = new StubIntegrationProvider();
+
+  /*
+   * THE HANDS FOLLOW THE BRAIN, and until now they did not.
+   *
+   * `.env.example` has always promised that live mode means "real LLM for
+   * `reason` steps AND real tool clients for `fetch`/`act` steps". Only the
+   * first half was true: this line mounted the stub unconditionally, so a
+   * deployment configured for live ran a real model against simulated hands and
+   * reported success for sends that never happened. That is the worst failure
+   * available here — worse than refusing — because nothing downstream can tell.
+   *
+   * `createComposioIntegrationProvider()` throws `ComposioToolsConfigError` when
+   * COMPOSIO_API_KEY or ORIANT_ORGANIZATION_ID is missing, exactly as
+   * `AiAndReasoner` throws below. Loud at wiring, never a silent stub.
+   *
+   * ORIANT_RUNTIME_TOOLS is its own switch and defaults to the stub whatever
+   * the mode — see `liveTools`. Reaching a real customer takes a variable that
+   * says so and nothing else does.
+   */
+  const toolsLive = liveTools(mode);
+  const tools: IntegrationProvider = toolsLive
+    ? createComposioIntegrationProvider()
+    : new StubIntegrationProvider();
   const clock = new SystemClock();
   const newId = createIdFactory();
 
@@ -227,26 +335,42 @@ function createSession(): RuntimeSession {
   const reasoner: Reasoner =
     mode === "live" ? new AiAndReasoner() : new FixtureReasoner();
 
-  const plan = BRIGHTPATH_PLAN;
+  const seedPlan = BRIGHTPATH_PLAN;
+
+  // One factory, so the seeded `executor` below and every per-plan set built by
+  // `executorFor` cannot drift apart in anything except the policy that is the
+  // whole point of the distinction.
+  const executorWith = (plan: ApprovedPlan): ExecutorOptions => ({
+    store: stores.runStore,
+    tools,
+    reasoner,
+    clock,
+    newId,
+    globalPolicy: plan.globalPolicy,
+  });
 
   return {
     mode,
+    toolsLive,
     storage,
     dataDir: stores.dataDir,
-    plan,
+    seedPlan,
+    currentPlan: () => currentPlan(stores.schedulerStore),
+    planState: () => resolvePlanState(stores.schedulerStore),
+    deployedPlan: async () => {
+      const active = await resolveActivePlan(stores.schedulerStore);
+      // Only a real deployment counts. `resolveActivePlan` also answers with a
+      // fixture stand-in so screens have something to render; treating that as
+      // deployed would have the worker run demo agents against live tools.
+      return active.source === "deployment" ? active.plan : null;
+    },
+    executorFor: executorWith,
     runStore: stores.runStore,
     buildStore: stores.buildStore,
     schedulerStore: stores.schedulerStore,
     tools,
     reasoner,
-    executor: {
-      store: stores.runStore,
-      tools,
-      reasoner,
-      clock,
-      newId,
-      globalPolicy: plan.globalPolicy,
-    },
+    executor: executorWith(seedPlan),
     build: {
       store: stores.buildStore,
       generator: new LocalPackageGenerator(),

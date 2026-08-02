@@ -64,7 +64,7 @@
 import type { RuntimeSession } from "../session";
 import { getRuntimeSession } from "../session";
 import type { Poller, WorkSummary, WorkerDeps } from "./worker";
-import { DEFAULT_POLL_INTERVAL_MS, startPoller } from "./worker";
+import { DEFAULT_POLL_INTERVAL_MS, startPoller, type WorkerDepsResolver } from "./worker";
 
 /* ═══════════════════════════ The switches ═══════════════════════════ */
 
@@ -345,18 +345,51 @@ function installShutdownHandlers(): void {
  * deliberately the same session object: a poller with its own stores would be a
  * second workforce sharing a schedule with the first, claiming jobs the routes
  * cannot see and writing runs the Workspace would never read.
+ *
+ * ASYNC BECAUSE THE PLAN IS NOW READ, NOT HELD. This used to take
+ * `session.plan`, a construction-time constant that was always the BrightPath
+ * fixture — so an unattended poller on a runtime with a real ingested plan
+ * polled the DEMO's `planId` (`runDueWork` filters triggers by `deps.plan.planId`)
+ * and found nothing due, forever, silently. `currentPlan()` is what the owner
+ * actually intends, and it costs an await.
+ *
+ * `executorFor(plan)` rather than `session.executor` for the same reason the
+ * scheduler route does it: `session.executor` carries the SEED plan's
+ * `globalPolicy`, so running this plan's work under it would leave a capability
+ * THIS owner forbade unforbidden. The plan handed to the worker and the policy
+ * enforced on it are the same object here, which is the only arrangement in
+ * which the two cannot disagree.
+ *
+ * RESOLVED EVERY PASS, NOT ONCE AT STARTUP. `startPoller` accepts a resolver for
+ * exactly this: a daemon that captured its plan at boot goes on serving the
+ * previous workforce until the process restarts, and an unattended poller is the
+ * last place anyone would notice. `null` from the resolver is a quiet tick.
+ *
+ * AND IT IS THE DEPLOYED PLAN, NOT THE CURRENT ONE. A plan becomes current the
+ * moment it VALIDATES — before it is built, before the sandbox has proved
+ * anything, before a single gate has passed. A poller reading `currentPlan()`
+ * would pick up a revision whose pass then failed at `prove`, and start running
+ * an unproved workforce that nobody ever activated, unattended, on a timer.
+ * `deployedPlan()` is what actually went live; null means nothing has.
  */
-function compose(): { session: RuntimeSession; deps: WorkerDeps } {
+async function resolveDeps(): Promise<WorkerDeps | null> {
   const session = getRuntimeSession();
+  const plan = await session.deployedPlan();
+  if (plan === null) return null;
   return {
-    session,
-    deps: {
-      plan: session.plan,
-      scheduler: session.scheduler,
-      executor: session.executor,
-      build: session.build,
-    },
+    plan,
+    scheduler: session.scheduler,
+    // `executorFor(plan)` rather than `session.executor`: the latter carries the
+    // SEED plan's globalPolicy, so this plan's work would run under the
+    // fixture's org-wide denies and quiet window. Same object as `plan` above,
+    // which is the only arrangement in which the two cannot disagree.
+    executor: session.executorFor(plan),
+    build: session.build,
   };
+}
+
+async function compose(): Promise<{ session: RuntimeSession; deps: WorkerDepsResolver }> {
+  return { session: getRuntimeSession(), deps: resolveDeps };
 }
 
 /**
@@ -368,10 +401,15 @@ function compose(): { session: RuntimeSession; deps: WorkerDeps } {
  *
  * `env` is a parameter rather than a read of `process.env`, so the decision this
  * function makes can be exercised without one.
+ *
+ * ASYNC ONLY BECAUSE `compose()` IS. The two early returns above it — already
+ * running, and the switch being off — still settle without touching a store, so
+ * the default path of a server that never turns the poller on remains a couple
+ * of string comparisons and no I/O.
  */
-export function startPollerHost(
+export async function startPollerHost(
   env: Readonly<Record<string, string | undefined>> = process.env,
-): PollerHostStatus {
+): Promise<PollerHostStatus> {
   const g = hostGlobal();
   const existing = g.__oriantPollerHost;
   if (existing) {
@@ -394,13 +432,18 @@ export function startPollerHost(
   }
 
   let session: RuntimeSession;
-  let deps: WorkerDeps;
+  // A resolver, not a fixed set: re-asked every pass so the daemon follows what
+  // is actually deployed. See `resolveDeps`.
+  let deps: WorkerDepsResolver;
   let startedAt: string;
   try {
-    ({ session, deps } = compose());
+    ({ session, deps } = await compose());
     // The session's own clock, not wall time: this is runtime library code, and
     // the injected clock is the only instant it is allowed to know.
-    startedAt = deps.scheduler.clock.now().toISOString();
+    // The session's clock rather than `deps`', now that deps are resolved per
+    // pass and there may be no deployment to resolve yet. Same clock either way
+    // — `resolveDeps` hands the worker `session.scheduler` verbatim.
+    startedAt = session.scheduler.clock.now().toISOString();
   } catch (error) {
     const reason =
       `${POLLER_SWITCH_ENV} is on, but the runtime session could not be composed, so the ` +
