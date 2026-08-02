@@ -2,7 +2,7 @@
   "name": "margo",
   "version": "0.1.0",
   "private": true,
-  "description": "Margo — the done-for-you AI workforce. Learns the business, drafts the team, proves it in a sandbox, keeps the owner in control.",
+  "description": "Margo \u2014 the done-for-you AI workforce. Learns the business, drafts the team, proves it in a sandbox, keeps the owner in control.",
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/next-prod.mjs build",
@@ -20,7 +20,8 @@
     "verify:m7": "node scripts/verify.mjs m7",
     "verify:int": "node scripts/verify.mjs integration",
     "sandbox:bundle": "node scripts/bundle-sandbox-runner.mjs",
-    "daytona:check": "node scripts/daytona-check.mjs"
+    "daytona:check": "node scripts/daytona-check.mjs",
+    "db:check": "node scripts/db-check.mjs"
   },
   "dependencies": {
     "@daytonaio/sdk": "^0.201.0",
@@ -28,6 +29,7 @@
     "lenis": "^1.3.25",
     "lucide-react": "^1.25.0",
     "next": "^15.4.0",
+    "postgres": "^3.4.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "zustand": "^5.0.6"

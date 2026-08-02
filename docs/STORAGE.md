@@ -516,10 +516,52 @@ do, and the migration in §7 is what closes them.
 
 ---
 
-## 7. Migration to Postgres
+## 7. Migration to Postgres — **done**
 
-Postgres is the production path. The work is bounded because the seam already
-exists and nothing above the seam changes.
+Postgres is the production path, and as of `ORIANT_RUNTIME_STORAGE=postgres` it
+is implemented rather than planned. The plan is kept below because it remains
+the accurate description of what was built and why, with each step's state
+marked.
+
+**Implementation:** [`lib/runtime/persist/pg/`](../lib/runtime/persist/pg) —
+`client.ts` (connection), `schema.ts` (DDL), `util.ts` (the codec bridge), and
+one store per interface. Selected in `session.ts`. Nothing above the seam moved,
+exactly as this section predicted.
+
+**Target: Supabase.** Use the **Transaction pooler** URI
+(`...pooler.supabase.com:6543`), not the direct host — the direct host is
+IPv6-only on current projects and holds one backend per client. Transaction
+pooling forbids prepared statements, so the driver is created with
+`prepare: false`; without it queries fail intermittently and only under load.
+`npm run db:check` performs a real round trip and names whichever of these is
+wrong.
+
+| Step | State |
+| --- | --- |
+| 1. `"postgres"` in `runtimeStorage()`, reading `DATABASE_URL` | done; `"supabase"` accepted as an alias |
+| 2. §3 translated to DDL | done — tables prefixed `oriant_` so the project can be shared |
+| 3. `run_events` split, keyed `(run_id, sequence)`, append not rewrite | done — closes §6.5 |
+| 4. `agent_runtime_config` (§3.12) | **still not implemented**, in either store |
+| 5. Exclusive-create primitives replaced by SQL | done — `ON CONFLICT DO NOTHING` for runs and idempotency keys, a primary key for decisions, `FOR UPDATE SKIP LOCKED` for the queue claim |
+| 6. The conditional write of §6.2 | **not done** — an interface change to `RunStore` and every implementation, so it stays last |
+
+**What this closes, and what it does not.** Limitations §6.1, §6.3, §6.4 and
+§6.5 no longer apply under `postgres`. **§6.2 still does**: the read-then-write
+window on the executor's terminal-status guard is inherited from the `RunStore`
+interface, not from the file store, so changing the backend cannot close it. It
+is the one correctness gap, and now the only reason step 6 above still exists.
+
+**The file store stays the default.** `RUNTIME_SETUP.md` §1 promises a clean
+clone runs on `npm install && npm run dev`, and a default needing a connection
+string breaks that. Postgres is opt-in for the same reason it is stronger: it
+depends on something outside the repository.
+
+---
+
+### The original plan, for the record
+
+The work is bounded because the seam already exists and nothing above the seam
+changes.
 
 **What already holds.** `RunStore`, `BuildStore` and `SchedulerStore` are
 deliberately narrow, and the executor, the Factory, the sandbox and the scheduler

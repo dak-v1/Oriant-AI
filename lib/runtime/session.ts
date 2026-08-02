@@ -52,6 +52,7 @@ import type { BuildDeps, BuildStore } from "./build/types";
 import type { ExecutorOptions } from "./executor";
 import { AiAndReasoner, FixtureReasoner } from "./llm";
 import { createFileStores } from "./persist";
+import { createPostgresStores } from "./persist/pg";
 import { InMemorySchedulerStore } from "./schedule/store";
 import type { SchedulerDeps, SchedulerStore } from "./schedule/types";
 import { InMemoryRunStore, SystemClock, createIdFactory } from "./store";
@@ -66,23 +67,50 @@ export function runtimeMode(): RuntimeMode {
 
 /* ═══════════════════════════ Storage ═══════════════════════════ */
 
-export type RuntimeStorage = "file" | "memory";
+export type RuntimeStorage = "file" | "memory" | "postgres";
 
 /**
  * Durable unless explicitly told otherwise, and loud about anything it does not
  * recognise. See the header for why this switch throws where `runtimeMode()`
  * shrugs.
+ *
+ * `postgres` is the production path (docs/STORAGE.md §7). It stays OPT-IN
+ * rather than becoming the default even though it is the stronger store,
+ * because `RUNTIME_SETUP.md` §1 promises a clean clone runs on
+ * `npm install && npm run dev` — and a default that needs a connection string
+ * breaks exactly that promise.
  */
 export function runtimeStorage(): RuntimeStorage {
   const raw = (process.env.ORIANT_RUNTIME_STORAGE ?? "").trim();
   if (raw === "" || raw === "file") return "file";
   if (raw === "memory") return "memory";
+  if (raw === "postgres" || raw === "supabase") return "postgres";
   throw new Error(
     `ORIANT_RUNTIME_STORAGE is "${raw}", which this build does not implement. ` +
-      `Use "file" (the default — durable, under data/runtime/) or "memory" ` +
-      `(discarded on restart). Postgres is the documented production path but is ` +
-      `not wired yet; see docs/STORAGE.md.`,
+      `Use "file" (the default — durable, under data/runtime/), "memory" ` +
+      `(discarded on restart), or "postgres" (Supabase; requires DATABASE_URL).`,
   );
+}
+
+/**
+ * The Supabase connection string, read only when storage is `postgres`.
+ *
+ * Validation of its SHAPE lives in persist/pg/client.ts, which is where the
+ * error messages can be specific about pooler-versus-direct and about the
+ * project URL being pasted here by mistake. This function only insists that
+ * something is present, so the failure for "storage=postgres, no URL" names the
+ * two variables involved rather than a parse error.
+ */
+export function runtimeDatabaseUrl(): string {
+  const raw = (process.env.DATABASE_URL ?? "").trim();
+  if (raw === "") {
+    throw new Error(
+      "ORIANT_RUNTIME_STORAGE=postgres requires DATABASE_URL. Set it to the " +
+        "Supabase Transaction pooler URI (Dashboard → Connect → Transaction " +
+        "pooler), or unset ORIANT_RUNTIME_STORAGE to use the default file store.",
+    );
+  }
+  return raw;
 }
 
 /**
@@ -157,6 +185,21 @@ function createStores(storage: RuntimeStorage): SessionStores {
         buildStore.reset();
         schedulerStore.reset();
       },
+    };
+  }
+
+  if (storage === "postgres") {
+    // Constructing the stores opens no connection and runs no query: the schema
+    // migration starts here and every store method awaits it, so this stays
+    // synchronous and `getRuntimeSession()` keeps its shape.
+    const stores = createPostgresStores(runtimeDatabaseUrl());
+    return {
+      // Nothing on disk to point at; the runtime's state lives in Supabase.
+      dataDir: null,
+      runStore: stores.runStore,
+      buildStore: stores.buildStore,
+      schedulerStore: stores.schedulerStore,
+      reset: () => stores.reset(),
     };
   }
 
