@@ -95,6 +95,76 @@ export function liveTools(_mode: RuntimeMode): boolean {
   return (process.env.ORIANT_RUNTIME_TOOLS ?? "").trim() === "composio";
 }
 
+/**
+ * WHY THIS EXISTS: the two switches are independent — and one of the four
+ * combinations they make is a trap that used to say nothing about itself.
+ *
+ * `ORIANT_RUNTIME_TOOLS=composio` with the mode left at its default mounts real
+ * Composio clients behind the FIXTURE reasoner. The fixture reasoner never sees
+ * a tool's input schema: it answers from a script or from `derive()`, in the
+ * runtime's own vocabulary (`to`, `subject`, `body`), while the provider now
+ * checks every argument list against the tool's own schema before it sends
+ * (lib/runtime/tools/schema.ts). GMAIL_SEND_EMAIL wants `recipient_email`, so
+ * the gate refuses — correctly, and on EVERY act step. What the operator sees is
+ * a wall of "the arguments do not match GMAIL_SEND_EMAIL's own input schema",
+ * each one ending "a mismatch means the model answered in its own vocabulary".
+ * The one thing that sentence cannot say is that there is no model: they turned
+ * on the hands and left the brain a fixture.
+ *
+ * WHAT THIS REJECTED. Refusing to construct the session. That is the treatment
+ * this file already gives `ORIANT_RUNTIME_STORAGE=postgres` with no
+ * DATABASE_URL, and `ORIANT_RUNTIME_TOOLS=composio` with no COMPOSIO_API_KEY,
+ * and the difference is worth stating because it decides the answer:
+ *
+ *   Those two are SILENTLY WRONG. A missing DATABASE_URL under a storage switch
+ *   that fell through to "file" gives a green server not using the database
+ *   somebody just configured; a missing API key surfaces at the first act step
+ *   of somebody's workflow, hours later, far from the cause.
+ *
+ *   THIS ONE IS ALREADY LOUD. It sends nothing. It cannot reach a customer, it
+ *   cannot spend, it cannot half-succeed — the schema gate is the fail-closed
+ *   direction and every step refuses in writing. The defect is not the refusal;
+ *   it is that the refusal names the wrong culprit. A missing EXPLANATION is not
+ *   grounds for taking a demo machine's server down at boot.
+ *
+ * And the combination is not even useless: it is the only way to prove that
+ * COMPOSIO_API_KEY resolves, that an organization's connected accounts are
+ * found, and that the schema gate is reachable at all — without paying a model.
+ * Throwing would delete that, to prevent a state whose only symptom is refusing
+ * to send. So: warn, once, at construction, naming both variables and both ways
+ * out. `console.warn` rather than a field on `RuntimeSession`, because two
+ * verify targets construct that interface by hand and a new required member
+ * would break files this change has no business editing.
+ *
+ * PURE, and takes both values as arguments, so a check can walk all four
+ * combinations without mutating `process.env` — which in a suite that caches a
+ * process-wide session is a test that changes what the tests after it see.
+ *
+ * Returns null for the other three combinations, and each of those nulls is a
+ * decision. fixture+stub is the default and coherent. live+composio is the
+ * configuration `.env.example` describes. live+stub is a real model against
+ * simulated hands, which sounds like the same trap and is not: the executor
+ * never calls the schema gate on that path, the stub answers in the runtime's
+ * vocabulary, and the runs complete. It is the documented way to try a live
+ * model without sending, so warning about it would train the operator to ignore
+ * this line in the one case where it means something.
+ */
+export function reasonerToolsMismatch(
+  mode: RuntimeMode,
+  toolsLive: boolean,
+): string | null {
+  if (!toolsLive || mode === "live") return null;
+  return (
+    "ORIANT_RUNTIME_TOOLS=composio with ORIANT_RUNTIME_MODE not set to \"live\": real " +
+    "Composio clients behind the FIXTURE reasoner. The fixture reasoner is never shown a " +
+    "tool's input schema, so it emits canned argument names and the provider's schema gate " +
+    "refuses every act step before anything is sent — the refusals will blame \"the model\" " +
+    "for answering in its own vocabulary, but the cause is this pair of variables. Set " +
+    "ORIANT_RUNTIME_MODE=live to send for real, or unset ORIANT_RUNTIME_TOOLS to run " +
+    "against the stub. Nothing has been sent and nothing will be."
+  );
+}
+
 /* ═══════════════════════════ Storage ═══════════════════════════ */
 
 export type RuntimeStorage = "file" | "memory" | "postgres";
@@ -376,6 +446,12 @@ function createSession(): RuntimeSession {
    */
   const toolsLive = liveTools(mode);
   if (toolsLive) requireComposioApiKey();
+
+  // Said once, here, because here is where the two switches are read and the
+  // only place that holds both answers at the same time. See
+  // `reasonerToolsMismatch` for why this warns instead of throwing.
+  const mismatch = reasonerToolsMismatch(mode, toolsLive);
+  if (mismatch) console.warn(`[runtime] ${mismatch}`);
 
   // ONE stub for the whole session rather than one per plan. `StubToolClient`
   // keeps a call log that the sandbox and the verify targets assert against, and

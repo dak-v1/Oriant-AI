@@ -56,6 +56,16 @@
  *     gates asserted OPEN in every one of them — a checklist that blocked on
  *     everything would satisfy "the packages gate is shut" three times over.
  *
+ * M7-7 IS THE ONE CHECK HERE ABOUT TWO ROUTES RATHER THAN ONE. The Sandbox and
+ * Activation both have to decide which stress sweep is evidence about the plan in
+ * front of them, and they used to make that decision in two copies of one
+ * function kept in step by a comment. The check drives both doors against the
+ * same runtime and requires the sweep they report to be the same sweep — for the
+ * fixture, where the authored one must win, and for an ingested plan, where the
+ * generated one must. Two arms rather than one, because either alone is satisfied
+ * by a pair of routes that both always generate or both always use the authored
+ * sweep, which is the divergence stated backwards.
+ *
  * WHAT THIS STILL DOES NOT PROVE, said plainly, because M5 and M6 were both made
  * to say it. No React renders here. No component, no lane switch on a page, no
  * focus order, no contrast ratio and no pixel is covered, and `NotificationCenter`
@@ -87,7 +97,10 @@
  * Run it with: npm run verify:m7
  */
 
-import { POST as activationPOST } from "../../../app/api/runtime/activation/route";
+import {
+  GET as activationGET,
+  POST as activationPOST,
+} from "../../../app/api/runtime/activation/route";
 import { GET as agentsGET, POST as agentsPOST } from "../../../app/api/runtime/agents/route";
 import {
   GET as approvalsGET,
@@ -1050,14 +1063,116 @@ async function readCap(world: World, invocationId: string, at: string): Promise<
   };
 }
 
+/* ═══════════════ Two doors onto one stress sweep ═══════════════ */
+
+/**
+ * The same workforce under a different `planId`, which is the ONE field
+ * `lib/runtime/sandbox/sweep.ts` keys on.
+ *
+ * Everything else is BrightPath's — the same agents at the same versions, so the
+ * packages `makeWorld` builds still resolve (the build store is keyed by agent,
+ * not by plan) and no gate shuts for an unrelated reason. Moving only the id is
+ * deliberate: a plan that also differed in its agents would be swept differently
+ * for reasons that have nothing to do with the rule under test, and a route that
+ * had gone back to matching on an AGENT id — the mistake the sweep module's
+ * header warns about — would still look correct. With one field moved, nothing
+ * else can explain a difference between the two arms below.
+ */
+const INGESTED_PLAN: ApprovedPlan = { ...BRIGHTPATH_PLAN, planId: "m7-ingested-workforce" };
+
+/**
+ * "N of M stress cases" — the one phrase both doors are made to say.
+ *
+ * `POST /api/runtime/sandbox` returns the sweep's two numbers as fields;
+ * lib/runtime/schedule/activation.ts builds the sandbox gate's `detail` from the
+ * same two. Neither route publishes the sweep's case ids, so the totals are the
+ * whole of the overlap — and they are enough, because the authored sweep and the
+ * generated one are different sizes for the plans this check uses. If that ever
+ * stops being true the check goes red rather than quietly losing its teeth, which
+ * is the right way round: the discriminant would then be invisible from outside.
+ */
+const STRESS_PHRASE = /\d+ of \d+ stress cases/;
+
+/** The sweep POST /api/runtime/sandbox reports, in that phrase. */
+function sweepReportedBySandbox(body: Record<string, unknown>): string {
+  const stress = body.stress;
+  if (typeof stress !== "object" || stress === null || Array.isArray(stress)) {
+    return `the sandbox route reported no sweep at all: ${canonical(stress)}`;
+  }
+  const record = stress as Record<string, unknown>;
+  const passed = record.passed;
+  const total = record.total;
+  if (typeof passed !== "number" || typeof total !== "number") {
+    return `the sandbox route's sweep carried no counts: ${canonical(stress)}`;
+  }
+  return `${passed} of ${total} stress cases`;
+}
+
+/**
+ * The sweep the activation checklist's sandbox gate reports, in the same phrase.
+ *
+ * Every way of failing to find it returns a SENTENCE rather than throwing or
+ * returning null, and no sentence can equal the phrase the other door produces —
+ * so a gate that named no sweep, or whose wording moved, is reported as a
+ * disagreement. That is the fail-closed direction: from out here "the detail is
+ * worded differently" and "the sweep is a different sweep" are indistinguishable,
+ * and only one of them is safe to wave through.
+ */
+function sweepReportedByActivation(body: Record<string, unknown>): string {
+  const checklist = body.checklist;
+  if (typeof checklist !== "object" || checklist === null || Array.isArray(checklist)) {
+    return `the activation route returned no checklist: ${canonical(body)}`;
+  }
+  const raw: unknown = (checklist as Record<string, unknown>).gates;
+  if (!Array.isArray(raw)) return `the checklist carried no gates: ${canonical(checklist)}`;
+  const gates: unknown[] = raw;
+
+  for (const gate of gates) {
+    if (typeof gate !== "object" || gate === null || Array.isArray(gate)) continue;
+    const record = gate as Record<string, unknown>;
+    if (record.id !== "sandbox") continue;
+    const detail = typeof record.detail === "string" ? record.detail : "";
+    const found = STRESS_PHRASE.exec(detail);
+    return found === null ? `the sandbox gate named no sweep: "${detail}"` : found[0];
+  }
+  return `the checklist has no sandbox gate: ${canonical(gates)}`;
+}
+
+interface DoorReadings {
+  fromSandbox: string;
+  fromActivation: string;
+}
+
+/**
+ * One plan, one runtime, both doors — in that order and against the SAME world.
+ *
+ * Two worlds would let a difference between them explain a difference between
+ * the sweeps, which is exactly the excuse this check must not leave available.
+ * `GET` is used for activation rather than `POST` because a go-live writes: the
+ * question here is which evidence the gate reads, and nothing about it needs a
+ * deployment to exist afterwards.
+ */
+async function sweepThroughBothDoors(seed: string, plan: ApprovedPlan): Promise<DoorReadings> {
+  const world = await makeWorld(seed, { plan });
+  install(world);
+
+  const proved = await jsonOf(await sandboxPOST(jsonRequest("/api/runtime/sandbox", {})));
+  const checklist = await jsonOf(await activationGET());
+
+  return {
+    fromSandbox: sweepReportedBySandbox(proved),
+    fromActivation: sweepReportedByActivation(checklist),
+  };
+}
+
 /* ═══════════════════════════ The checks ═══════════════════════════ */
 
 /**
  * The last result, and the only one about the harness rather than the product:
- * it passes when all six checks reached their own verdict, and fails naming the
+ * it passes when all seven checks reached their own verdict, and fails naming the
  * error when a read threw and ended the run early.
  */
-const COMPLETED = "M7-7 every read the checks above make was answered";
+const COMPLETED = "M7-8 every read the checks above make was answered";
 
 export async function runM7Verification(): Promise<Check[]> {
   const checks: Check[] = [];
@@ -1851,10 +1966,67 @@ export async function runM7Verification(): Promise<Check[]> {
       }
     }
 
+    /* ═══ 7. ONE SWEEP, TWO DOORS ═══
+       The Sandbox and Activation each have to decide which stress sweep is
+       evidence about the plan in front of them. That decision used to be a
+       private function copied verbatim into both route files — Next refuses a
+       route module that exports anything but its handlers — under a header asking
+       whoever edited one to remember the other. Nothing asserted they agreed, so
+       a one-sided edit compiled, linted and shipped, and what it produces is the
+       defect both routes were rewritten to remove: one workforce proved at one
+       door and refused at the other, both answers authoritative.
+
+       lib/runtime/sandbox/sweep.ts now holds the one copy. This check is what
+       keeps it that way: it does not look at imports — a route can always grow a
+       new private opinion — it asks both doors what they swept and requires the
+       same answer.
+
+       TWO ARMS, BECAUSE ONE PROVES NOTHING. The fixture must be swept the
+       authored way and an ingested plan the generated way, so a pair of routes
+       that both always generate, or both always take the authored sweep, agrees
+       with itself on one arm and fails the other. The fixture arm is pinned
+       against the sweep THIS FILE already ran at check 0 rather than against a
+       number written here, so a fixture edit moves both together. */
+    {
+      const name =
+        "M7-7 the Sandbox route and the Activation gate sweep the same plan the same way";
+
+      const authored = `${stress.passed} of ${stress.total} stress cases`;
+      const fixture = await sweepThroughBothDoors("m7-sweep-fixture", BRIGHTPATH_PLAN);
+      const ingested = await sweepThroughBothDoors("m7-sweep-ingested", INGESTED_PLAN);
+
+      // Both doors agree, AND the fixture got the authored sweep this file
+      // earned at check 0, AND the ingested plan got something else. Dropping
+      // either of the last two would leave "both routes always generate" green.
+      const fixtureAgrees =
+        fixture.fromSandbox === fixture.fromActivation && fixture.fromSandbox === authored;
+      const ingestedAgrees =
+        ingested.fromSandbox === ingested.fromActivation &&
+        STRESS_PHRASE.test(ingested.fromSandbox) &&
+        ingested.fromSandbox !== authored;
+
+      add(
+        name,
+        fixtureAgrees && ingestedAgrees,
+        fixtureAgrees && ingestedAgrees
+          ? `the BrightPath fixture was swept the authored way at both doors (${authored}, the ` +
+              `same sweep runStressSweep produced directly for check 0), and the identical ` +
+              `workforce under an ingested planId was swept the generated way at both ` +
+              `(${ingested.fromSandbox}). The two arms differ, so a route that stopped calling ` +
+              `lib/runtime/sandbox/sweep.ts and decided for itself fails one of them`
+          : `the two doors do not report one sweep — fixture: sandbox "${fixture.fromSandbox}" vs ` +
+              `activation "${fixture.fromActivation}" (the authored sweep is "${authored}"); ` +
+              `ingested: sandbox "${ingested.fromSandbox}" vs activation ` +
+              `"${ingested.fromActivation}". Either the two routes are choosing their sweep ` +
+              `separately again, or one of them stopped distinguishing the fixture from an ` +
+              `ingested plan`,
+      );
+    }
+
     add(
       COMPLETED,
       true,
-      `all six checks above ran to the end: every build, sandbox, activation, scheduler, ` +
+      `all seven checks above ran to the end: every build, sandbox, activation, scheduler, ` +
         `approval, roster, calendar, connections, notification and event-stream read they make ` +
         `was answered`,
     );
@@ -1874,7 +2046,7 @@ export async function runM7Verification(): Promise<Check[]> {
     add(
       COMPLETED,
       false,
-      `the run stopped at check ${checks.length + 1} of 6: ${messageOf(error)}. Every check ` +
+      `the run stopped at check ${checks.length + 1} of 7: ${messageOf(error)}. Every check ` +
         `after it was skipped, so this result is a floor rather than a verdict.`,
     );
   } finally {

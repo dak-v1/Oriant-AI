@@ -68,7 +68,7 @@ import { REPORT_SECTION_ORDER } from "./fixtures/company-report";
 import { AGENT_LIBRARY } from "./fixtures/agent-library";
 import { INITIAL_PLAN_AGENTS } from "./fixtures/workflow-plan";
 import { INTEGRATIONS } from "./fixtures/integrations";
-import { BUILD_ORDER } from "./fixtures/build-artifacts";
+import { BUILD_FIXTURES, BUILD_ORDER } from "./fixtures/build-artifacts";
 import { APPROVAL_ITEMS } from "./fixtures/approvals";
 import { CALENDAR_EVENTS } from "./fixtures/calendar-events";
 import { ACTIVATION_BURST, ACTIVITY_FEED } from "./fixtures/activity";
@@ -1316,34 +1316,71 @@ export const useDemoStore = create<DemoStore>()((set, get) => ({
         })),
 
       /* ── build ── */
+      /**
+       * Queue what can actually be built, and say nothing otherwise.
+       *
+       * This used to queue one job per plan agent unconditionally and flip the
+       * journey to "building" on the way out. Both halves were fail-open. An
+       * emptied plan produced zero jobs and a journey stuck at "building"
+       * forever — the phase can only finish when at least one job completes —
+       * and a plan hydrated from the real backend produced jobs for agent_keys
+       * with no BUILD_FIXTURES entry, which the factory screen can never run.
+       * Either way the owner watched cards that claimed to be queued for a
+       * build that was never going to happen.
+       *
+       * So the gate moved here, next to the write, rather than living in the
+       * screen's mount effect where a second entry route could miss it:
+       * `buildReadiness` decides, and a refusal writes nothing at all. Adopting
+       * an existing queue instead of recreating it is what lets the screen call
+       * this on every entry — a re-entry mid-build must not restart the world.
+       */
       startBuilds: () =>
         set((st) => {
+          const readiness = buildReadiness(st.journey, st.plan);
+          if (readiness.kind === "blocked") return {};
+          const journey = atLeast(st.journey, "building") ? st.journey : "building";
+          // A queue already exists: only the phase label may be behind it.
+          if (Object.keys(st.buildJobs).length > 0) return { journey };
+
           const jobs: DemoState["buildJobs"] = {};
-          for (const a of st.plan.agents) {
-            jobs[a.agentId] = { agentId: a.agentId, status: "queued", progress: 0, logCount: 0 };
+          for (const agentId of readiness.buildable) {
+            jobs[agentId] = { agentId, status: "queued", progress: 0, logCount: 0 };
           }
+          const buildable = new Set(readiness.buildable);
           return {
             buildJobs: jobs,
-            journey: atLeast(st.journey, "building") ? st.journey : "building",
+            journey,
+            // An agent with no job is not building. Marking it so would put a
+            // status on screen that no job will ever move off.
             plan: {
               ...st.plan,
-              agents: st.plan.agents.map((a) => ({ ...a, status: "building" })),
+              agents: st.plan.agents.map((a) =>
+                buildable.has(a.agentId) ? { ...a, status: "building" } : a,
+              ),
             },
           };
         }),
+      /* An update for an id that was never queued is an upstream bug, not a new
+         job: the old spread of `undefined` invented a job with no agentId and
+         `progress: undefined`, which renders as a permanently stalled card. */
       updateBuildJob: (agentId, patch) =>
-        set((st) => ({
-          buildJobs: {
-            ...st.buildJobs,
-            [agentId]: { ...st.buildJobs[agentId], ...patch },
-          },
-        })),
+        set((st) => {
+          const job = st.buildJobs[agentId];
+          if (!job) return {};
+          return { buildJobs: { ...st.buildJobs, [agentId]: { ...job, ...patch } } };
+        }),
+      /* Validation is claimed per agent, from its own completed job — a plan can
+         legitimately hold an agent this simulation never built (see
+         `buildReadiness`), and marking that one "validated" would be a lie the
+         sandbox and activation screens then repeat. */
       finishBuildPhase: () =>
         set((st) => ({
           journey: atLeast(st.journey, "sandbox_ready") ? st.journey : "sandbox_ready",
           plan: {
             ...st.plan,
-            agents: st.plan.agents.map((a) => ({ ...a, status: "validated" })),
+            agents: st.plan.agents.map((a) =>
+              st.buildJobs[a.agentId]?.status === "completed" ? { ...a, status: "validated" } : a,
+            ),
           },
         })),
 
@@ -1528,6 +1565,87 @@ export const useDemoStore = create<DemoStore>()((set, get) => ({
  *  object so the snapshot stays referentially stable between renders. */
 export function usePlanTotals() {
   return useDemoStore(useShallow((s) => planTotals(s.plan.agents)));
+}
+
+/**
+ * Can the Agent Factory queue anything right now, and if not, what does the
+ * owner do about it?
+ *
+ * WHY A PREDICATE AND NOT A JOURNEY CHECK. The factory screen used to read the
+ * `journey` label — "plan_approved" meant start, "building" meant resume — and
+ * a label is a summary of the journey, not a statement about whether there is
+ * anything to build. The two came apart in every direction: an approved plan
+ * emptied on /app/planner, a plan whose agents came from the real backend and
+ * have no build fixture, a queue left behind while the label moved on. Each one
+ * left cards reading "Queued, waiting for a build slot…" with no timer behind
+ * them. This answers the question the screen was actually asking, from the two
+ * facts that decide it — is a plan approved, and is there an agent in it this
+ * simulation can build.
+ *
+ * IT REFUSES RATHER THAN SUBSTITUTES. The tempting shortcut is to fall back to
+ * BUILD_ORDER (the four scripted BrightPath agents) whenever the plan yields
+ * nothing buildable, which is exactly what the screen's placeholder did, and it
+ * is how a plan containing one unbuildable agent came to display four confident
+ * job cards for agents that were not in it. A blocked answer carries the reason
+ * and the way forward instead; the caller must render those rather than a
+ * queue.
+ */
+export type BuildReadiness =
+  | {
+      kind: "ready";
+      /** Plan agents with a build fixture — the only ids that may be queued. */
+      buildable: string[];
+      /** Plan agents this simulation cannot build. Named on screen, never queued. */
+      unsupported: string[];
+    }
+  | {
+      kind: "blocked";
+      /** Short reason, in the owner's terms. */
+      headline: string;
+      /** Why nothing is queued, and what happens once it is resolved. */
+      detail: string;
+      action: { label: string; href: string };
+    };
+
+export function buildReadiness(journey: JourneyState, plan: WorkforcePlanState): BuildReadiness {
+  // Both halves matter: `status` is the approval itself, the journey is how far
+  // the owner has actually walked. A deep link past the gate satisfies neither.
+  if (plan.status !== "approved" || !atLeast(journey, "plan_approved")) {
+    return {
+      kind: "blocked",
+      headline: "No approved plan yet",
+      detail:
+        "The Agent Factory only assembles packages the owner has approved, so nothing is queued. Approve the workforce plan and the build starts here.",
+      action: { label: "Review the workforce plan", href: "/app/planner" },
+    };
+  }
+
+  const buildable: string[] = [];
+  const unsupported: string[] = [];
+  for (const agent of plan.agents) {
+    if (BUILD_FIXTURES[agent.agentId]) buildable.push(agent.agentId);
+    else unsupported.push(agent.agentId);
+  }
+
+  if (buildable.length === 0) {
+    return unsupported.length === 0
+      ? {
+          kind: "blocked",
+          headline: "The approved plan has no agents",
+          detail:
+            "Every agent was removed from the plan, so there is nothing to assemble. Add an agent back and the build starts here.",
+          action: { label: "Open the workforce plan", href: "/app/planner" },
+        }
+      : {
+          kind: "blocked",
+          headline: "This plan cannot be built in the demo",
+          detail:
+            "This is the scripted demo, which ships prepared packages for the BrightPath agents only. None of the agents in this plan has one, so no build is queued and none will start.",
+          action: { label: "Open the workforce plan", href: "/app/planner" },
+        };
+  }
+
+  return { kind: "ready", buildable, unsupported };
 }
 
 /** Blockers preventing plan approval (spec §13). */

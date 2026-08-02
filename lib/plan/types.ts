@@ -204,11 +204,96 @@ export interface StepSpec {
   /** Required for `fetch` and `act`. The runtime REJECTS any call whose
       operation is not granted in the agent's `tools`. */
   tool?: { integrationId: string; operation: string };
+  /**
+   * Where this step's tool arguments come from. Absent means `{ kind:
+   * "reasoning" }` — the behaviour every plan written before this field had.
+   * See `StepArgumentSource`.
+   */
+  argumentSource?: StepArgumentSource;
   /** `act` steps only. Baseline risk; policy may escalate it further. */
   risk?: RiskLevel;
 }
 
 export type StepKind = "fetch" | "reason" | "act" | "approve";
+
+/**
+ * WHERE A STEP'S TOOL ARGUMENTS COME FROM.
+ *
+ * WHY THE CONTRACT NEEDS A FIELD FOR THIS, said loudly because this is a change
+ * to the one handoff between the lanes.
+ *
+ * §1 at the top of this file is the governing rule: a limit, permission,
+ * schedule or TARGET must never live only in prose, because an LLM cannot be
+ * trusted to enforce its own constraints. The scope of a read is exactly such a
+ * target, and until this field existed it lived only in prose. "Read the request
+ * threads that arrived since yesterday's sweep" is a `fetch` step's
+ * `instruction`; what the runtime actually sent was an EMPTY argument list,
+ * because `StepSpec.tool` carries an integration and an operation and nothing
+ * else, and the only writer of the runtime's pending-argument slot is a `reason`
+ * step. A workflow that OPENS with a fetch had nothing to send.
+ *
+ * And an empty argument list is not an error. Composio's GMAIL_LIST_THREADS
+ * publishes `required: []`; so does GOOGLECALENDAR_FIND_FREE_SLOTS. Empty
+ * arguments therefore succeed, and mean "every thread in the mailbox" and "free
+ * slots with no time bounds". A morning diary sweep with no date range is not a
+ * diary sweep — it is a wrong answer the run record reports as ok, which is
+ * strictly worse than a failure. Two of the three enabled Meridian workflows
+ * open with a fetch.
+ *
+ * So the scope of a read is structure, not prose, and structure belongs in the
+ * contract.
+ *
+ * THE THREE ARMS, and what each of them rejects:
+ *
+ *   "literal"   — the plan states the arguments. This is the arm a fetch-first
+ *                 workflow needs: the date range, the label filter, the page
+ *                 size are facts about the JOB, known when the plan is approved,
+ *                 and they belong to whoever approved it rather than to a model
+ *                 re-deriving them on every run.
+ *   "reasoning" — the preceding `reason` step's `data` becomes the argument
+ *                 list. The pre-existing behaviour, now something a plan SAYS
+ *                 rather than something it falls into. Use it when the arguments
+ *                 genuinely depend on the run (which thread, which record, a
+ *                 window relative to now).
+ *   "none"      — the call is made with no arguments AND somebody wrote down
+ *                 why. Required, non-blank prose. This is the arm that keeps an
+ *                 unfiltered read possible without keeping it accidental: after
+ *                 this field, "list the whole mailbox" is a sentence a human
+ *                 committed to the plan, and the runtime records it on the run.
+ *
+ * WHAT WAS REJECTED.
+ *
+ *   A TEMPLATE LANGUAGE. `{ time_min: "{{now}}", time_max: "{{now+P10D}}" }` was
+ *   the obvious way to express a relative window in a literal. It is a second
+ *   expression language living in a data contract, silently wrong when a
+ *   placeholder is misspelled (it sends the literal text), and it duplicates
+ *   what a `reason` step already does with a model that can be told the schema.
+ *   A run-relative window uses "reasoning"; a fixed one uses "literal".
+ *
+ *   PUTTING THE DEFAULT AT "none". It would have made every existing fetch step
+ *   declare itself unfiltered, which is exactly the fiction this field removes.
+ *   Absent means "reasoning", and the RUNTIME refuses the resulting empty call —
+ *   so an old plan fails loudly instead of quietly acquiring a justification
+ *   nobody wrote.
+ *
+ * WHERE THIS IS ENFORCED, and why not here. Whether a tool needs arguments at
+ * all is a fact about Composio's published input schema, and this file may not
+ * import lib/runtime (the boundary rule at the top). So lib/plan/validate.ts
+ * cannot decide it; the runtime does, in lib/runtime/executor.ts, where the
+ * schema is reachable and where a fetch whose arguments the tool's schema cannot
+ * satisfy is refused before anything is sent. What the validator can usefully
+ * add later is SHAPE — rule 0 checking that `argumentSource` is one of these
+ * three arms with its own member present — which is a check on the plan, not on
+ * the catalog. Until it does, the executor validates the shape too and fails
+ * closed on anything it cannot read.
+ */
+export type StepArgumentSource =
+  /** Sent verbatim. `values` is the whole argument list, not a patch. */
+  | { kind: "literal"; values: Record<string, unknown> }
+  /** The preceding `reason` step's `data`. The default when the field is absent. */
+  | { kind: "reasoning" }
+  /** No arguments, deliberately. `justification` must be non-blank prose. */
+  | { kind: "none"; justification: string };
 
 export interface OutputSpec {
   kind: "draft" | "message" | "record_update" | "booking" | "report";

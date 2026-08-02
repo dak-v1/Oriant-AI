@@ -9,6 +9,34 @@
  * to `reason` steps, and it can never invent a tool call, skip a policy check
  * or change the order of execution.
  *
+ * THAT CONFINEMENT IS ALSO WHY A TOOL'S ARGUMENT SCHEMA IS A REASON-STEP
+ * CONCERN. An `act` step names an integration and an operation and carries no
+ * arguments of its own; what it sends is `context[ACTION_KEY]`, which the
+ * preceding `reason` step wrote. So "the model produced `to` where Composio
+ * wanted `recipient_email`" cannot be fixed at the act step — by then the only
+ * options are translating a guess or refusing. `toolSchemaBlock` below puts the
+ * tool's own published schema into the prompt of the step that produces the
+ * arguments, and lib/runtime/tools/composio.ts checks the result against that
+ * same schema before anything leaves the process. Guidance here; the gate there.
+ *
+ * A `fetch` STEP HAS NO SUCH PRECEDING STEP TO RELY ON, and that was the hole.
+ * `runFetch` built its arguments from the same ACTION_KEY, so a workflow whose
+ * FIRST step is a fetch sent `{}` — and `{}` is not an error. Composio's
+ * GMAIL_LIST_THREADS and GOOGLECALENDAR_FIND_FREE_SLOTS both publish
+ * `required: []`, so an empty argument list is accepted and means "every thread
+ * in the mailbox" and "free slots with no time bounds". The run record then
+ * reports ok on an answer to a question nobody asked. A `required`-based shape
+ * check cannot catch that: nothing is missing and no name is unknown.
+ *
+ * Two changes close it, and they are deliberately on opposite sides of the seam.
+ * `StepSpec.argumentSource` (lib/plan/types.ts) lets the plan SAY where a step's
+ * arguments come from — stated values, the preceding reason step, or none with a
+ * written justification. `guardFetchArguments` below is the gate: before any
+ * fetch is sent, and only against a provider that can describe its own tools, an
+ * empty argument list is refused when the tool publishes any parameter at all,
+ * unless the plan declared "none" and said why. Fail closed — a schema that
+ * cannot be read refuses too. See `resolveStepArguments`.
+ *
  * THE APPROVAL INTERRUPT is the subtle part and the reason this file exists
  * as its own module. When policy says "ask the owner", the executor:
  *
@@ -103,6 +131,7 @@ import type {
   FailurePolicy,
   OutputSpec,
   QuietHours,
+  StepArgumentSource,
   StepSpec,
 } from "../plan/types";
 import {
@@ -110,6 +139,12 @@ import {
   resolveAct,
   resolveFetch,
 } from "./policy";
+import {
+  asToolSchemaSource,
+  checkArgumentsAgainstSchema,
+  summariseArgumentNames,
+  type ToolArgumentLookup,
+} from "./tools/schema";
 import type {
   AgentBundle,
   ApprovalDecision,
@@ -146,6 +181,40 @@ export const METRIC_SOURCES_KEY = "__metricSources";
  * retries. Recorded as data so a notifier (M7) can act on it; see performTool.
  */
 export const FAILURE_NOTICE_KEY = "__failureNotice";
+/**
+ * Every fetch this run made with no arguments against a tool that accepts some —
+ * i.e. every deliberately unfiltered read. See `guardFetchArguments`.
+ */
+export const UNFILTERED_FETCH_KEY = "__unfilteredFetches";
+/**
+ * The run's own facts, for the model to reason FROM.
+ *
+ * WHY THIS IS HERE AND NOT ON `trigger`. The context already carries
+ * `trigger: trigger.payload`, and a payload is whatever the integration sent —
+ * `{}` for every schedule trigger, which is most of them. `TriggerEvent.firedAt`
+ * was thrown away at the same line, so the model was never told WHEN it is
+ * running. That is the fact a `reason` step needs before it can produce the one
+ * argument shape a literal cannot express: a window relative to now. A tool
+ * schema saying `time_min — ISO-8601 timestamp` is unanswerable by a model that
+ * does not know the date, and it would answer anyway.
+ *
+ * REJECTED: seeding ACTION_KEY from `trigger.payload` so the first fetch has
+ * something to send. A webhook payload's field names are not the tool's argument
+ * names, so that turns a silent unfiltered read into a refused one at best and a
+ * wrong-shaped send at worst — and it does nothing at all for the schedule
+ * triggers this was supposed to fix, whose payload is empty. The trigger's facts
+ * are evidence, not arguments; they go where evidence goes.
+ *
+ * Prefixed `__` like the rest of the envelope, which is what keeps
+ * `FixtureReasoner`'s context walk (lib/runtime/llm.ts) from harvesting it as
+ * though it were tool output.
+ */
+export const RUN_FACTS_KEY = "__run";
+
+export interface RunFacts {
+  /** `TriggerEvent.firedAt` — when this run's trigger fired, ISO 8601. */
+  firedAt: string;
+}
 
 /** Sentinel used when an `approve` step pauses without any tool call. */
 export const CHECKPOINT_INTEGRATION = "oriant";
@@ -293,7 +362,11 @@ export async function startRun(
     status: "running",
     trigger,
     cursor: 0,
-    context: { [METRICS_KEY]: {}, trigger: trigger.payload },
+    context: {
+      [METRICS_KEY]: {},
+      [RUN_FACTS_KEY]: { firedAt: trigger.firedAt } satisfies RunFacts,
+      trigger: trigger.payload,
+    },
     events: [],
     pendingApprovalId: null,
     startedAt: startedAt.toISOString(),
@@ -692,6 +765,255 @@ async function drive(
   return finish(state, "completed", deps, null);
 }
 
+/* ═══════════════ Where a step's arguments come from ═══════════════ */
+
+/**
+ * The arguments a tool step will send, or the reason it will not send any.
+ *
+ * WHY THIS IS A FUNCTION AND NOT THREE SPREADS. Every tool step used to build
+ * `{ ...state.context[ACTION_KEY] }` at its own call site — runFetch, runAct and
+ * pauseForCheckpoint, three copies of one convention nothing named. That is what
+ * made "a fetch with no preceding reason step sends `{}`" invisible: there was
+ * nowhere the question "where do these arguments come from?" was being asked, so
+ * there was nowhere to answer it. `StepSpec.argumentSource` is the answer, and
+ * this is the single place it is read.
+ *
+ * IT VALIDATES THE DECLARATION RATHER THAN TRUSTING IT, because a plan crosses
+ * the seam as JSON: the union in lib/plan/types.ts is a promise, not a
+ * guarantee, and lib/plan/validate.ts cannot yet check this field's shape. Fail
+ * closed on everything it cannot read — a misspelled `kind`, a `literal` with no
+ * object of values, a `none` with a blank justification. The last one is the
+ * one that matters: "no arguments, deliberately" is only worth anything if the
+ * deliberation was written down, and an empty string is not a reason.
+ *
+ * REJECTED: falling back to "reasoning" on a malformed declaration. It is the
+ * permissive arm and the pre-existing behaviour, so a typo would resolve to
+ * exactly the silent empty send this whole change exists to remove.
+ */
+type ResolvedArguments =
+  | { ok: true; args: Record<string, unknown>; source: StepArgumentSource }
+  | { ok: false; reason: string };
+
+function argumentsFromReasoning(state: RunState): Record<string, unknown> {
+  return { ...(state.context[ACTION_KEY] as Record<string, unknown> | undefined) };
+}
+
+function resolveStepArguments(state: RunState, step: StepSpec): ResolvedArguments {
+  // Widened deliberately; see above. The declared type does not survive JSON.
+  const declared: unknown = step.argumentSource;
+
+  if (declared === undefined) {
+    // The default, and the behaviour of every plan written before the field
+    // existed: whatever the last reason step proposed. The gate below is what
+    // stops that being an empty argument list nobody noticed.
+    return { ok: true, args: argumentsFromReasoning(state), source: { kind: "reasoning" } };
+  }
+
+  if (!isRecord(declared)) {
+    return {
+      ok: false,
+      reason:
+        `Step "${step.id}" declares an argumentSource that is ${declared === null ? "null" : typeof declared}, ` +
+        `not one of { kind: "literal" | "reasoning" | "none" }. Nothing was sent.`,
+    };
+  }
+
+  const kind = declared["kind"];
+
+  if (kind === "reasoning") {
+    return { ok: true, args: argumentsFromReasoning(state), source: { kind: "reasoning" } };
+  }
+
+  if (kind === "literal") {
+    const values = declared["values"];
+    if (!isRecord(values)) {
+      return {
+        ok: false,
+        reason:
+          `Step "${step.id}" declares argumentSource "literal" but its \`values\` is ` +
+          `${values === undefined ? "absent" : typeof values}, so there is no argument list to ` +
+          `send. Nothing was sent.`,
+      };
+    }
+    // Shallow, matching what the rest of this file does with an argument record
+    // and what lib/runtime/tools/composio.ts copies again before the SDK sees
+    // it. Nested values are shared with the plan and must be treated as frozen.
+    return { ok: true, args: { ...values }, source: { kind: "literal", values } };
+  }
+
+  if (kind === "none") {
+    const justification = declared["justification"];
+    if (typeof justification !== "string" || justification.trim().length === 0) {
+      return {
+        ok: false,
+        reason:
+          `Step "${step.id}" declares argumentSource "none" with no justification. An ` +
+          `unfiltered call is allowed only where somebody wrote down why it is the right ` +
+          `call; a blank justification is not that. Nothing was sent.`,
+      };
+    }
+    return { ok: true, args: {}, source: { kind: "none", justification } };
+  }
+
+  return {
+    ok: false,
+    reason:
+      `Step "${step.id}" declares argumentSource kind "${String(kind)}", which this build ` +
+      `does not implement. Expected "literal", "reasoning" or "none". Nothing was sent.`,
+  };
+}
+
+/** True when this step's arguments are the previous reason step's output — the
+    only case where putting a tool's schema in that reason step's prompt is the
+    truth. A malformed declaration counts as "no", because the step will refuse
+    and describing it to the model would be describing something that cannot run. */
+function takesArgumentsFromReasoning(step: StepSpec): boolean {
+  const declared: unknown = step.argumentSource;
+  if (declared === undefined) return true;
+  return isRecord(declared) && declared["kind"] === "reasoning";
+}
+
+/** Names that will actually appear on the wire. `undefined` is absent — the same
+    rule `checkArgumentsAgainstSchema` applies, because `JSON.stringify` drops
+    it, and the two must agree about what "empty" means. */
+function presentArgumentNames(args: Record<string, unknown>): string[] {
+  return Object.keys(args).filter((name) => args[name] !== undefined);
+}
+
+/** One deliberately unfiltered read, recorded on the run. */
+export interface UnfilteredFetchNotice {
+  stepId: string;
+  operation: string;
+  /** What the tool would have accepted, so the record shows what was declined. */
+  accepts: string;
+  justification: string;
+}
+
+/**
+ * The gate: may this fetch be sent as it stands?
+ *
+ * Returns null to proceed, or the sentence the run is refused with.
+ *
+ * WHAT IT CATCHES THAT THE PROVIDER CANNOT. lib/runtime/tools/composio.ts
+ * already refuses a missing required argument and a name the tool does not
+ * publish. Neither fires on `{}` against a tool whose parameters are all
+ * optional — nothing is missing and no name is unknown — and that is precisely
+ * the shape a fetch-first workflow produced. GMAIL_LIST_THREADS and
+ * GOOGLECALENDAR_FIND_FREE_SLOTS both publish `required: []`, so the call
+ * succeeded and returned the whole mailbox. The rule this adds is therefore not
+ * about validity but about INTENT: an empty argument list to a tool that accepts
+ * arguments is a read nobody scoped, and it is refused unless the plan declared
+ * `argumentSource: { kind: "none" }` and said why.
+ *
+ * IT BINDS ONLY WHERE A REAL REQUEST COULD LEAVE, and that asymmetry is the
+ * design rather than an oversight. `asToolSchemaSource` returns null for every
+ * provider that cannot describe its own tools — the sandbox stub, which
+ * simulates every call, and the two refusing providers in
+ * lib/runtime/tools/organization.ts, which reach no tool at all. None of them
+ * can list a real mailbox, so there is nothing there to guard and nothing to
+ * guard it with. The one provider that CAN send is the Composio one, and it is a
+ * schema source. Where the schema is reachable this fails closed; where no
+ * schema can exist, behaviour is unchanged.
+ *
+ * FAIL CLOSED ON A SCHEMA THAT WILL NOT LOAD, which is the opposite of
+ * `toolSchemaBlock`'s choice a few lines down, on purpose and for the reason
+ * that file already gives: a missing schema costs the model some guidance, and
+ * costs the send everything. The provider would refuse the same call at
+ * execution; refusing here names the step and spends no retries on a failure
+ * that is deterministic.
+ *
+ * The catalog read is memoised per tool for the process (./tools/schema-cache.ts),
+ * so this is one HTTP call per tool per process, not one per step.
+ */
+async function guardFetchArguments(
+  state: RunState,
+  step: StepSpec,
+  operation: string,
+  resolved: Extract<ResolvedArguments, { ok: true }>,
+  deps: ExecutorOptions,
+): Promise<string | null> {
+  const source = asToolSchemaSource(deps.tools);
+  if (source === null) return null;
+
+  let lookup: ToolArgumentLookup;
+  try {
+    // Same per-step deadline as everything else; a catalog that hangs must not
+    // hold the run open, and here the timeout is a refusal rather than a shrug.
+    lookup = await withTimeout(
+      deps,
+      () => source.describeToolArguments(operation),
+      `tool schema for ${operation}`,
+    );
+  } catch (error) {
+    return (
+      `Refusing fetch step "${step.id}": ${operation}'s own input schema could not be read, ` +
+      `so there was no way to tell whether its arguments scope the read — ` +
+      `${error instanceof Error ? error.message : String(error)}. Nothing was sent.`
+    );
+  }
+
+  // `no_tool` is not this gate's business: the capability has a written reason
+  // it cannot be routed (lib/runtime/tools/capabilities.ts) and the provider
+  // quotes that sentence when the call reaches it. Two refusals for one fact
+  // would just bury the useful one.
+  if (lookup.kind === "no_tool") return null;
+
+  if (lookup.kind === "unavailable") {
+    return (
+      `Refusing fetch step "${step.id}": ${operation} routes to ${lookup.toolSlug ?? "a Composio tool"}, ` +
+      `whose input schema could not be read — ${lookup.reason} Its arguments are what bound this ` +
+      `read, and an unbounded read reports success on the wrong answer, so nothing was sent.`
+    );
+  }
+
+  const sending = presentArgumentNames(resolved.args);
+
+  if (sending.length === 0) {
+    // A tool that genuinely publishes no parameters can only ever be called this
+    // way, so `{}` is the complete and correct argument list.
+    if (lookup.schema.properties.size === 0) return null;
+
+    if (resolved.source.kind === "none") {
+      const notice: UnfilteredFetchNotice = {
+        stepId: step.id,
+        operation,
+        accepts: summariseArgumentNames(lookup.schema),
+        justification: resolved.source.justification,
+      };
+      const existing = state.context[UNFILTERED_FETCH_KEY];
+      state.context[UNFILTERED_FETCH_KEY] = Array.isArray(existing)
+        ? [...existing, notice]
+        : [notice];
+      return null;
+    }
+
+    return (
+      `Refusing fetch step "${step.id}": it would call ${lookup.toolSlug} for "${operation}" ` +
+      `with no arguments at all, and that tool requires none — so the call would succeed and ` +
+      `return everything, unfiltered, and the run would report that as the answer. ` +
+      `${lookup.toolSlug} accepts: ${summariseArgumentNames(lookup.schema)}. Give the step an ` +
+      `\`argumentSource\` in the plan: { kind: "literal", values: { … } } to state the scope, ` +
+      `{ kind: "reasoning" } with a reason step before it to derive the scope, or ` +
+      `{ kind: "none", justification: "…" } if reading everything really is the intent. ` +
+      `Nothing was sent.`
+    );
+  }
+
+  // Non-empty, so the ordinary shape rules apply. The same exported check the
+  // provider runs immediately before `tools.execute` — one gate, applied one
+  // layer earlier so the refusal names the step and costs no retries.
+  const shape = checkArgumentsAgainstSchema(resolved.args, lookup.schema);
+  if (!shape.ok) {
+    return (
+      `Refusing fetch step "${step.id}": its arguments do not match ${lookup.toolSlug}'s own ` +
+      `input schema, so nothing was sent — ${shape.problems.join("; ")}. ` +
+      `${lookup.toolSlug} accepts: ${summariseArgumentNames(lookup.schema)}.`
+    );
+  }
+
+  return null;
+}
+
 /* ═══════════════════════════ Step kinds ═══════════════════════════ */
 
 /** Returns a RunOutcome only when the run must stop here. */
@@ -720,10 +1042,27 @@ async function runFetch(
     return finish(state, "refused", deps, decision.reason);
   }
 
+  const resolved = resolveStepArguments(state, step);
+  if (!resolved.ok) {
+    emit(state, { kind: "refused", at: iso(deps), stepId: step.id, reason: resolved.reason });
+    return finish(state, "refused", deps, resolved.reason);
+  }
+
+  // AFTER the policy decision, mirroring the order in
+  // lib/runtime/tools/composio.ts: an operation the agent may not read at all
+  // should say so, rather than report an argument problem underneath a refusal
+  // the owner cannot act on. Refused, not failed — this is the runtime declining
+  // to send, and a deterministic shape problem must not be retried.
+  const guard = await guardFetchArguments(state, step, step.tool.operation, resolved, deps);
+  if (guard !== null) {
+    emit(state, { kind: "refused", at: iso(deps), stepId: step.id, reason: guard });
+    return finish(state, "refused", deps, guard);
+  }
+
   const invocation: ToolInvocation = {
     integrationId: step.tool.integrationId,
     operation: step.tool.operation,
-    args: { ...(state.context[ACTION_KEY] as Record<string, unknown> | undefined) },
+    args: resolved.args,
     metrics: {},
   };
 
@@ -742,12 +1081,15 @@ async function runReason(
   workflow: CompiledWorkflow,
   deps: ExecutorOptions,
 ): Promise<void> {
+  const schemaBlock = await toolSchemaBlock(state, step, workflow, deps);
+
   const result = await withTimeout(
     deps,
     () =>
       deps.reasoner.reason({
         systemPrompt: bundle.pkg.systemPrompt,
-        workflowPrompt: workflow.prompt,
+        workflowPrompt:
+          schemaBlock.length === 0 ? workflow.prompt : `${workflow.prompt}\n\n${schemaBlock}`,
         instruction: step.instruction,
         context: state.context,
       }),
@@ -756,6 +1098,139 @@ async function runReason(
 
   applyReasonResult(state, step.id, result);
   emit(state, { kind: "reasoning", at: iso(deps), stepId: step.id, summary: result.summary });
+}
+
+/* ══════════════ The tool schema, on the way into a reason step ══════════════ */
+
+/**
+ * The step whose arguments THIS reason step is about to produce, or null.
+ *
+ * WHY THIS FUNCTION HAS TO EXIST, AND WHAT THE INVESTIGATION FOUND. An act step
+ * has no arguments of its own: `StepSpec.tool` carries `{ integrationId,
+ * operation }` and nothing else, there is no argument template anywhere in
+ * lib/plan/types.ts, and `runAct` reads `state.context[ACTION_KEY]` — which
+ * `applyReasonResult` wrote from the last reason step's `data`. So the ONLY
+ * place a tool's argument names can be got right is the reason step that
+ * produces them, and the schema has to reach that step's prompt.
+ *
+ * THE SCAN'S THREE RULES, each from how ACTION_KEY actually behaves:
+ *
+ *   - a later `reason` step ENDS the search and returns null, because it will
+ *     overwrite ACTION_KEY before any tool sees this step's output;
+ *   - `approve` is stepped over: a checkpoint pauses and replays, it does not
+ *     replace the pending action, so the act after it still sends this step's
+ *     arguments;
+ *   - `fetch` counts as well as `act`. `runFetch` builds its args from the same
+ *     key, so a read whose arguments are wrong fails in exactly the same way.
+ *
+ * A step with no `tool` returns null rather than being skipped: the run is about
+ * to fail on that step anyway, and guessing past it would put the WRONG tool's
+ * schema in front of the model.
+ */
+function toolConsumerOf(workflow: CompiledWorkflow, reasonStep: StepSpec): StepSpec | null {
+  // Located by id rather than by `state.cursor`. The two agree today — `drive`
+  // dispatches the step under the cursor — but a prompt that silently describes
+  // the WRONG tool is the worst outcome this function has available, and an id
+  // cannot drift the way an index can.
+  const reasonIndex = workflow.steps.findIndex((candidate) => candidate.id === reasonStep.id);
+  if (reasonIndex < 0) return null;
+
+  for (let i = reasonIndex + 1; i < workflow.steps.length; i += 1) {
+    const step = workflow.steps[i];
+    if (!step) return null;
+    if (step.kind === "reason") return null;
+    if (step.kind === "approve") continue;
+    if (!step.tool) return null;
+    // A FOURTH RULE, added with `StepSpec.argumentSource`: a tool step whose
+    // arguments the PLAN states does not consume this reason step's output, so
+    // it is not this step's consumer and the scan continues past it. Without
+    // this the prompt would describe a tool nothing will send the model's answer
+    // to — and, worse, would hide the schema of the step further on that IS fed
+    // by this reasoning. Wrong guidance is worse than none; that is the whole
+    // premise of this block existing.
+    if (!takesArgumentsFromReasoning(step)) continue;
+    return step;
+  }
+  return null;
+}
+
+/**
+ * Reserved context key: why a reason step's prompt did NOT carry the schema it
+ * should have. See `toolSchemaBlock`.
+ *
+ * Recorded in `RunState.context` rather than as a `RunEvent` because the event
+ * union lives in lib/runtime/types.ts and the only kind that would fit is
+ * `error` — which would put a failure mark on a reason step that completed
+ * perfectly well, on every screen that renders a timeline. The key is prefixed
+ * `__` like the rest of the executor's envelope, which is also what keeps
+ * `FixtureReasoner`'s context walk (lib/runtime/llm.ts) from harvesting it as
+ * though it were tool output.
+ */
+export const TOOL_SCHEMA_NOTICE_KEY = "__toolSchemaNotice";
+
+export interface ToolSchemaNotice {
+  stepId: string;
+  /** The capability whose schema was wanted. */
+  operation: string;
+  reason: string;
+}
+
+/**
+ * The tool-argument block for this reason step's prompt, or "".
+ *
+ * FAIL SOFT HERE, FAIL CLOSED AT THE SEND, and the asymmetry is the design. A
+ * catalog that cannot be reached costs the model its guidance; it must not cost
+ * the run its reasoning step, because the act step that follows refuses on its
+ * own — `ComposioIntegrationProvider.execute` checks the same schema before it
+ * sends anything, and reports the fetch failure there. Throwing here would turn
+ * one degraded prompt into a failed run and would say LESS about why.
+ *
+ * The absence is still written down: `TOOL_SCHEMA_NOTICE_KEY` records it on the
+ * run, so the refusal that follows is not the first anyone hears of it.
+ *
+ * NOTHING HAPPENS FOR A PROVIDER THAT CANNOT DESCRIBE TOOLS — the sandbox stub
+ * and the two organization refusals in lib/runtime/tools/organization.ts. The
+ * stub simulates every send, so there is no shape to match; the refusals never
+ * reach a tool at all. Neither wants a block, and neither wants a notice.
+ */
+async function toolSchemaBlock(
+  state: RunState,
+  step: StepSpec,
+  workflow: CompiledWorkflow,
+  deps: ExecutorOptions,
+): Promise<string> {
+  const consumer = toolConsumerOf(workflow, step);
+  const operation = consumer?.tool?.operation;
+  if (operation === undefined) return "";
+
+  const source = asToolSchemaSource(deps.tools);
+  if (source === null) return "";
+
+  const note = (reason: string): string => {
+    const notice: ToolSchemaNotice = { stepId: step.id, operation, reason };
+    state.context[TOOL_SCHEMA_NOTICE_KEY] = notice;
+    return "";
+  };
+
+  let lookup: ToolArgumentLookup;
+  try {
+    // Raced against the same per-step deadline as the reasoning call itself: a
+    // catalog that hangs must not hold a run open past its budget, and the
+    // timeout is a reason to send the prompt without the block, not to fail.
+    lookup = await withTimeout(
+      deps,
+      () => source.describeToolArguments(operation),
+      `tool schema for ${operation}`,
+    );
+  } catch (error) {
+    return note(error instanceof Error ? error.message : String(error));
+  }
+
+  // `no_tool` needs no notice: the capability has a written reason it cannot be
+  // routed (lib/runtime/tools/capabilities.ts) and the act step quotes it.
+  if (lookup.kind === "no_tool") return "";
+  if (lookup.kind === "unavailable") return note(lookup.reason);
+  return lookup.prompt;
 }
 
 /**
@@ -789,7 +1264,18 @@ async function runAct(
     return finish(state, "failed", deps, reason);
   }
 
-  const args = { ...(state.context[ACTION_KEY] as Record<string, unknown> | undefined) };
+  // The same declaration a fetch reads. An `act` whose arguments are stated in
+  // the plan is unusual but not nonsense — a fixed report recipient, a standing
+  // channel — and if the field were honoured on one kind of tool step and
+  // ignored on the other, a plan could declare something this file silently did
+  // not do. There is no empty-argument gate here: an act is already gated by
+  // policy and, when it escalates, shown to a human in full.
+  const resolvedArgs = resolveStepArguments(state, step);
+  if (!resolvedArgs.ok) {
+    emit(state, { kind: "refused", at: iso(deps), stepId: step.id, reason: resolvedArgs.reason });
+    return finish(state, "refused", deps, resolvedArgs.reason);
+  }
+  const args = resolvedArgs.args;
 
   // The numbers policy is about to judge came out of the model. Cross-check the
   // ones the fetch steps can vouch for before handing them to the enforcement
@@ -1146,7 +1632,15 @@ async function pauseForApproval(
   return { run: state, status: "awaiting_approval", approvalId };
 }
 
-/** An `approve` step is an unconditional checkpoint with no tool call. */
+/**
+ * An `approve` step is an unconditional checkpoint with no tool call.
+ *
+ * Deliberately NOT routed through `resolveStepArguments`. There is no tool here
+ * and therefore no argument list to source: what this freezes is the pending
+ * proposal, unchanged, so the owner looks at what the run is actually holding.
+ * Reading a plan-stated `argumentSource` here would show them something the plan
+ * composed instead of what the agent decided.
+ */
 async function pauseForCheckpoint(
   state: RunState,
   step: StepSpec,

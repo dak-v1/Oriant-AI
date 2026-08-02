@@ -42,94 +42,35 @@
  *               that is all 24 authored cases and nothing generated; for an
  *               ingested plan it is generated cover throughout.
  *   sweep       authored for the fixture, generated for everything else, chosen
- *               by `sweepFor` below on the same principle. The comment there
- *               carries the measurement that forced the split.
+ *               by `sweepFor` on the same principle. That function is
+ *               lib/runtime/sandbox/sweep.ts and its header carries the
+ *               measurement that forced the split.
+ *
+ * THE SWEEP CHOICE IS NO LONGER MADE IN THIS FILE, and that is a fix rather than
+ * a tidy-up. It used to sit here as a private function, copied verbatim into
+ * app/api/runtime/activation/route.ts because Next refuses a route module that
+ * exports anything but its handlers — two copies kept in step by a comment asking
+ * whoever edited one to remember the other, with nothing asserting they agreed. A
+ * one-sided edit would have gone green and put this route and the go-live gate
+ * back to answering differently about the same workforce, which is the exact bug
+ * the paragraphs above describe. Both doors now call the one function, and verify
+ * M7-7 drives both and requires the sweeps they report to match.
  *
  * NOTHING HERE MAKES THE GATE EASIER TO OPEN. `runSuite` still treats an agent
  * with no scenarios as not ready and still refuses a verdict with no sweep, so a
  * plan generation cannot cover — no enabled workflow, or no agents at all —
  * comes back BLOCKED with the reason named, not passed for want of a failure.
- * Verified against four sabotaged plans; the header of `sweepFor` lists them.
+ * Verified against four sabotaged plans; the sweep module's header lists them.
  */
 import { NextResponse } from "next/server";
-import type { ApprovedPlan } from "@/lib/plan/types";
-import { BRIGHTPATH_PLAN } from "@/lib/plan/fixtures/brightpath";
 import { runScenario, runSuite } from "@/lib/runtime/sandbox/runner";
 import type { SandboxDeps } from "@/lib/runtime/sandbox/runner";
 import { BRIGHTPATH_SCENARIOS } from "@/lib/runtime/sandbox/scenarios";
 import { suiteForPlan } from "@/lib/runtime/sandbox/smoke";
-import { runGeneratedStress } from "@/lib/runtime/sandbox/smoke-stress";
-import { runStressSweep } from "@/lib/runtime/sandbox/stress";
-import type { StressResult } from "@/lib/runtime/sandbox/types";
+import { sweepFor } from "@/lib/runtime/sandbox/sweep";
 import { getRuntimeSession } from "@/lib/runtime/session";
 
 export const dynamic = "force-dynamic";
-
-/**
- * The stress sweep that is evidence ABOUT THIS PLAN.
- *
- * `suiteForPlan` already decides scenario by scenario whether an authored case
- * applies. A sweep has no such seam — it is one function over a whole plan — so
- * the same decision has to be made once, here.
- *
- * THE OBVIOUS ANSWER IS "ALWAYS GENERATE", AND IT IS WRONG, which is the only
- * genuinely surprising thing in this file. `lib/runtime/pipeline/run.ts` always
- * generates, and is right to: it only ever holds a plan that arrived over the
- * seam. This route also serves the fixture, and the generated sweep is measurably
- * wrong about it. `stressScenariosForPlan` assumes an `auto_within_limits` agent
- * ACTS at any point inside its limits, but BrightPath's admin-operations agent
- * carries `alwaysApprove: ["google-calendar.events.update"]` and its first
- * enabled workflow ends on exactly that operation — so it pauses whatever the
- * numbers say, precisely as the plan instructs. Generating for it produced:
- *
- *     20 of 24 stress cases passed
- *     blockers: "4 of 24 stress case(s) failed."
- *     stress-admin-operations-1  bookings.per_run = 11 (within <= 12)
- *                                expected "completed" but got "awaiting_approval"
- *
- * Four false failures accusing an agent of a guardrail breach for obeying its
- * guardrail. Shipping that would have swapped a wall for a liar: the fixture
- * path, which `lib/runtime/current-plan.ts` promises keeps working permanently
- * and which verify M7 walks through this very route, would have gone red — and
- * red for a reason no owner could act on, which is how people learn to click
- * past a gate.
- *
- * So the authored sweep wins where it is genuinely about the plan in hand. That
- * is the SAME rule `suiteForPlan` applies to scenarios, not an exception to it.
- *
- * MATCHED ON `planId` RATHER THAN ON AN AGENT ID. The authored sweep is not
- * generically "the finance sweep"; its 20 cases are hard-coded against this
- * fixture's `invoice.amount <= 500` and `emails.per_run <= 20`. A different plan
- * that happened to contain an agent called `finance-followup` with other limits
- * would be swept against numbers that are not its own — evidence about the wrong
- * workforce, which is the whole class of bug being removed here. The version is
- * deliberately NOT compared: the fixture and its sweep are edited together in
- * this repo, and pinning it would silently drop a bumped fixture into the
- * generated sweep and back into the four false failures above.
- *
- * WHAT THIS IS NOT is a way to skip a sweep. Every plan gets one, and a plan the
- * generator finds no boundary in gets a sweep of zero cases at a pass rate of
- * 100 — honest, because there was no boundary to cross — while the scenario
- * suite remains the thing that has to cover every agent. That is what keeps the
- * gate shut on a plan nothing can prove:
- *
- *     every workflow disabled       BLOCKED "No scenario ran." +
- *                                           "Agent … has no scenarios."
- *     zero agents                   BLOCKED "No scenario ran."
- *     one unprovable agent added    BLOCKED "Agent ghost-agent has no scenarios."
- *     unattended, no limits at all  BLOCKED "Agent … failed 1 of 1 scenarios."
- *
- * KEPT IN STEP WITH ITS TWIN BY HAND. `app/api/runtime/activation/route.ts`
- * carries the same function, because Next refuses a route module that exports
- * anything but its handlers and neither route may reach into the other. Change
- * one and change the other in the same commit, or the two doors start
- * disagreeing again — which is the bug this file was rewritten to close.
- */
-function sweepFor(plan: ApprovedPlan, deps: SandboxDeps): Promise<StressResult> {
-  return plan.planId === BRIGHTPATH_PLAN.planId
-    ? runStressSweep(plan, deps)
-    : runGeneratedStress(plan, deps);
-}
 
 /**
  * THE LIBRARY THIS PLAN WILL ACTUALLY BE JUDGED BY, not the fixture's shelf.

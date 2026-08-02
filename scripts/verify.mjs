@@ -88,7 +88,24 @@ const TARGETS = {
     entry: "lib/runtime/verify/m3.ts",
     out: "lib/runtime/verify/m3.js",
     label: "M3 — sandbox",
-    expectedChecks: 11,
+    // 19 since the GENERATED sweep — the only evidence an ingested plan can be
+    // judged on — got checks of its own. M3-12 pins the defect that prompted
+    // them (one workflow per agent swept, the rest reported as covered); M3-13
+    // that the generator is correct about a plan whose answers are known; M3-14
+    // that its ceilings bite and COUNT what they refused; M3-15 that every deny
+    // is attempted and refused rather than escalated; M3-16 that an unmeasured
+    // metric fails closed; M3-17 that the run-start gate is walked at both
+    // quiet-hours edges and at the daily cap.
+    //
+    // M3-18 and M3-19 are the two "claims more than it knows" repairs. M3-18:
+    // the ceilings' shortfall used to reach one console.warn and nothing else,
+    // so a sweep covering 40 of 300 cases opened the same activation gate as one
+    // covering all 300 — it now arrives as failing cases and the gate shuts on
+    // it, proved against a control run with the shortfall hidden. M3-19: the
+    // fixture reasoner behind live Composio clients refused every send while
+    // blaming the model, and now names both variables at session construction —
+    // and only in that one of the four combinations.
+    expectedChecks: 19,
   },
   m4: {
     entry: "lib/runtime/verify/m4.ts",
@@ -112,7 +129,13 @@ const TARGETS = {
     entry: "lib/runtime/verify/m7.ts",
     out: "lib/runtime/verify/m7.js",
     label: "M7 — hardening",
-    expectedChecks: 7,
+    // 8 since the stress-sweep choice became one shared function
+    // (lib/runtime/sandbox/sweep.ts) instead of a copy in each of the two route
+    // files that make it. M7-7 drives POST /api/runtime/sandbox and
+    // GET /api/runtime/activation against one runtime and requires the sweep
+    // they report to be the same sweep, on both the fixture and an ingested
+    // plan — the divergence that used to be prevented only by a comment.
+    expectedChecks: 8,
   },
   /*
    * The key is `planstate` rather than `plan-state` because the runner resolves
@@ -137,6 +160,29 @@ const TARGETS = {
     out: "lib/runtime/verify/e2e.js",
     label: "E2E — handoff to a live workforce",
     expectedChecks: 10,
+  },
+  /*
+   * The key is squashed for the same reason `planstate` is: the runner resolves
+   * `run${key.toUpperCase()}Verification` and a hyphen cannot appear in a
+   * JavaScript identifier. The entry file keeps the hyphenated file naming.
+   *
+   * A separate target rather than more checks on `e2e`, because it answers a
+   * question that one structurally cannot. E2E proves the joins on BrightPath's
+   * handoff, and BrightPath's plan needs `hubspot.invoices.list` and
+   * `quickbooks.invoices.list` — operations lib/runtime/tools/capabilities.ts
+   * records as unroutable, because Composio publishes no such tool in either
+   * toolkit. So nothing proved against it can ever execute live. This target
+   * runs the gmail + google-calendar fixture instead — the two toolkits this
+   * account holds live connections for — from Role B's handoff to a live
+   * deployment, and puts the configured plan through the same three activation
+   * gates. It builds its own stubs, stores, clock and ids, so it reaches no
+   * network and needs no credentials.
+   */
+  gmailworkforce: {
+    entry: "lib/runtime/verify/gmail-workforce.ts",
+    out: "lib/runtime/verify/gmail-workforce.js",
+    label: "GMAIL WORKFORCE — the plan this account can actually run",
+    expectedChecks: 8,
   },
   collect: {
     entry: "lib/runtime/verify/collect.ts",
@@ -179,7 +225,41 @@ const TARGETS = {
     // lib/runtime/pipeline/organization-gate.ts, which sits on three request
     // routes — while /api/runtime/activation, /run, /approvals, /scheduler and
     // the background poller reached live Composio execution without it.
-    expectedChecks: 20,
+    //
+    // 25 since tool arguments became schema-driven. The plan speaks
+    // `gmail.messages.send` and Composio's GMAIL_SEND_EMAIL wants
+    // `recipient_email`, so the tool's own input schema is now fetched, cached
+    // per tool, put in front of the model at the `reason` step that produces the
+    // arguments, and enforced immediately before the send. TOOLS-21..25 are the
+    // fetch and its cache, that schema reaching that prompt and no other, a
+    // matching argument set going out unchanged, the model's own vocabulary
+    // refused rather than sent, and — the fail-closed direction — a schema that
+    // cannot be fetched refusing instead of falling back to verbatim passthrough.
+    //
+    // 30 since a `fetch` step got a source of arguments. Those five cover the
+    // arguments a reason step produces for the act step AFTER it; a workflow
+    // that OPENS with a fetch has no such step and used to send `{}` — which
+    // GMAIL_LIST_THREADS accepts, because it publishes `required: []`, and
+    // answers with every thread in the mailbox. TOOLS-26..30 are the five
+    // answers to "where did these arguments come from?": no declaration is
+    // refused rather than sent unfiltered, a literal reaches Composio verbatim,
+    // a justified `none` runs and is recorded while a blank one is refused, a
+    // stated argument the tool does not publish is refused before the send, and
+    // the reasoning arm carries the fetch's own schema into the step answering it.
+    //
+    // 35 since the schemas under test stopped being ours. Every schema this
+    // target had ever shown lib/runtime/tools/schema.ts was a literal somebody
+    // wrote to match what they believed Composio returns, so the checks proved
+    // that the parser agrees with its AUTHOR. lib/runtime/tools/catalog-recording.ts
+    // is the real HTTP response for every mapped slug, and the fake SDK serves it
+    // now. TOOLS-31..35: the recording covers every mapped capability, the
+    // parser's reading of it matches a second independent reading name for name,
+    // every tool accepts its own vocabulary and refuses names it does not publish,
+    // every mapped capability either executes or refuses because Composio has no
+    // schema for its slug (two do — HubSpot's pair 404 at the endpoint the SDK
+    // actually reads), and an `anyOf` carrying the only type information is
+    // enforced on its union instead of accepting anything at all.
+    expectedChecks: 35,
   },
   pg: {
     entry: "lib/runtime/verify/pg.ts",

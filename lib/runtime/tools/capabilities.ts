@@ -55,18 +55,23 @@
  *
  * WHAT THIS FILE DELIBERATELY DOES NOT DO: ARGUMENT TRANSLATION.
  *
- * A capability's `args` are passed to Composio verbatim. `gmail.messages.send`
- * carries whatever the plan's `act` step and the reasoner produced;
- * `GMAIL_SEND_EMAIL` wants `recipient_email`, `subject`, `body`. Those are not
- * the same shape, and this file does not pretend otherwise. Hand-writing a
- * per-capability argument mapper would be twenty more guesses about a schema
+ * This table maps a capability to a TOOL. It says nothing about that tool's
+ * arguments, and it never will. `gmail.messages.send` used to carry whatever the
+ * reason step produced — `{ to, subject, body }` — straight to
+ * `GMAIL_SEND_EMAIL`, which wants `recipient_email`. Hand-writing a
+ * per-capability argument mapper here would be twenty more guesses about a shape
  * that lives on Composio's side and changes with toolkit versions, and a guess
  * that is wrong SILENTLY (a dropped `cc`, a misnamed `body`) is exactly the
- * failure mode the rest of this runtime is built to avoid. The honest seam is
- * the tool's own JSON schema — Composio publishes it per tool — fed to the
- * reasoner so the args are produced in the tool's vocabulary in the first
- * place. Until that exists, a shape mismatch surfaces as a Composio error on
- * the run timeline, which is a bad outcome but a VISIBLE one.
+ * failure mode the rest of this runtime is built to avoid.
+ *
+ * THE HONEST SEAM NOW EXISTS, and it is lib/runtime/tools/schema.ts: the tool's
+ * own JSON schema, fetched from Composio's catalog, given to the model at the
+ * `reason` step so the arguments are produced in the tool's vocabulary in the
+ * first place — and checked against that same schema immediately before
+ * execution, because a prompt is guidance and a send needs a gate. A capability
+ * added to the first table above therefore needs no argument work here at all;
+ * that is the property that made the schema worth fetching rather than
+ * transcribing.
  */
 
 import { getOperation } from "../../plan/operations";

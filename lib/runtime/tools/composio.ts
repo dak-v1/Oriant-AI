@@ -31,6 +31,30 @@
  *   NO ANSWER YET   -> an integration whose connection state has not been
  *                      loaded reads as NOT connected. Unknown is never
  *                      optimistic.
+ *   NO SCHEMA       -> a tool whose own input schema cannot be read from
+ *                      Composio does not execute. This is the newest refusal and
+ *                      the least obvious; see below.
+ *   WRONG SHAPE     -> arguments that do not match that schema are refused,
+ *                      naming what was missing and what the tool would have
+ *                      silently dropped.
+ *
+ * THE ARGUMENT SHAPE PROBLEM, AND WHY IT IS A REFUSAL RATHER THAN A TRANSLATION.
+ *
+ * The plan speaks `gmail.messages.send` and a reason step produces `{ to,
+ * subject, body }`; GMAIL_SEND_EMAIL wants `recipient_email`. This file used to
+ * forward `{ ...args }` verbatim, which meant the first real send failed on
+ * shape — and would have failed WORSE if it had half-matched, because Composio
+ * does not reject an unknown field, it drops it. An email with no body reads as
+ * a successful send on every screen this project has.
+ *
+ * The fix is not a translation table in this repository (see the header of
+ * lib/runtime/tools/schema.ts for why that keeps being rejected). It is the
+ * tool's OWN schema, fetched from Composio, used twice: given to the model so the
+ * arguments are produced in the tool's vocabulary in the first place, and checked
+ * here immediately before `tools.execute` because a prompt is guidance and this
+ * is a gate. `describeToolArguments` below is the first half; `execute` is the
+ * second. Neither improvises: a schema that cannot be fetched is a refusal with
+ * the fetch's own error in it, never a fallback to sending unchecked.
  *
  * THE SYNCHRONOUS-SEAM PROBLEM, AND WHY THERE IS A SNAPSHOT.
  *
@@ -101,7 +125,18 @@ import {
   COMPOSIO_TOOLKIT_SLUGS,
   resolveCapability,
   toolkitSlugFor,
+  type CapabilityRoute,
 } from "./capabilities";
+import { cachedToolSchema, toolSchemaKey } from "./schema-cache";
+import {
+  checkArgumentsAgainstSchema,
+  parseToolInputSchema,
+  renderSchemaForPrompt,
+  summariseArgumentNames,
+  type ToolArgumentLookup,
+  type ToolCatalogEntry,
+  type ToolSchemaSource,
+} from "./schema";
 import type {
   Clock,
   IntegrationProvider,
@@ -173,12 +208,46 @@ export interface ComposioToolExecuteResult {
   readonly data: Record<string, unknown>;
 }
 
+/**
+ * One entry of Composio's tool catalog, narrowed to the two fields an argument
+ * decision rests on.
+ *
+ * `inputParameters` IS TYPED `unknown` ON PURPOSE. The SDK types it as a Zod
+ * inference over a JSON Schema object, which is a shape this file would then be
+ * asserting rather than checking — and a schema arriving in a form we did not
+ * expect must produce a REFUSAL, not a cast. `parseToolInputSchema` in ./schema.ts
+ * is the one place that decides whether the catalog said something we understand;
+ * everything downstream of it works on the parsed result. It also keeps the
+ * structural type honest across SDK upgrades: a Zod shape that gains a field
+ * cannot break this assignment.
+ */
+export interface ComposioToolDefinition {
+  readonly slug: string;
+  readonly description?: string;
+  readonly inputParameters?: unknown;
+}
+
 export interface ComposioExecutionClient {
   readonly tools: {
     execute(
       slug: string,
       body: ComposioToolExecuteBody,
     ): Promise<ComposioToolExecuteResult>;
+    /**
+     * The tool's published definition, INCLUDING its input schema. Named for
+     * `Tools.getRawComposioToolBySlug` in the installed SDK (0.14.1) — "raw"
+     * meaning Composio's own schema rather than a provider-transformed one,
+     * which is exactly what this runtime wants: the shape `tools.execute` will
+     * be judged against, not a framework's rendering of it.
+     *
+     * Deliberately NOT `getRawComposioTools({ toolkits })`. Listing a toolkit
+     * pulls 300+ tool definitions to learn about one, and the runtime knows the
+     * slug it is about to call.
+     */
+    getRawComposioToolBySlug(
+      slug: string,
+      options?: { version?: string },
+    ): Promise<ComposioToolDefinition>;
   };
   readonly connectedAccounts: {
     list(query: ComposioConnectedAccountQuery): Promise<ComposioConnectedAccountPage>;
@@ -338,7 +407,7 @@ function describeError(error: unknown): string {
 
 /* ═══════════════════════════ The provider ═══════════════════════════ */
 
-export class ComposioIntegrationProvider implements IntegrationProvider {
+export class ComposioIntegrationProvider implements IntegrationProvider, ToolSchemaSource {
   private readonly organizationId: string;
   private readonly client: ComposioExecutionClient;
   private readonly clock: Clock;
@@ -538,6 +607,92 @@ export class ComposioIntegrationProvider implements IntegrationProvider {
     if (age >= this.connectionTtlMs) await this.refresh();
   }
 
+  /* ── The tool's own argument vocabulary ── */
+
+  /**
+   * What arguments this capability's Composio tool actually accepts.
+   *
+   * `ToolSchemaSource`, which lib/runtime/executor.ts finds structurally and uses
+   * to put the schema in front of the model at the `reason` step that PRODUCES
+   * the arguments. That is the only place a fix can happen: an act step has no
+   * arguments of its own — `StepSpec.tool` carries an integration and an
+   * operation and nothing else — so what it sends is whatever the last reason
+   * step put in the run context. Translating after the fact would mean guessing;
+   * asking for the right names up front does not.
+   *
+   * NEVER REJECTS, and never throws into the executor's step loop. A catalog that
+   * cannot be read is reported as `unavailable` with Composio's own words, and
+   * the caller decides: the prompt path carries on without the block, the
+   * execution path (below) refuses. Those are the right two answers to the same
+   * fact — a missing schema costs the model some guidance, and costs the send
+   * everything.
+   */
+  async describeToolArguments(capability: string): Promise<ToolArgumentLookup> {
+    const route = resolveCapability(capability);
+    if (route.kind !== "tool") {
+      return { kind: "no_tool", capability, reason: route.reason };
+    }
+    try {
+      const entry = await this.catalogEntryFor(route);
+      return {
+        kind: "schema",
+        capability,
+        toolSlug: route.toolSlug,
+        schema: entry.schema,
+        prompt: renderSchemaForPrompt({
+          capability,
+          toolSlug: route.toolSlug,
+          schema: entry.schema,
+          toolDescription: entry.description,
+        }),
+      };
+    } catch (error) {
+      return {
+        kind: "unavailable",
+        capability,
+        toolSlug: route.toolSlug,
+        reason: describeError(error),
+      };
+    }
+  }
+
+  /**
+   * The fetch itself, memoised per tool for the process by ./schema-cache.ts.
+   *
+   * THE VERSION IS PART OF THE QUESTION, not an optimisation. `toolkitVersions`
+   * decides which version `execute` runs against; a schema read from "latest"
+   * while the call is pinned would be checking a shape the tool no longer has,
+   * and it would be wrong in the permissive direction. Both go through
+   * `toolSchemaKey`, so they cannot disagree.
+   *
+   * A schema this runtime cannot parse THROWS rather than resolving to an empty
+   * one. An empty schema would accept every argument list, which is the verbatim
+   * passthrough this whole change exists to remove, wearing a validator's name.
+   */
+  private async catalogEntryFor(
+    route: Extract<CapabilityRoute, { kind: "tool" }>,
+  ): Promise<ToolCatalogEntry> {
+    const version = this.toolkitVersions.get(route.integrationId);
+    return cachedToolSchema(toolSchemaKey(route.toolSlug, version), async () => {
+      const definition = await this.client.tools.getRawComposioToolBySlug(
+        route.toolSlug,
+        version === undefined ? undefined : { version },
+      );
+      const schema = parseToolInputSchema(definition.inputParameters);
+      if (schema === null) {
+        throw new Error(
+          `Composio returned no readable input schema for ${route.toolSlug} ` +
+            `(its "inputParameters" was absent or not a JSON Schema object). ` +
+            `Without it there is nothing to check the arguments against.`,
+        );
+      }
+      return {
+        schema,
+        description: typeof definition.description === "string" ? definition.description : null,
+      };
+    });
+  }
+
   /* ── Execution ── */
 
   /**
@@ -592,6 +747,37 @@ export class ComposioIntegrationProvider implements IntegrationProvider {
       return refuse(
         `Refusing "${operation}": "${integrationId}" is not connected for organization ` +
           `${this.organizationId} — ${state.reason}.`,
+      );
+    }
+
+    // THE SHAPE GATE. Last thing before the network, and after the connection
+    // check on purpose: a disconnected integration should say so rather than
+    // report an argument problem the owner cannot act on yet.
+    //
+    // Reached through `catalogEntryFor` rather than `describeToolArguments`
+    // because a send has no use for the rendered prompt block, and building one
+    // per attempt — retries included — would be work done to be thrown away.
+    let entry: ToolCatalogEntry;
+    try {
+      entry = await this.catalogEntryFor(route);
+    } catch (error) {
+      return refuse(
+        `Refusing "${operation}": ${route.toolSlug}'s own input schema could not be read ` +
+          `from Composio, so its arguments could not be checked — ${describeError(error)} ` +
+          `Nothing was sent. The arguments are NOT passed through unchecked: an argument ` +
+          `name this tool does not know is dropped rather than rejected, so an unchecked ` +
+          `send can succeed and deliver nothing.`,
+      );
+    }
+
+    const shape = checkArgumentsAgainstSchema(args, entry.schema);
+    if (!shape.ok) {
+      return refuse(
+        `Refusing "${operation}": the arguments do not match ${route.toolSlug}'s own input ` +
+          `schema, so nothing was sent — ${shape.problems.join("; ")}. ` +
+          `${route.toolSlug} accepts: ${summariseArgumentNames(entry.schema)}. ` +
+          `The arguments come from the reason step before this one, which is given this ` +
+          `schema in its prompt; a mismatch means the model answered in its own vocabulary.`,
       );
     }
 

@@ -73,6 +73,17 @@
  * and a provable plan with one unprovable agent added, all three of which still
  * shut this gate and say which agent shut it.
  *
+ * WHICH SWEEP COUNTS AS EVIDENCE IS DECIDED IN lib/runtime/sandbox/sweep.ts, and
+ * moving it there was a fix rather than a tidy-up. This file carried `sweepFor`
+ * as a private copy of the one in app/api/runtime/sandbox/route.ts — verbatim,
+ * because Next refuses a route module that exports anything but its handlers —
+ * kept in step by a comment asking whoever edited one to remember the other, with
+ * nothing asserting they agreed. A one-sided edit would have gone green and put
+ * the go-live gate back to answering differently from the Sandbox about the same
+ * workforce, which is precisely the two-doors defect the paragraph above records.
+ * Both doors now call the one function, and verify M7-7 drives both and requires
+ * the sweeps they report to match.
+ *
  * Unauthenticated on purpose for now, exactly as /api/runtime/build is: this
  * branch is Role C's development surface and the runtime is fixture-backed. It
  * must be gated before any deployment, along with every other /api route — and
@@ -82,14 +93,12 @@
  */
 import { NextResponse } from "next/server";
 import type { ApprovedPlan } from "@/lib/plan/types";
-import { BRIGHTPATH_PLAN } from "@/lib/plan/fixtures/brightpath";
 import { runSuite } from "@/lib/runtime/sandbox/runner";
 import type { SandboxDeps } from "@/lib/runtime/sandbox/runner";
 import { BRIGHTPATH_SCENARIOS } from "@/lib/runtime/sandbox/scenarios";
 import { suiteForPlan } from "@/lib/runtime/sandbox/smoke";
-import { runGeneratedStress } from "@/lib/runtime/sandbox/smoke-stress";
-import { runStressSweep } from "@/lib/runtime/sandbox/stress";
-import type { SandboxVerdict, StressResult } from "@/lib/runtime/sandbox/types";
+import { sweepFor } from "@/lib/runtime/sandbox/sweep";
+import type { SandboxVerdict } from "@/lib/runtime/sandbox/types";
 import {
   activate,
   activationBlockers,
@@ -102,53 +111,6 @@ import type { RuntimeSession } from "@/lib/runtime/session";
 export const dynamic = "force-dynamic";
 
 /* ═══════════════════════════ Gate inputs ═══════════════════════════ */
-
-/**
- * The stress sweep that is evidence ABOUT THIS PLAN.
- *
- * `suiteForPlan` already decides scenario by scenario whether an authored case
- * applies. A sweep has no such seam — it is one function over a whole plan — so
- * the same decision has to be made once, here.
- *
- * THE OBVIOUS ANSWER IS "ALWAYS GENERATE", AND IT IS WRONG. lib/runtime/pipeline
- * /run.ts always generates and is right to: it only ever holds a plan that came
- * over the seam. This route also gates the fixture, and the generated sweep is
- * measurably wrong about it. `stressScenariosForPlan` assumes an
- * `auto_within_limits` agent ACTS anywhere inside its limits, but BrightPath's
- * admin-operations agent carries `alwaysApprove:
- * ["google-calendar.events.update"]` and its first enabled workflow ends on
- * exactly that operation — so it pauses whatever the numbers say, exactly as the
- * plan instructs. Generating for it produced four failures of the form
- *
- *     bookings.per_run = 11 (within <= 12)
- *     expected "completed" but got "awaiting_approval"
- *
- * — accusing an agent of a guardrail breach for obeying its guardrail, and
- * shutting a gate that verify M7 walks through this route and requires to open.
- * A false red is not a safe default: it is the thing that teaches an owner to
- * stop reading blockers.
- *
- * So the authored sweep wins where it is genuinely about the plan in hand, which
- * is the SAME rule `suiteForPlan` applies to scenarios rather than an exception.
- *
- * MATCHED ON `planId`, NOT ON AN AGENT ID. The authored sweep's 20 cases are
- * hard-coded against this fixture's `invoice.amount <= 500` and
- * `emails.per_run <= 20`; another plan merely containing an agent named
- * `finance-followup` would be swept against numbers that are not its own, which
- * is the exact class of bug being removed. The version is deliberately not
- * compared — fixture and sweep are edited together here, and pinning it would
- * silently drop a bumped fixture into the false failures above.
- *
- * KEPT IN STEP WITH ITS TWIN BY HAND. app/api/runtime/sandbox/route.ts carries
- * the same function, because Next refuses a route module that exports anything
- * but its handlers and neither route may import from the other. Change one and
- * change the other in the same commit, or the two doors start disagreeing again.
- */
-function sweepFor(plan: ApprovedPlan, deps: SandboxDeps): Promise<StressResult> {
-  return plan.planId === BRIGHTPATH_PLAN.planId
-    ? runStressSweep(plan, deps)
-    : runGeneratedStress(plan, deps);
-}
 
 /**
  * The sandbox gate's evidence, earned on demand.
