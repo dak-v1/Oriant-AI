@@ -123,6 +123,19 @@
  */
 
 import { BRIGHTPATH_DEMO_ORGANIZATION_ID } from "../../plan/fixtures/brightpath";
+import { MERIDIAN_DEMO_ORGANIZATION_ID } from "../../plan/fixtures/meridian";
+
+/**
+ * Every organization id that names a DEMO FIXTURE rather than a business. These
+ * — and only these — may borrow the operator's ORIANT_ORGANIZATION_ID stand-in.
+ * A new fixture plan must be added here or its demo org will be treated as a
+ * real (and nonexistent) Composio account; see the comment at the membership
+ * check for the outage that taught this.
+ */
+const KNOWN_FIXTURE_ORGANIZATION_IDS: ReadonlySet<string> = new Set([
+  BRIGHTPATH_DEMO_ORGANIZATION_ID,
+  MERIDIAN_DEMO_ORGANIZATION_ID,
+]);
 import { ComposioToolsConfigError } from "./composio";
 import { providerForOrganization } from "./composio-sdk";
 /*
@@ -199,9 +212,21 @@ export function resolveToolsOrganization(planOrganizationId: string): ToolsOrgan
     };
   }
 
-  // THE LINE THAT MATTERS. Anything that is not the demo fixture is a real
+  // THE LINE THAT MATTERS. Anything that is not a demo fixture is a real
   // organization and is used as-is, without the environment being consulted.
-  if (orgId !== BRIGHTPATH_DEMO_ORGANIZATION_ID) {
+  //
+  // A SET, NOT ONE ID, and the day that changed is worth recording: this check
+  // named BRIGHTPATH_DEMO_ORGANIZATION_ID alone, written when BrightPath was
+  // the only fixture the server could fall back to. Then the served fallback
+  // became Meridian — and Meridian's demo org, being "not the fixture" by this
+  // line's definition, was treated as a real business named
+  // "org-meridian-demo-fixture". No such Composio account exists, so with live
+  // tools ON and ORIANT_ORGANIZATION_ID correctly set, the integrations gate
+  // still refused wholesale. The property this check actually guards is "a demo
+  // org that is not a real business may borrow the operator's stand-in; a real
+  // org id never consults the environment" — and that property belongs to every
+  // demo fixture the server can serve, not to whichever one was first.
+  if (!KNOWN_FIXTURE_ORGANIZATION_IDS.has(orgId)) {
     return { kind: "plan", organizationId: orgId };
   }
 
@@ -212,11 +237,11 @@ export function resolveToolsOrganization(planOrganizationId: string): ToolsOrgan
     return {
       kind: "unresolved",
       reason:
-        `the plan being served is the BrightPath demo fixture ` +
-        `(${BRIGHTPATH_DEMO_ORGANIZATION_ID}), which is not a real business and has ` +
-        `no Composio connections. Ingest a handoff so the runtime executes a real ` +
-        `plan through its own organization, or set ${FIXTURE_ORGANIZATION_ENV} to ` +
-        `an organization whose connections the demo may borrow.`,
+        `the plan being served is a demo fixture (${orgId}), which is not a real ` +
+        `business and has no Composio connections. Ingest a handoff so the runtime ` +
+        `executes a real plan through its own organization, or set ` +
+        `${FIXTURE_ORGANIZATION_ENV} to an organization whose connections the demo ` +
+        `may borrow.`,
     };
   }
   return { kind: "fixture_fallback", organizationId: fallback };
