@@ -14,6 +14,11 @@ export const AGENT = {
   marketing: "marketing",
   finance: "finance-followup",
   recovery: "service-recovery",
+  // The approved plan's real roster (support_helpdesk_gmail /
+  // marketing_campaign_gmail in the planner). Present so the integration
+  // cards' "Needed by" chips can name the workforce the plan actually holds
+  // rather than the retired BrightPath demo roster.
+  helpdesk: "helpdesk",
 } as const;
 
 export const AGENT_NAME: Record<string, string> = {
@@ -21,6 +26,7 @@ export const AGENT_NAME: Record<string, string> = {
   [AGENT.marketing]: "Marketing Agent",
   [AGENT.finance]: "Finance Follow-up Agent",
   [AGENT.recovery]: "Service Recovery Coordinator",
+  [AGENT.helpdesk]: "Helpdesk Agent",
 };
 
 /* ── Workflows ── */

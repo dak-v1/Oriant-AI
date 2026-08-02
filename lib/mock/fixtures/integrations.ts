@@ -15,8 +15,11 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
     name: "Gmail",
     category: "Customer communication",
     kind: "app",
-    purpose: "Lets agents read the shared ops inbox and prepare reply drafts without sending anything on their own.",
-    neededBy: [AGENT.admin, AGENT.finance, AGENT.recovery],
+    purpose: "Lets the Helpdesk Agent read incoming customer questions and prepare reply drafts, and the Marketing Agent queue campaign emails — nothing is sent without your approval.",
+    // The approved plan's actual roster. The retired BrightPath demo roster
+    // used to sit here, which made this card claim agents the plan no longer
+    // contains needed it.
+    neededBy: [AGENT.helpdesk, AGENT.marketing],
     reads: ["Incoming customer emails", "Email threads and labels", "Shared inbox folders"],
     actions: ["Draft replies for review", "Label and sort enquiries", "Queue approved sends"],
     defaultStatus: "required",
@@ -38,8 +41,9 @@ export const INTEGRATIONS: Record<string, IntegrationDef> = {
     name: "Google Calendar",
     category: "Scheduling",
     kind: "app",
-    purpose: "Gives the Admin Operations Agent visibility of technician calendars so it can propose and hold appointment slots.",
-    neededBy: [AGENT.admin],
+    purpose: "Gives the Marketing Agent the campaign schedule, so it knows which ad emails to compose and when.",
+    // Same correction as the Gmail card above: the plan's real roster.
+    neededBy: [AGENT.marketing],
     reads: ["Technician calendars", "Existing bookings", "Working hours and blocked days"],
     actions: ["Propose available slots", "Create tentative holds", "Update bookings after approval"],
     defaultStatus: "required",
