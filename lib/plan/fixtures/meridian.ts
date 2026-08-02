@@ -20,6 +20,34 @@
  * Gmail and Google Calendar, so every capability it grants resolves to a
  * published Composio tool and every act it proposes could really be performed.
  *
+ * IT IS ALSO WHAT A FRESH RUNTIME SERVES, WHICH MAKES TWO THINGS OBLIGATIONS OF
+ * THIS FILE RATHER THAN CONVENIENCES. `resolveCurrentPlan`
+ * (lib/runtime/current-plan.ts) falls back to MERIDIAN_PLAN when nothing has
+ * been ingested — it used to fall back to BRIGHTPATH_PLAN, which is how a
+ * product whose whole point is watching agents work came to show every visitor
+ * a workforce that could not.
+ *
+ *   - This plan must keep validating clean AND keep every granted operation
+ *     routable. GW-1 and GW-2 assert both; PS-1 asserts that this is the plan
+ *     the resolver actually hands out. Together they mean a grant that drifted
+ *     into an unpublished tool fails as a broken SERVER rather than as a stale
+ *     test — which is the only reason those two claims are worth stating in two
+ *     places.
+ *   - The fallback is LABELLED, never silent. `resolveCurrentPlan` returns
+ *     source "fixture" alongside a sentence naming Meridian Physiotherapy, and
+ *     a screen that renders these agents without it is telling somebody this
+ *     clinic is theirs.
+ *
+ * `MERIDIAN_DEMO_ORGANIZATION_ID` did not become a realistic id because of that,
+ * and the reasoning below holds harder now: this is the plan a clean clone
+ * shows, so it is the id somebody eventually copies. It also has a consequence
+ * worth knowing before it is discovered at an act step —
+ * `resolveToolsOrganization` (lib/runtime/tools/organization.ts) treats anything
+ * that is not `BRIGHTPATH_DEMO_ORGANIZATION_ID` as a real business, so with live
+ * tools on, this id resolves to a company holding no Composio connections
+ * rather than to the `ORIANT_ORGANIZATION_ID` stand-in. Every OPERATION here is
+ * routable; whose accounts they route through is still decided one file away.
+ *
  * WHAT IT REJECTED.
  *
  *   - google-drive, even though this account has it connected. The registry has

@@ -66,6 +66,30 @@ const ROUTE_SURFACES: ReadonlyArray<{ prefix: string; surface: LaneSurface }> = 
   },
 ];
 
+/**
+ * Routes with NO scripted lane at all, so the journey guard never applies.
+ *
+ * Distinct from ROUTE_SURFACES above, and the distinction is the whole point:
+ * those are surfaces that can be EITHER lane depending on an env var, so the
+ * guard has to resolve which one is showing. These have only one. The Agent
+ * Factory and the Activation screen were rewritten to read the runtime and
+ * nothing else — there is no fixture timeline left in them to deep-link past —
+ * so a journey gate on them guards a narrative that no longer exists.
+ *
+ * IT WAS NOT MERELY USELESS, IT WAS FATAL. `lib/mock/state-machine.ts` gates
+ * /app/build at "plan_approved" and /app/deploy at "ready_to_activate", and
+ * nothing the SERVER knows can lift `journey` that far — only walking the
+ * scripted demo can. So both pages were unreachable in a browser: they rendered
+ * and were redirected to /app/onboarding within the same tick. The owner who
+ * reported the Factory "stuck at Queued" could not have reached the rewritten
+ * screen at all, and neither could the agent sent to screenshot it.
+ */
+const RUNTIME_ONLY_PREFIXES: readonly string[] = [
+  "/app/build",
+  "/app/deploy",
+  "/app/pipeline",
+];
+
 /** The lane env values the server layout hands to the shell, keyed by var name. */
 export type LaneEnvDefaults = Readonly<Record<string, string | undefined>>;
 
@@ -104,6 +128,10 @@ export function demoJourneyGuardApplies(
   live: string | string[] | undefined,
   env: LaneEnvDefaults,
 ): boolean {
+  // Checked before the surface table: these routes have no scripted lane to
+  // resolve, so there is nothing for the guard to be right or wrong about.
+  if (RUNTIME_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return false;
+
   const match = ROUTE_SURFACES.find((entry) => pathname.startsWith(entry.prefix));
   if (!match) return true;
   return resolveLane(match.surface, { live, env: env[match.surface.envVar] }).lane === "demo";

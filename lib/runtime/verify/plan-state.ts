@@ -12,11 +12,15 @@
  *
  * WHAT THIS TARGET PROVES, and it is four claims rather than one:
  *
- *   1. A fresh store falls back to the BrightPath fixture AND SAYS SO. The
- *      fallback is the demo promise in ROLE_C_PLAN and it must survive; what
- *      must not survive is a screen showing fixture data while claiming to show
- *      the customer's workforce. So every answer carries a source discriminant,
- *      and a store that will not answer is not allowed to become a fallback.
+ *   1. A fresh store falls back to the MERIDIAN fixture AND SAYS SO BY NAME.
+ *      The fallback itself must survive — a clean clone has ingested nothing and
+ *      still has to render something — but WHICH plan it serves changed, and the
+ *      sentence it serves alongside has to have changed with it. What must not
+ *      survive is a screen showing fixture data while claiming to show the
+ *      customer's workforce, or naming a workforce the runtime is not serving.
+ *      So every answer carries a source discriminant, the reason names the
+ *      substituted plan, and a store that will not answer is not allowed to
+ *      become a fallback.
  *   2. After a handoff runs the pipeline, the current plan IS the ingested one.
  *      Asserted by planId, against a fixture with a different one, so "the
  *      fixture is still there" cannot pass.
@@ -63,7 +67,17 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+/*
+ * BOTH FIXTURES, AND THE TARGET NEEDS BOTH.
+ *
+ * MERIDIAN_PLAN is what the resolver falls back to and is therefore what every
+ * positive assertion below is written against. BRIGHTPATH_PLAN is kept as the
+ * NEGATIVE control: it is the plan the fallback used to be, so "not this one" is
+ * the direction a regression would travel, and a check that only knew the new
+ * answer could not tell a revert from a rename.
+ */
 import { BRIGHTPATH_PLAN } from "../../plan/fixtures/brightpath";
+import { MERIDIAN_PLAN } from "../../plan/fixtures/meridian";
 import { ROLE_B_HANDOFF, ROLE_B_HANDOFF_RESOLVED } from "../../plan/fixtures/role-b-handoff";
 import { ingestHandoff } from "../../plan/ingest/from-handoff";
 import type { WorkforceHandoffPayload } from "../../plan/ingest/types";
@@ -239,16 +253,26 @@ export async function runPLANSTATEVerification(): Promise<Check[]> {
     checks.push({ name, pass, detail });
 
   try {
-    /* ═══ 1. NOTHING INGESTED SHOWS THE FIXTURE, AND SAYS SO ═══
-       Three separate claims, because the fallback is only safe if all three
-       hold: the STORE invents nothing, the RESOLVER substitutes the fixture and
-       labels it, and a store that throws is not treated as an empty one. The
-       third is the one that would rot silently — `resolveActivePlan` swallows a
-       read error by design, and copying that here would show BrightPath over
-       the top of a customer plan that exists and could not be read. */
+    /* ═══ 1. NOTHING INGESTED SHOWS THE FIXTURE, AND SAYS WHICH ONE ═══
+       Four separate claims, because the fallback is only safe if all four hold:
+       the STORE invents nothing, the RESOLVER substitutes the fixture, it
+       labels that fixture BY NAME, and a store that throws is not treated as an
+       empty one. The last is the one that would rot silently —
+       `resolveActivePlan` swallows a read error by design, and copying that
+       here would show a demo over the top of a customer plan that exists and
+       could not be read.
+
+       THE NAMING CLAIM IS NEW AND IT IS NOT DECORATION. This check used to
+       require only that `fallbackReason` was a non-empty string, which is a
+       check the exact defect walks straight through: change which plan the
+       resolver returns, leave the sentence alone, and every screen goes on
+       telling an owner it is showing BrightPath while it renders a
+       physiotherapy clinic. So the sentence is asserted in BOTH directions —
+       it must name Meridian and must no longer name BrightPath — because a
+       sentence naming both is as wrong as one naming only the other. */
     {
       const name =
-        "PS-1 a fresh store falls back to the BrightPath fixture, labels it as the fixture, and refuses to invent one when the store fails";
+        "PS-1 a fresh store falls back to the Meridian fixture, names it in the sentence it shows, and refuses to invent one when the store fails";
       const store = new InMemorySchedulerStore();
 
       const storedIsNull = (await store.getCurrentPlan()) === null;
@@ -256,12 +280,20 @@ export async function runPLANSTATEVerification(): Promise<Check[]> {
       const resolved = await resolveCurrentPlan(store);
       const saysFixture =
         resolved.source === "fixture" &&
-        resolved.plan.planId === BRIGHTPATH_PLAN.planId &&
-        resolved.plan.version === BRIGHTPATH_PLAN.version &&
-        typeof resolved.fallbackReason === "string" &&
-        resolved.fallbackReason.trim() !== "";
+        resolved.plan.planId === MERIDIAN_PLAN.planId &&
+        resolved.plan.version === MERIDIAN_PLAN.version &&
+        // The plan that used to stand in here needs HubSpot and QuickBooks
+        // invoice operations Composio does not publish, so serving it was
+        // serving a workforce that could not act. Asserted as an inequality
+        // rather than left implied by the equality above: a revert has to fail
+        // this target, not merely rename what it reports.
+        resolved.plan.planId !== BRIGHTPATH_PLAN.planId;
 
-      const convenienceAgrees = (await currentPlan(store)).planId === BRIGHTPATH_PLAN.planId;
+      const reason = resolved.fallbackReason ?? "";
+      const reasonNamesTheFixture =
+        reason.trim() !== "" && reason.includes("Meridian") && !reason.includes("BrightPath");
+
+      const convenienceAgrees = (await currentPlan(store)).planId === MERIDIAN_PLAN.planId;
 
       // Nothing is deployed either, so no agent may read as running. The fixture
       // standing in for the plan must never stand in for a deployment.
@@ -269,7 +301,7 @@ export async function runPLANSTATEVerification(): Promise<Check[]> {
       const nothingRunning =
         state.active.source === "fixture" &&
         state.active.deploymentId === null &&
-        state.lifecycle.length === BRIGHTPATH_PLAN.agents.length &&
+        state.lifecycle.length === MERIDIAN_PLAN.agents.length &&
         state.lifecycle.every((row) => row.lifecycle === "planned") &&
         countOf(state.lifecycle, "running") === 0;
 
@@ -290,19 +322,25 @@ export async function runPLANSTATEVerification(): Promise<Check[]> {
       }
 
       const pass =
-        storedIsNull && saysFixture && convenienceAgrees && nothingRunning && failureIsLoud;
+        storedIsNull &&
+        saysFixture &&
+        reasonNamesTheFixture &&
+        convenienceAgrees &&
+        nothingRunning &&
+        failureIsLoud;
       add(
         name,
         pass,
         pass
           ? `an empty store answers getCurrentPlan() with null; the resolver turns that into ` +
-              `${BRIGHTPATH_PLAN.planId} v${BRIGHTPATH_PLAN.version} tagged "fixture" and a ` +
-              `sentence saying so ("${resolved.fallbackReason ?? ""}"), with all ` +
-              `${state.lifecycle.length} agents reading "planned" because nothing is deployed. ` +
-              `A store that throws propagates instead of degrading into a fixture: ` +
-              `"${failureDetail}"`
+              `${MERIDIAN_PLAN.planId} v${MERIDIAN_PLAN.version} — the gmail + calendar ` +
+              `workforce, not ${BRIGHTPATH_PLAN.planId} — tagged "fixture" and carrying a ` +
+              `sentence that names it ("${reason}"), with all ${state.lifecycle.length} agents ` +
+              `reading "planned" because nothing is deployed. A store that throws propagates ` +
+              `instead of degrading into a fixture: "${failureDetail}"`
           : `storedIsNull=${storedIsNull} saysFixture=${saysFixture} (source=${resolved.source}, ` +
-              `plan=${resolved.plan.planId}, reason=${canonical(resolved.fallbackReason)}) ` +
+              `plan=${resolved.plan.planId}) reasonNamesTheFixture=${reasonNamesTheFixture} ` +
+              `(reason=${canonical(resolved.fallbackReason)}) ` +
               `convenienceAgrees=${convenienceAgrees} nothingRunning=${nothingRunning} ` +
               `(active=${state.active.source}, lifecycle=${canonical(
                 state.lifecycle.map((row) => row.lifecycle),
@@ -330,7 +368,12 @@ export async function runPLANSTATEVerification(): Promise<Check[]> {
         result.completed &&
         stored !== null &&
         stored.planId === expectedPlanId &&
-        stored.planId !== BRIGHTPATH_PLAN.planId &&
+        // The FALLBACK's planId, which is Meridian's — re-pointed when the
+        // served fixture changed. Left on BrightPath this clause would still
+        // have passed, and would have been asserting nothing: BrightPath is no
+        // longer a plan this resolver can return, so "not BrightPath" stopped
+        // being evidence that the fixture did not leak.
+        stored.planId !== MERIDIAN_PLAN.planId &&
         resolved.source === "ingested" &&
         resolved.fallbackReason === null &&
         resolved.plan.planId === expectedPlanId &&
@@ -352,7 +395,7 @@ export async function runPLANSTATEVerification(): Promise<Check[]> {
         isTheIngestedPlan && agreesAtGoLive,
         isTheIngestedPlan && agreesAtGoLive
           ? `the pass stored plan ${expectedPlanId} v${resolved.plan.version} as current — not ` +
-              `${BRIGHTPATH_PLAN.planId} — and the resolver reports it as "ingested" with no ` +
+              `${MERIDIAN_PLAN.planId} — and the resolver reports it as "ingested" with no ` +
               `fallback reason. Immediately after go-live the current plan and the deployment's ` +
               `frozen plan agree, so all ${state.lifecycle.length} agent(s) read "running" and ` +
               `drift is 0`
@@ -516,7 +559,10 @@ export async function runPLANSTATEVerification(): Promise<Check[]> {
         state.current.fallbackReason === null &&
         state.current.plan.agents.length === 0 &&
         state.current.plan.planId === INGESTED_PLAN.planId &&
-        state.current.plan.planId !== BRIGHTPATH_PLAN.planId;
+        // Re-pointed with PS-2's clause and for the same reason: the substitution
+        // this check exists to catch is the FALLBACK replacing an owner's empty
+        // plan, and the fallback is Meridian now.
+        state.current.plan.planId !== MERIDIAN_PLAN.planId;
 
       const deployedAgentsRetired =
         live.completed &&
@@ -531,7 +577,7 @@ export async function runPLANSTATEVerification(): Promise<Check[]> {
         notTheFixture && deployedAgentsRetired
           ? `an empty-but-real current plan comes back tagged "ingested" with 0 agents and no ` +
               `fallback reason, and the ${state.lifecycle.length} agent(s) still deployed read ` +
-              `"retired" rather than "running". Nothing substituted ${BRIGHTPATH_PLAN.planId}`
+              `"retired" rather than "running". Nothing substituted ${MERIDIAN_PLAN.planId}`
           : `notTheFixture=${notTheFixture} (source=${state.current.source}, ` +
               `plan=${state.current.plan.planId}, agents=${state.current.plan.agents.length}) ` +
               `deployedAgentsRetired=${deployedAgentsRetired} (${canonical(

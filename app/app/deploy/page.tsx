@@ -1,100 +1,43 @@
-"use client";
 /**
- * /app/deploy — Deployment & Activation (spec §16, §20 "Deployment", §22).
+ * /app/deploy — the go-live, against the runtime.
  *
- * Three screen states:
- *  1. Checklist — the eight-step activation review (primary: Activate).
- *  2. Activation — sequential agent status animation + activity burst,
- *     then auto-handoff to the workspace (resumes correctly on refresh).
- *  3. Live — friendly "already activated" state when revisiting the route.
+ * WHAT THIS ROUTE USED TO BE. A simulation. It read `lib/mock/store`, rendered an
+ * eight-step review nothing had checked, animated agents switching on one by one
+ * and set `journey = "active_workspace"` — a convincing activation that never
+ * sent a request anywhere. Meanwhile `/api/runtime/activation` has had three real
+ * gates, a real 409 and a real deployment record for weeks, reachable only by
+ * somebody who already knew the endpoint and what its fields meant. The runtime
+ * worked; the screen was the lie. Every import of the demo store, the autopilot
+ * script and `components/mock/deploy/**` is gone from this file.
+ *
+ * A THIN SERVER COMPONENT OVER A CLIENT SCREEN, the same shape `/app/pipeline`
+ * uses. There is no lane switch here, unlike `/app/workspace/*`: those screens
+ * exist twice because a scripted demo and a runtime-backed view answer the same
+ * question, and choosing wrong would put a simulated control in front of somebody
+ * who asked for a real one. Activation now has no scripted counterpart at all —
+ * there is one go-live and it is the real one — so there is nothing to choose
+ * between and no `?live=` to read.
+ *
+ * `force-dynamic` matches `/app/pipeline`. This file reads nothing on the server
+ * today, so a prerender would be harmless; the flag is here so that a future
+ * server read — the plan source, say — cannot be quietly baked into the build
+ * output and served as the truth for the life of the deployment.
+ *
+ * ONE THING THIS FILE CANNOT FIX FROM INSIDE ITSELF. The shell's journey guard
+ * (`ROUTE_GATES` in lib/mock/state-machine.ts, applied by
+ * components/mock/shell/AppShell.tsx) still gates this prefix behind the SCRIPTED
+ * journey reaching `ready_to_activate`, and redirects to onboarding otherwise.
+ * That gate exists so a demo cannot be deep-linked past its own narrative, and
+ * this screen no longer has a narrative to skip — an owner whose workforce is
+ * genuinely one press from live is bounced to onboarding because a demo they
+ * never ran left `journey` at "not_started". components/live/route-lane.ts records
+ * the identical defect being fixed for `/app/workspace/*`; the same reasoning now
+ * applies here, and the fix belongs in those two files rather than this one.
  */
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
-import { useDemoStore } from "@/lib/mock/store";
-import { useApCommand } from "@/lib/mock/autopilot";
-import { AP } from "@/components/mock/autopilot/script";
-import DeployChecklist from "@/components/mock/deploy/DeployChecklist";
-import ActivationPanel from "@/components/mock/deploy/ActivationPanel";
-import styles from "@/components/mock/deploy/deploy.module.css";
+import LiveDeployScreen from "@/components/live/deploy/LiveDeployScreen";
+
+export const dynamic = "force-dynamic";
 
 export default function DeployPage() {
-  const journey = useDemoStore((s) => s.journey);
-  const beginActivation = useDemoStore((s) => s.beginActivation);
-  const agents = useDemoStore((s) => s.plan.agents);
-  const activatedAt = useDemoStore((s) => s.deployment.activatedAt);
-
-  /* True while THIS visit runs the activation flow (animation + burst).
-     A refresh mid-activation resumes; a later revisit shows the live state. */
-  const [flowActive, setFlowActive] = useState(false);
-  useEffect(() => {
-    if (useDemoStore.getState().journey === "activating") setFlowActive(true);
-  }, []);
-
-  /* Auto-play: begin the activation animation. */
-  useApCommand(AP.activate, () => {
-    if (useDemoStore.getState().journey !== "active_workspace") {
-      setFlowActive(true);
-      beginActivation();
-    }
-  });
-
-  const showLive = journey === "active_workspace" && !flowActive;
-  const showActivation = flowActive || journey === "activating";
-  const activatedTime = activatedAt ? activatedAt.slice(11, 16) : null;
-
-  return (
-    <main className="oa-page oa-page--narrow">
-      <header className="oa-between" style={{ marginBottom: 24 }}>
-        <div style={{ display: "grid", gap: 6 }}>
-          <p className="oa-eyebrow">
-            {showActivation ? "Activate · Activation" : "Activate · Final review"}
-          </p>
-          <h1 className="oa-h1">
-            {showLive ? (
-              "Workforce is live"
-            ) : showActivation ? (
-              "Going live"
-            ) : (
-              <>
-                Ready to go <span className="oa-serif">live</span>
-              </>
-            )}
-          </h1>
-          <p className="oa-lead">
-            {showLive
-              ? "Your agents are active and reporting into the workspace."
-              : showActivation
-                ? "Your agents are switching on one by one. This takes a few seconds."
-                : "One last check that everything Oriant built matches the rules you approved, then activate."}
-          </p>
-        </div>
-      </header>
-
-      {showLive ? (
-        <section className={`oa-card ${styles.live}`} aria-label="Workforce status">
-          <span className={styles.liveIcon} aria-hidden>
-            <CheckCircle2 size={26} />
-          </span>
-          <h2 className="oa-h2">Your workforce is live</h2>
-          <p className="oa-sub">
-            {agents.length} agents active{activatedTime ? ` since ${activatedTime} today` : ""}. Approvals,
-            calendar and activity are waiting in your workspace.
-          </p>
-          <Link href="/app/workspace" className="oa-btn oa-btn--primary">
-            Open workspace
-          </Link>
-        </section>
-      ) : showActivation ? (
-        <ActivationPanel />
-      ) : (
-        <DeployChecklist
-          onActivate={() => {
-            setFlowActive(true);
-            beginActivation();
-          }}
-        />
-      )}
-    </main>
-  );
+  return <LiveDeployScreen />;
 }

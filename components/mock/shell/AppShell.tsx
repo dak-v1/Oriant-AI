@@ -115,9 +115,18 @@ export default function AppShell({
      CSR bailout) to answer a question this effect only asks after mount. */
   useEffect(() => {
     if (!mounted) return;
+    /* THE LINE THE COMMENT ABOVE HAS ALWAYS DESCRIBED, AND WHICH WAS MISSING.
+       `demoJourneyGuardApplies` was imported at the top of this file and never
+       called, so the exemption it exists to provide was inert: every
+       runtime-backed screen stayed gated on a scripted journey it takes no part
+       in. /app/build and /app/deploy were unreachable in a browser because of
+       it — they rendered and were replaced with /app/onboarding in the same
+       tick, which is why a rewritten Agent Factory still looked broken. */
+    const query = new URLSearchParams(window.location.search).get("live") ?? undefined;
+    if (!demoJourneyGuardApplies(pathname, query, laneEnv)) return;
     const redirect = guardRoute(pathname, journey);
     if (redirect && redirect !== pathname) router.replace(redirect);
-  }, [mounted, pathname, journey, router]);
+  }, [mounted, pathname, journey, router, laneEnv]);
 
   /* ⌘K / Ctrl+K opens the universal command palette (spec §19.1). */
   useEffect(() => {

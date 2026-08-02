@@ -256,11 +256,17 @@ export interface RuntimeSession {
    * synchronously and a stored plan can only be read with an `await`, so
    * something has to fill `executor.globalPolicy` at construction.
    *
-   * It is NOT the workforce the owner asked for. Anything a person reads —
-   * a roster, a checklist, a calendar, a notification — must come from
-   * `currentPlan()`, which returns what was actually ingested. This field was
-   * called `plan` until routes started showing it to people as though it were
-   * theirs; the rename is deliberate, so that every use has to be looked at.
+   * IT IS NOT THE WORKFORCE THE OWNER ASKED FOR, AND SINCE THE SERVER'S FIXTURE
+   * FALLBACK BECAME `MERIDIAN_PLAN` IT IS NOT EVEN THE FIXTURE A SCREEN WOULD
+   * SHOW. The two answer different questions and they are allowed to disagree;
+   * the note at the assignment in `createSession` is where the disagreement is
+   * argued, because it is the one member that reads this field that decides it.
+   *
+   * Anything a person reads — a roster, a checklist, a calendar, a notification
+   * — must come from `currentPlan()`, which returns what was actually ingested.
+   * This field was called `plan` until routes started showing it to people as
+   * though it were theirs; the rename is deliberate, so that every use has to be
+   * looked at.
    */
   seedPlan: ApprovedPlan;
   /**
@@ -488,6 +494,45 @@ function createSession(): RuntimeSession {
   const reasoner: Reasoner =
     mode === "live" ? new AiAndReasoner() : new FixtureReasoner();
 
+  /*
+   * STILL BRIGHTPATH, AND DELIBERATELY NOT THE PLAN THE SERVER SERVES.
+   *
+   * lib/runtime/current-plan.ts now falls back to `MERIDIAN_PLAN`, so a fresh
+   * runtime's screens show the gmail + calendar workforce. This seed did not
+   * follow it, and the reason is the only member that actually reads it.
+   *
+   * `seedPlan` is consumed in exactly two places, both a few lines below.
+   *
+   *   `executor`  carries the seed's `globalPolicy`, and NO PRODUCTION CALLER
+   *               EVER EXECUTES WITH IT. /run, /approvals, /scheduler and
+   *               lib/runtime/schedule/poller-host.ts all build their deps from
+   *               `executorFor(plan)`; the routes that touch `session.executor`
+   *               take `clock` and `newId` off it and nothing else. Moving the
+   *               seed would change a policy nothing enforces, which is worse
+   *               than leaving it — it would look like the field had been made
+   *               meaningful when it had not.
+   *   `tools`     does not resolve the seed so much as its ORGANIZATION, and
+   *               `resolveToolsOrganization` (lib/runtime/tools/organization.ts)
+   *               grants the `ORIANT_ORGANIZATION_ID` stand-in to
+   *               `BRIGHTPATH_DEMO_ORGANIZATION_ID` and to nothing else, by
+   *               name. Seeding Meridian would turn this member from "the
+   *               deployment's stand-in organization, or a refusal that says
+   *               exactly why" into a live provider for
+   *               `org-meridian-demo-fixture` — a company that does not exist,
+   *               whose every integration comes back "not connected". That is a
+   *               NEGATIVE claim about the owner's connections manufactured out
+   *               of a lookup that was never going to succeed, on the one member
+   *               whose whole job is answering "is anything connected on this
+   *               deployment". Absence of information rendered as a fact about
+   *               the world is the bug this repository has already fixed twice.
+   *
+   * REJECTED, AND IT IS THE RIGHT CHANGE: move the seed AND widen that exception
+   * so the served fixture's organization gets the stand-in too. It belongs in
+   * organization.ts, one file outside what this change owns, and doing half of
+   * it here — the move without the widening — is the half that breaks something.
+   * So the seed and the served fallback stay two different fixtures answering
+   * two different questions, on purpose, until that lands.
+   */
   const seedPlan = BRIGHTPATH_PLAN;
 
   // One factory, so the seeded `executor` below and every per-plan set built by
@@ -524,9 +569,12 @@ function createSession(): RuntimeSession {
     runStore: stores.runStore,
     buildStore: stores.buildStore,
     schedulerStore: stores.schedulerStore,
-    // The fixture's organization, said once here rather than left implicit.
-    // `seedPlan` IS the fixture, so this is the same resolution every other
-    // caller gets — including the refusal when the fixture has no stand-in.
+    // The SEED's organization, said once here rather than left implicit — and
+    // the seed rather than the plan the server serves, for the reason argued at
+    // the assignment above: this is the member the choice is about, and the
+    // `ORIANT_ORGANIZATION_ID` stand-in is keyed to BrightPath's id by name.
+    // Same resolution every other caller gets, including the refusal when the
+    // fixture has no stand-in configured.
     tools: toolsFor(seedPlan.organizationId),
     toolsFor,
     reasoner,

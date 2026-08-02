@@ -28,13 +28,61 @@
  * written down here rather than left to be rediscovered.
  *
  * THE FIXTURE FALLBACK IS OBSERVABLE, NEVER SILENT. A clean clone has ingested
- * nothing, and `ROLE_C_PLAN` promises the scripted BrightPath path keeps working
- * permanently — it is the demo, the sandbox's subject and what carries a
- * presentation if another lane slips. So "nothing ingested" still shows the
- * fixture. What it must never do is show the fixture while CLAIMING to show the
+ * nothing, so "nothing ingested" still shows a fixture rather than an empty
+ * screen. What it must never do is show the fixture while CLAIMING to show the
  * customer's workforce, so every answer carries `source` and a fallback carries
- * a sentence saying why. A caller that renders the plan without reading the
- * source is making that claim itself, with the discriminant sitting right there.
+ * a sentence saying why, naming the workforce it substituted. A caller that
+ * renders the plan without reading the source is making that claim itself, with
+ * the discriminant sitting right there.
+ *
+ * WHICH FIXTURE STANDS IN, AND WHY IT IS NO LONGER BRIGHTPATH.
+ *
+ * It was `BRIGHTPATH_PLAN`, and that is a workforce nobody can run. Three of its
+ * four agents are granted HubSpot and QuickBooks invoice operations that
+ * lib/runtime/tools/capabilities.ts records as UNROUTABLE — Composio publishes
+ * no such tool in either toolkit, which is a fact read off the catalogue with
+ * full pagination rather than an assumption. So every live screen on a clean
+ * clone — the roster, the activation checklist, the calendar, the sandbox
+ * library — described agents whose first `act` step could only ever refuse,
+ * while the one workforce in this repository that CAN execute
+ * (lib/plan/fixtures/meridian.ts: gmail and google-calendar and nothing else,
+ * driven from handoff to live deployment by lib/runtime/verify/gmail-workforce
+ * .ts) was reachable only from a verify target. The server served the plan that
+ * cannot work and kept the one that can in a test.
+ *
+ * So `MERIDIAN_PLAN` is what a runtime with nothing ingested now shows.
+ *
+ * THIS IS A CHANGE TO WHAT THE SERVER SERVES, NOT A DELETION. `BRIGHTPATH_PLAN`
+ * stays exactly where it is and stays the subject of M0, M2-M7, E2E and the
+ * authored sandbox scenario library. It was chosen for POLICY-PATH coverage —
+ * its four agents reach every branch of contract §3.10 between them — and that
+ * is a different job from being executable, which is why one fixture was never
+ * going to do both.
+ *
+ * ROLE_C_PLAN'S DEMO PROMISE IS UNTOUCHED, because this function was never what
+ * kept it. The scripted lane is components/mock/*, chosen by
+ * `resolveWorkspaceLane` before a runtime session is constructed at all, and the
+ * BrightPath scenario library is reached by M3, M7 and the sandbox bundle
+ * directly. Nothing on the scripted path reads this resolver.
+ *
+ * ONE CONSEQUENCE IS REAL AND IS NOT BURIED. On the LIVE lane a fresh runtime's
+ * sandbox screen now offers GENERATED smoke cases for Meridian's two agents
+ * rather than the authored BrightPath ones: `suiteForPlan` drops authored
+ * scenarios whose agent the plan does not contain, which is what makes the swap
+ * safe rather than a crash, and also means the authored library is no longer
+ * what a clean clone demonstrates. Those cases are asserted in the verify suite
+ * instead of watched in a browser, which is the weaker of the two only if
+ * nobody runs the suite.
+ *
+ * WHAT THIS DOES NOT REACH, NAMED HERE RATHER THAN LEFT TO BE REDISCOVERED.
+ * `MERIDIAN_DEMO_ORGANIZATION_ID` is not `BRIGHTPATH_DEMO_ORGANIZATION_ID`, and
+ * `resolveToolsOrganization` (lib/runtime/tools/organization.ts) grants the
+ * `ORIANT_ORGANIZATION_ID` stand-in to the BrightPath id ALONE, by name. So with
+ * `ORIANT_RUNTIME_TOOLS=composio` a fresh runtime serving this fallback resolves
+ * `org-meridian-demo-fixture` as though it were a real business and finds no
+ * connections behind it. Every OPERATION this plan grants is now routable, which
+ * is the half a fixture choice can fix; whose ACCOUNTS they route through is
+ * decided one file down.
  *
  * A STORE FAILURE IS NOT A FALLBACK, and this is the one place this module
  * deliberately behaves differently from `resolveActivePlan`. That function
@@ -42,13 +90,13 @@
  * "cannot read the deployments" are the same fact for its purposes: nothing is
  * provably live either way. Here they are different facts. "Nothing has been
  * ingested" licenses the fixture; "the store would not answer" does not, because
- * a real plan may well be sitting in it — and substituting BrightPath for a plan
- * that exists is exactly the lie this module was written to remove. So a throw
- * propagates. An error page is a worse demo and a better truth.
+ * a real plan may well be sitting in it — and substituting somebody else's demo
+ * for a plan that exists is exactly the lie this module was written to remove.
+ * So a throw propagates. An error page is a worse demo and a better truth.
  */
 
 import type { ApprovedPlan } from "../plan/types";
-import { BRIGHTPATH_PLAN } from "../plan/fixtures/brightpath";
+import { MERIDIAN_PLAN } from "../plan/fixtures/meridian";
 import {
   reconcileAgents,
   resolveActivePlan,
@@ -59,7 +107,7 @@ import type { SchedulerStore } from "./schedule/types";
 
 /**
  * `ingested` — a real plan crossed the seam from Role B and was validated.
- * `fixture` — nothing has, so this is the BrightPath demo standing in.
+ * `fixture` — nothing has, so this is the Meridian demo standing in.
  */
 export type CurrentPlanSource = "ingested" | "fixture";
 
@@ -103,13 +151,21 @@ export async function resolveCurrentPlan(
     return { plan: stored, source: "ingested", fallbackReason: null };
   }
 
+  /*
+   * THE SENTENCE NAMES THE WORKFORCE IT SUBSTITUTED, and that is load-bearing
+   * rather than courtesy. "This is demo data" would be true of both fixtures and
+   * therefore survives the plan being swapped underneath it — which is precisely
+   * how a screen ends up describing one workforce in prose while rendering
+   * another's agents beside it. PS-1 asserts the name, in both directions: it
+   * must say Meridian and must not still say BrightPath.
+   */
   return {
-    plan: BRIGHTPATH_PLAN,
+    plan: MERIDIAN_PLAN,
     source: "fixture",
     fallbackReason:
-      "No workforce plan has been ingested yet, so this is the BrightPath demo " +
-      "workforce rather than your own. Run a handoff through the pipeline to " +
-      "replace it.",
+      "No workforce plan has been ingested yet, so this is the Meridian " +
+      "Physiotherapy demo workforce rather than your own. Run a handoff through " +
+      "the pipeline to replace it.",
   };
 }
 
