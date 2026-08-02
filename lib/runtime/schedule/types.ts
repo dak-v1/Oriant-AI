@@ -32,7 +32,7 @@
  * run outliving the process is the whole point of the approval interrupt.
  */
 
-import type { ApprovedPlan, TriggerSpec } from "../../plan/types";
+import type { AgentRuntimeConfig, ApprovedPlan, TriggerSpec } from "../../plan/types";
 import type { TriggerEvent } from "../types";
 
 /* ═══════════════════════ Agent runtime state ═══════════════════════ */
@@ -57,6 +57,52 @@ export interface AgentRuntimeRecord {
   /** Why the agent is in this state; shown in the Agents roster (M6). */
   detail: string;
   updatedAt: string;
+}
+
+/* ═══════════════════════ Agent runtime config ═══════════════════════ */
+
+/**
+ * Declared in lib/plan/types.ts because PLAN_CONTRACT §4.3 defines it there as
+ * the thing an `ApprovedPlan` must NOT carry, and re-exported here so the
+ * scheduler and its three stores name every type they persist from one module
+ * rather than reaching into the planning lane for exactly one of them.
+ *
+ * CONFIG, NOT STATE, and the distinction is the reason it is a second table
+ * rather than three more fields on `AgentRuntimeRecord` (STORAGE.md §3.12). The
+ * record above is written by the RUNTIME on every transition; this is written by
+ * an OPERATOR and read by the scheduler. Merging a thing that changes on every
+ * step with a thing that changes when a human decides it should is how the old
+ * `AgentStatus` came to mean nothing in particular — and it would make an
+ * operator's concurrency setting something a state transition could overwrite.
+ */
+export type { AgentRuntimeConfig };
+
+/**
+ * Rejects a config no store could hold, BEFORE any store is asked to hold it.
+ *
+ * This lives here rather than in a store because the three implementations
+ * disagreed about it, and disagreed in the worst direction: `concurrency` is an
+ * `integer` column in Postgres, so 2.5 or 1e12 threw there, while the in-memory
+ * and file stores took them happily. Every check in `npm run verify` runs
+ * in-memory, so the strict implementation was the one nothing exercised — a
+ * value that passed the whole suite would fail in production and nowhere else.
+ * A shared guard is what makes the suite's verdict mean something about the
+ * store the product actually runs on.
+ *
+ * `>= 1` rather than `>= 0` because this is a worker count. Zero is not a
+ * quieter agent, it is a stopped one, and an agent is stopped by its state
+ * (`AgentRuntimeRecord`) rather than by a config value that would leave the
+ * roster reporting it as running while it never picked up a job.
+ */
+export function assertConcurrencyStorable(config: AgentRuntimeConfig, method: string): void {
+  const { concurrency } = config;
+  if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 2147483647) {
+    throw new Error(
+      `${method}: agent "${config.agentId}" has concurrency ${String(concurrency)}, which is ` +
+        `not a whole number of workers between 1 and 2147483647. Every store rejects this, ` +
+        `so it fails the same way in memory, on disk and in Postgres.`,
+    );
+  }
 }
 
 /* ═══════════════════════════ Triggers ═══════════════════════════ */
@@ -242,6 +288,20 @@ export interface SchedulerStore {
   saveAgentState(record: AgentRuntimeRecord): Promise<void>;
   getAgentState(agentId: string): Promise<AgentRuntimeRecord | null>;
   listAgentStates(): Promise<AgentRuntimeRecord[]>;
+
+  /* Agent runtime config */
+  saveAgentConfig(config: AgentRuntimeConfig): Promise<void>;
+  /**
+   * Null is the ordinary answer, not the error one: no operator has set this
+   * agent's knobs, so the caller's defaults apply. Returning null rather than a
+   * default record is what keeps the defaults in ONE place — `DEFAULT_CONCURRENCY`
+   * in ./worker.ts is the worker's decision to make, and three stores each
+   * inventing a fallback would be three chances for them to disagree about what
+   * "unconfigured" means.
+   */
+  getAgentConfig(agentId: string): Promise<AgentRuntimeConfig | null>;
+  /** Every agent an operator has configured — never every agent in the plan. */
+  listAgentConfigs(): Promise<AgentRuntimeConfig[]>;
 }
 
 /* ═══════════════════════════ Wiring ═══════════════════════════ */

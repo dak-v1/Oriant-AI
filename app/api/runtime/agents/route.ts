@@ -67,6 +67,7 @@ import type {
 } from "@/lib/runtime/schedule/types";
 import { agentTimezone, countRunsToday } from "@/lib/runtime/schedule/worker";
 import { getRuntimeSession } from "@/lib/runtime/session";
+import { reconcileAgents, resolveActivePlan } from "@/lib/runtime/active-plan";
 import type { RunState } from "@/lib/runtime/types";
 
 export const dynamic = "force-dynamic";
@@ -254,9 +255,37 @@ export async function GET() {
         .length,
     }));
 
+  /*
+   * Two plans, deliberately.
+   *
+   * `plan` above is the CURRENT one and everything that guards a transition
+   * keeps reading it — replacing it with the deployed plan made drift invisible
+   * and broke M6-1, which exists to catch exactly that.
+   *
+   * `deployedPlan` is what is actually running. Comparing the two is what lets
+   * a row say "running v3, the plan now says v4" instead of silently showing
+   * one number and meaning the other.
+   */
+  const active = await resolveActivePlan(session.schedulerStore);
+  const lifecycle = reconcileAgents(
+    active.source === "deployment" ? active.plan : null,
+    plan,
+  );
+  const lifecycleById = new Map(lifecycle.map((row) => [row.agentId, row]));
+
   return NextResponse.json({
     mode: session.mode,
     now: now.toISOString(),
+    /** What is RUNNING, versus what the owner has currently planned. */
+    live: {
+      source: active.source,
+      deploymentId: active.deploymentId,
+      running: lifecycle.filter((r) => r.lifecycle === "running").length,
+      drifted: lifecycle.filter((r) => r.lifecycle === "drifted").length,
+      planned: lifecycle.filter((r) => r.lifecycle === "planned").length,
+      retired: lifecycle.filter((r) => r.lifecycle === "retired").length,
+    },
+    lifecycle,
     plan: {
       planId: plan.planId,
       planVersion: plan.version,
@@ -283,7 +312,19 @@ export async function GET() {
       quietHours: plan.globalPolicy.quietHours,
       forbidden: plan.globalPolicy.forbidden,
     },
-    agents,
+    // Each roster row gains its tag. Attached here rather than inside the row
+    // builder so the builder stays a pure function of the CURRENT plan and the
+    // reconciliation stays the one place the two plans are compared.
+    agents: agents.map((row: { agentId: string }) => {
+      const tag = lifecycleById.get(row.agentId);
+      return {
+        ...row,
+        lifecycle: tag?.lifecycle ?? "planned",
+        runningVersion: tag?.runningVersion ?? null,
+        plannedVersion: tag?.plannedVersion ?? null,
+        lifecycleNote: tag?.note ?? "Planned, not yet activated.",
+      };
+    }),
     unplanned,
   });
 }

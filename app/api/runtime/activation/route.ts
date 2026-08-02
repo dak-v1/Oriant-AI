@@ -15,6 +15,27 @@
  * well formed and the state of the plan conflicts with it — and the body is
  * exactly what the screen needs to name the gate that shut.
  *
+ * THE CHECKLIST SAYS WHETHER THIS PLAN *CAN* GO LIVE; IT NEVER SAID WHAT IS LIVE
+ * ALREADY. Those are different questions and the gap between them is the whole
+ * of the go-live decision — an owner about to press this button needs to know
+ * which agents are new, which are about to be replaced mid-flight, and which
+ * will be left running for a plan that no longer contains them. `live` and
+ * `lifecycle` answer it, reconciled by lib/runtime/active-plan.ts, and they are
+ * the same four words `/api/runtime/agents` tags its roster with, so the deploy
+ * screen and the roster cannot disagree about what is running.
+ *
+ * `checklist.activeDeployment` IS NOT `live.deploymentId`, DELIBERATELY. The
+ * first is set only when THIS plan version is already live; the second is
+ * whatever is running, at whatever version. `activeDeployment: null` alongside a
+ * non-null `live.deploymentId` is the interesting case and is exactly what a
+ * re-activation after a plan edit looks like: something IS live, and it is not
+ * this.
+ *
+ * ONLY GET GAINS THIS. POST is a write, and a reconciliation taken before
+ * `activate` runs would describe a workforce the response itself has just
+ * superseded. The success body already returns the deployment that was written;
+ * a caller wanting the new picture re-reads GET, and gets one that is true.
+ *
  * THE CHECKLIST IS RE-DERIVED ON EVERY REQUEST, THE SANDBOX VERDICT INCLUDED, so
  * this handler is deliberately slow: it runs the whole scenario library and the
  * stress sweep before it can answer. That is the price of the rule
@@ -30,6 +51,7 @@
  * belongs with whoever owns the deployment.
  */
 import { NextResponse } from "next/server";
+import { reconcileAgents, resolveActivePlan } from "@/lib/runtime/active-plan";
 import { runSuite } from "@/lib/runtime/sandbox/runner";
 import { BRIGHTPATH_SCENARIOS } from "@/lib/runtime/sandbox/scenarios";
 import { runStressSweep } from "@/lib/runtime/sandbox/stress";
@@ -98,8 +120,39 @@ export async function GET() {
   const session = getRuntimeSession();
   const checklist = await activationChecklist(session.plan, gateInputs(session));
 
+  /* ── The pre-flight diff ──
+     `session.plan` stays the CURRENT plan and the gates above still judge it —
+     reading the deployed plan here instead would gate a go-live against the
+     workforce already running, which can never fail and would prove nothing.
+     The reconciliation is added alongside and reads both. */
+  const active = await resolveActivePlan(session.schedulerStore);
+  const lifecycle = reconcileAgents(
+    active.source === "deployment" ? active.plan : null,
+    session.plan,
+  );
+
   return NextResponse.json({
     mode: session.mode,
+    /**
+     * What is RUNNING right now, and what pressing the button would change.
+     * `planned` is what this activation would start, `drifted` what it would
+     * replace, `retired` what it would leave running for a plan that has
+     * dropped it — the last of which is the one nobody expects.
+     */
+    live: {
+      source: active.source,
+      deploymentId: active.deploymentId,
+      running: lifecycle.filter((row) => row.lifecycle === "running").length,
+      drifted: lifecycle.filter((row) => row.lifecycle === "drifted").length,
+      planned: lifecycle.filter((row) => row.lifecycle === "planned").length,
+      retired: lifecycle.filter((row) => row.lifecycle === "retired").length,
+    },
+    /**
+     * Per agent, so the screen can name them rather than only count them. The
+     * checklist itself is NOT touched: `ActivationChecklist` is the gates'
+     * shape and belongs to lib/runtime/schedule/activation.ts.
+     */
+    lifecycle,
     checklist,
     // The same blockers the gates already carry, flattened in gate order, so a
     // caller rendering one list and a caller rendering three gates are reading

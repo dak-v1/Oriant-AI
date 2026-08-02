@@ -27,18 +27,20 @@
  *
  * ORDERING, stated once so each method below only has to name its key: every
  * list method returns insertion order — the order things were registered,
- * enqueued or activated. The single exception is `claimNextJob`, which is a
- * priority read rather than a listing and orders by due time. `listJobs` in
- * particular does NOT order by `runAfter`: backoff moves that field, so a
- * due-ordered listing would reshuffle itself between two reads of a queue
- * nobody touched.
+ * enqueued or activated. `listJobs` in particular does NOT order by `runAfter`:
+ * backoff moves that field, so a due-ordered listing would reshuffle itself
+ * between two reads of a queue nobody touched. There are two exceptions:
+ * `claimNextJob`, which is a priority read rather than a listing and orders by
+ * due time, and `listAgentConfigs`, which orders by agent id — see there for
+ * why that one is worth breaking the rule for.
  *
  * Time is never read here. `claimNextJob` is handed the instant to compare
  * against, so this file needs no `Clock`, cannot drift from the one the worker
  * is using, and contains no `Date.now()` for the determinism check to find.
  */
 
-import type { TriggerSpec } from "../../plan/types";
+import type { AgentRuntimeConfig, TriggerSpec } from "../../plan/types";
+import { assertConcurrencyStorable } from "./types";
 import type {
   AgentRuntimeRecord,
   Deployment,
@@ -86,6 +88,7 @@ export class InMemorySchedulerStore implements SchedulerStore {
   private readonly jobs = new Map<string, QueuedJob>();
   private readonly deployments = new Map<string, Deployment>();
   private readonly agentStates = new Map<string, AgentRuntimeRecord>();
+  private readonly agentConfigs = new Map<string, AgentRuntimeConfig>();
 
   /* ── Triggers ── */
 
@@ -323,6 +326,48 @@ export class InMemorySchedulerStore implements SchedulerStore {
     return Array.from(this.agentStates.values(), (r) => clone(r));
   }
 
+  /* ── Agent runtime config ── */
+
+  /**
+   * Upsert, keyed by agent id: an operator setting a knob replaces the previous
+   * setting rather than appending to a history nobody reads.
+   */
+  async saveAgentConfig(config: AgentRuntimeConfig): Promise<void> {
+    // Same guard as the file and Postgres stores. A Map would hold anything;
+    // accepting what the production store rejects is how a green suite lies.
+    assertConcurrencyStorable(config, "InMemorySchedulerStore.saveAgentConfig");
+    this.agentConfigs.set(config.agentId, clone(config));
+  }
+
+  /**
+   * Null means unconfigured, which is not an error — the caller's defaults
+   * apply. Nothing here invents one, for the reason `SchedulerStore` gives.
+   */
+  async getAgentConfig(agentId: string): Promise<AgentRuntimeConfig | null> {
+    const found = this.agentConfigs.get(agentId);
+    return found === undefined ? null : clone(found);
+  }
+
+  /**
+   * Agent id order, and the one listing here that is not insertion order.
+   *
+   * `AgentRuntimeRecord` has an `updatedAt` the durable stores could have sorted
+   * on and deliberately did not; `AgentRuntimeConfig` has no instant at all, so
+   * a file listing has nothing to derive an order from except the id. Sorting by
+   * it HERE too is what makes the three implementations return the same list in
+   * the same order — which matters more than this file's insertion-order habit,
+   * because the in-memory store is what every verify target runs against and the
+   * other two are what production uses.
+   */
+  async listAgentConfigs(): Promise<AgentRuntimeConfig[]> {
+    const out = Array.from(this.agentConfigs.values(), (c) => clone(c));
+    // Code-unit order, matching `compareId` in persist/table.ts and Postgres's
+    // COLLATE "C". A locale-aware comparison would order the same ids
+    // differently on a machine with a different locale.
+    out.sort((a, b) => (a.agentId === b.agentId ? 0 : a.agentId < b.agentId ? -1 : 1));
+    return out;
+  }
+
   /* ── Test helpers ── */
 
   /** Drops all state. Used between tests so cases cannot leak into each other. */
@@ -331,6 +376,7 @@ export class InMemorySchedulerStore implements SchedulerStore {
     this.jobs.clear();
     this.deployments.clear();
     this.agentStates.clear();
+    this.agentConfigs.clear();
   }
 
   /** Every job in enqueue order, finished ones included. */

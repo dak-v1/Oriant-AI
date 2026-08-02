@@ -18,6 +18,21 @@
  * skipped from retrying from dead-lettered, and a route-local shape would be a
  * second vocabulary for the same six outcomes.
  *
+ * A TRIGGER IS AN ARTEFACT OF A DEPLOYMENT, NOT OF THE CURRENT PLAN, and until
+ * M6 this list could not say so. `activate()` writes the triggers and FREEZES the
+ * cron into them; they keep firing across every later plan edit. So a row here
+ * reading "next Friday at 09:00" may be holding a version the owner has already
+ * replaced, and the two cases render identically. `live` and the per-trigger
+ * `lifecycle` are the difference, reconciled by lib/runtime/active-plan.ts —
+ * `/api/runtime/agents` answers the same question about the same pair of plans
+ * with the same four words, so the roster and the queue cannot describe one
+ * drifted agent in two vocabularies.
+ *
+ * `session.plan` REMAINS THE CURRENT PLAN EVERYWHERE IT ALREADY WAS — the trigger
+ * filter below, and the resume guard in POST. Reading the deployed plan instead
+ * is precisely what makes drift invisible, which is the failure M6-1 exists to
+ * catch. The reconciliation is added ALONGSIDE it and reads both.
+ *
  * THE `now` OVERRIDE IS HONOURED ONLY IN FIXTURE MODE, and that guard is the
  * most important line in this file. It exists so the Friday sweep can be shown
  * on a Tuesday: move the clock to Friday 09:00, turn the worker once, watch a run
@@ -43,6 +58,7 @@
  * deployment.
  */
 import { NextResponse } from "next/server";
+import { reconcileAgents, resolveActivePlan } from "@/lib/runtime/active-plan";
 import { pauseAgent, resumeAgent } from "@/lib/runtime/schedule/activation";
 import type { JobStatus } from "@/lib/runtime/schedule/types";
 import { runDueWork } from "@/lib/runtime/schedule/worker";
@@ -101,25 +117,72 @@ export async function GET(request: Request) {
     status === null ? undefined : { status },
   );
 
+  /* ── What is RUNNING, versus what is merely PLANNED ──
+     Derived exactly as `/api/runtime/agents` derives it, from the same two
+     functions. `active.source === "deployment" ? active.plan : null` rather than
+     `active.plan`: with nothing deployed the fixture is standing in, and calling
+     its agents "running" would claim a go-live that never happened. */
+  const active = await resolveActivePlan(session.schedulerStore);
+  const lifecycle = reconcileAgents(
+    active.source === "deployment" ? active.plan : null,
+    session.plan,
+  );
+  const lifecycleById = new Map(lifecycle.map((row) => [row.agentId, row]));
+
   return NextResponse.json({
     mode: session.mode,
     // The instant every `nextFireAt` below should be read against; without it a
     // caller has to trust its own clock agrees with the server's.
     now: session.scheduler.clock.now().toISOString(),
-    triggers: triggers.map((trigger) => ({
-      triggerId: trigger.triggerId,
-      agentId: trigger.agentId,
-      workflowId: trigger.workflowId,
-      kind: trigger.kind,
-      // The owner's words for the schedule — "Every Friday at 9:00am".
-      label: trigger.spec.label,
-      enabled: trigger.enabled,
-      // Null for every kind but `schedule`: event, threshold and dependency
-      // triggers are driven by something arriving, not by time passing.
-      nextFireAt: trigger.nextFireAt,
-      lastFiredAt: trigger.lastFiredAt,
-      registeredAt: trigger.registeredAt,
-    })),
+    /** What is RUNNING, versus what the owner has currently planned. */
+    live: {
+      source: active.source,
+      deploymentId: active.deploymentId,
+      running: lifecycle.filter((row) => row.lifecycle === "running").length,
+      drifted: lifecycle.filter((row) => row.lifecycle === "drifted").length,
+      planned: lifecycle.filter((row) => row.lifecycle === "planned").length,
+      retired: lifecycle.filter((row) => row.lifecycle === "retired").length,
+    },
+    /**
+     * The full reconciliation, so anything agent-keyed in this response can be
+     * joined to it. The jobs below deliberately carry no tag of their own: a job
+     * is one firing that has already been stamped with the trigger that caused
+     * it, and restating the agent's lifecycle on every row of a queue would be a
+     * second copy of a fact that is authoritative here.
+     */
+    lifecycle,
+    triggers: triggers.map((trigger) => {
+      const tag = lifecycleById.get(trigger.agentId);
+      return {
+        triggerId: trigger.triggerId,
+        agentId: trigger.agentId,
+        workflowId: trigger.workflowId,
+        kind: trigger.kind,
+        // The owner's words for the schedule — "Every Friday at 9:00am".
+        label: trigger.spec.label,
+        enabled: trigger.enabled,
+        // Null for every kind but `schedule`: event, threshold and dependency
+        // triggers are driven by something arriving, not by time passing.
+        nextFireAt: trigger.nextFireAt,
+        lastFiredAt: trigger.lastFiredAt,
+        registeredAt: trigger.registeredAt,
+        /**
+         * Which version this row will actually fire, against what the plan now
+         * asks for. NULL rather than "planned" when the agent is in neither
+         * plan — unlike the roster, whose rows are built FROM the current plan
+         * and so always reconcile, a registered trigger can outlive both. That
+         * is an orphan still firing on a frozen cron, and calling it "planned,
+         * not yet activated" would be the one wrong answer available.
+         */
+        lifecycle: tag?.lifecycle ?? null,
+        runningVersion: tag?.runningVersion ?? null,
+        plannedVersion: tag?.plannedVersion ?? null,
+        lifecycleNote:
+          tag?.note ??
+          "Registered for an agent that is in neither the deployed plan nor the current " +
+            "one. It still fires.",
+      };
+    }),
     status,
     jobs: jobs.map((job) => ({
       jobId: job.jobId,

@@ -32,13 +32,29 @@
  *     commit.
  */
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import Module, { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const repoRoot = path.resolve(import.meta.dirname, "..");
+
+/*
+ * `.env.local` first, then `.env`: `process.loadEnvFile` never overwrites an
+ * already-set variable, so the personal file has to be read before the shared
+ * one, and anything already in the real environment beats both (which is what
+ * CI needs).
+ *
+ * Only the opt-in targets read any of it — `verify:pg` needs DATABASE_URL. Every
+ * milestone target constructs its own stores, clock and reasoner explicitly and
+ * reaches `process.env` for nothing, which is what keeps determinism a property
+ * of the suite rather than of the machine it runs on.
+ */
+for (const file of [".env.local", ".env"]) {
+  const full = path.join(repoRoot, file);
+  if (existsSync(full)) process.loadEnvFile(full);
+}
 
 /**
  * `expectedChecks` is the number of checks the runner must produce. See the
@@ -105,6 +121,25 @@ const TARGETS = {
     label: "E2E — handoff to a live workforce",
     expectedChecks: 10,
   },
+  collect: {
+    entry: "lib/runtime/verify/collect.ts",
+    out: "lib/runtime/verify/collect.js",
+    label: "COLLECT — the handoff seam's protocol",
+    expectedChecks: 7,
+  },
+  pg: {
+    entry: "lib/runtime/verify/pg.ts",
+    out: "lib/runtime/verify/pg.js",
+    label: "PG — the Postgres stores, executed",
+    expectedChecks: 11,
+    /*
+     * OPT-IN. Needs a real DATABASE_URL, and RUNTIME_SETUP.md §1 promises a
+     * clean clone runs on `npm install && npm run dev` with an empty .env — so
+     * this must not join the default sweep and turn "no database configured"
+     * into a red build. Ask for it by name: `npm run verify:pg`.
+     */
+    optIn: true,
+  },
   integration: {
     entry: "lib/runtime/verify/integration.ts",
     out: "lib/runtime/verify/integration.js",
@@ -136,7 +171,10 @@ if (unknown.length > 0) {
   process.exit(1);
 }
 
-const milestones = resolved.length > 0 ? resolved : Object.keys(TARGETS);
+const milestones =
+  resolved.length > 0
+    ? resolved
+    : Object.keys(TARGETS).filter((key) => !TARGETS[key].optIn);
 
 const tscBin = (() => {
   try {

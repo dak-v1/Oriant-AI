@@ -35,9 +35,9 @@
  * so a column that drifted could only ever cost a wrong row in a filter, never a
  * subtly wrong record — and every write below sets both from the same object.
  * The entity tags are the ones `FileSchedulerStore` writes (`schedules`,
- * `queue_jobs`, `deployments`, `agent_runtime_state`), so a record written by one
- * store decodes in the other, which is what makes `ORIANT_RUNTIME_STORAGE` a
- * switch rather than a fork.
+ * `queue_jobs`, `deployments`, `agent_runtime_state`, `agent_runtime_config`), so
+ * a record written by one store decodes in the other, which is what makes
+ * `ORIANT_RUNTIME_STORAGE` a switch rather than a fork.
  *
  * ORDERING IS DERIVED, NOT RECORDED — the same rule as the other two stores
  * (STORAGE.md §6.4): an immutable column with the id as tie-break, which is
@@ -59,7 +59,8 @@
  */
 
 import type postgres from "postgres";
-import type { TriggerSpec } from "../../../plan/types";
+import type { AgentRuntimeConfig, TriggerSpec } from "../../../plan/types";
+import { assertConcurrencyStorable } from "../../schedule/types";
 import type {
   AgentRuntimeRecord,
   Deployment,
@@ -83,6 +84,7 @@ const ENTITY_TRIGGERS = "schedules";
 const ENTITY_JOBS = "queue_jobs";
 const ENTITY_DEPLOYMENTS = "deployments";
 const ENTITY_AGENT_STATES = "agent_runtime_state";
+const ENTITY_AGENT_CONFIGS = "agent_runtime_config";
 
 /**
  * The denormalised copy of `ScheduledTrigger.spec` gets its own tag rather than
@@ -115,6 +117,11 @@ interface DeploymentRow {
 }
 
 interface AgentStateRow {
+  agent_id: string;
+  record: unknown;
+}
+
+interface AgentConfigRow {
   agent_id: string;
   record: unknown;
 }
@@ -160,6 +167,38 @@ function instantColumn(iso: string, what: string): Date {
     );
   }
   return new Date(ms);
+}
+
+/**
+ * A JavaScript number on its way into an `integer` column.
+ *
+ * Same reasoning as `instantColumn`, one type over: a column cannot hold 1.5,
+ * NaN or 2^40, and postgres.js would either round silently or raise an error
+ * naming neither the field nor the record. `AgentRuntimeConfig.concurrency` is
+ * how many runs of an agent may be in flight, so a value that arrives as 2.7 and
+ * lands as 2 or 3 is a limit nobody set — the refusal happens here, where the
+ * agent it belongs to is still known.
+ *
+ * The file store has no equivalent because JSON will hold any number. That is
+ * the second place the two stores are allowed to differ, and like the first it
+ * differs by being stricter.
+ */
+function integerColumn(value: number, what: string): number {
+  if (!Number.isSafeInteger(value)) {
+    throw new Error(
+      `PostgresSchedulerStore: ${what} is ${String(value)}, which is not a safe integer and ` +
+        `cannot be stored in an integer column.`,
+    );
+  }
+  // 32-bit, because that is what `integer` is. A value outside it would fail in
+  // the driver with a message that names neither the agent nor the field.
+  if (value < -2147483648 || value > 2147483647) {
+    throw new Error(
+      `PostgresSchedulerStore: ${what} is ${String(value)}, which is outside the range of ` +
+        `a 32-bit integer column.`,
+    );
+  }
+  return value;
 }
 
 /** Names the row a decode failure came from, for `fromJsonb`'s `where`. */
@@ -595,6 +634,80 @@ export class PostgresSchedulerStore implements SchedulerStore {
         ENTITY_AGENT_STATES,
         row.record,
         rowRef("oriant_agent_runtime_state", row.agent_id),
+      ),
+    );
+  }
+
+  /* ── Agent runtime config ── */
+
+  /**
+   * Upsert, keyed by agent id: an operator setting a knob replaces the previous
+   * setting rather than appending to a history nobody reads.
+   *
+   * `concurrency` and `queue` are denormalised out of the record for the reason
+   * the header gives — a column an operator can read with `SELECT agent_id,
+   * concurrency, queue` and a future worker pool can filter `queue` on, while
+   * `record` stays the thing every read decodes.
+   */
+  async saveAgentConfig(config: AgentRuntimeConfig): Promise<void> {
+    // The shared guard first, so the message names the agent and the field and
+    // reads identically whichever store is mounted. `integerColumn` below stays
+    // as the column's own last line of defence.
+    assertConcurrencyStorable(config, "PostgresSchedulerStore.saveAgentConfig");
+    await this.sql<WriteResult>`
+      INSERT INTO oriant_agent_runtime_config (agent_id, concurrency, queue, record)
+      VALUES (
+        ${config.agentId},
+        ${integerColumn(config.concurrency, `agent "${config.agentId}" concurrency`)},
+        ${config.queue},
+        ${this.jsonb(ENTITY_AGENT_CONFIGS, config)}
+      )
+      ON CONFLICT (agent_id) DO UPDATE SET
+        concurrency = EXCLUDED.concurrency,
+        queue       = EXCLUDED.queue,
+        record      = EXCLUDED.record
+    `;
+  }
+
+  /**
+   * Null means no operator has configured this agent, so the caller's defaults
+   * apply. It is the ordinary answer rather than the error one, exactly as in the
+   * other two stores — nothing here invents a default, because a default invented
+   * in three places is three chances to disagree about what "unconfigured" means.
+   */
+  async getAgentConfig(agentId: string): Promise<AgentRuntimeConfig | null> {
+    const rows = await this.sql<AgentConfigRow[]>`
+      SELECT agent_id, record FROM oriant_agent_runtime_config WHERE agent_id = ${agentId}
+    `;
+
+    const row = rows.at(0);
+    if (row === undefined) return null;
+    return fromJsonb<AgentRuntimeConfig>(
+      ENTITY_AGENT_CONFIGS,
+      row.record,
+      rowRef("oriant_agent_runtime_config", row.agent_id),
+    );
+  }
+
+  /**
+   * Agent id order.
+   *
+   * Unlike every other listing in this file there is no immutable instant to sort
+   * on and the id is not a tie-break but the whole key — `AgentRuntimeConfig`
+   * carries no timestamp at all. `COLLATE "C"` for the usual reason: a
+   * locale-aware collation orders the same ids differently on a differently
+   * configured database, and the other two stores compare code units.
+   */
+  async listAgentConfigs(): Promise<AgentRuntimeConfig[]> {
+    const rows = await this.sql<AgentConfigRow[]>`
+      SELECT agent_id, record FROM oriant_agent_runtime_config ORDER BY agent_id COLLATE "C"
+    `;
+
+    return rows.map((row) =>
+      fromJsonb<AgentRuntimeConfig>(
+        ENTITY_AGENT_CONFIGS,
+        row.record,
+        rowRef("oriant_agent_runtime_config", row.agent_id),
       ),
     );
   }

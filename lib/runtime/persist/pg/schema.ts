@@ -23,8 +23,15 @@
 
 import type { Sql } from "./client";
 
-/** Bumped when the DDL below changes in a way an existing database must adopt. */
-export const PG_SCHEMA_VERSION = 1;
+/**
+ * Bumped when the DDL below changes in a way an existing database must adopt.
+ *
+ * 2 added `oriant_agent_runtime_config` (STORAGE.md §3.12, §7 step 4). Adopting
+ * it costs nothing but a boot: `migrate()` is IF NOT EXISTS throughout, the new
+ * table references nothing and nothing references it, and no existing row
+ * changes shape.
+ */
+export const PG_SCHEMA_VERSION = 2;
 
 /**
  * Table names are namespaced so the runtime can share a Supabase project with
@@ -42,6 +49,7 @@ export const TABLES = [
   "oriant_queue_jobs",
   "oriant_deployments",
   "oriant_agent_runtime_state",
+  "oriant_agent_runtime_config",
 ] as const;
 
 const DDL: string[] = [
@@ -184,6 +192,23 @@ const DDL: string[] = [
      state    text NOT NULL,
      record   jsonb NOT NULL
    )`,
+
+  // Separate from agent_runtime_state on purpose (STORAGE.md §3.12): that table
+  // is rewritten by the runtime on every transition, this one is written by an
+  // operator and read by the scheduler, and one row holding both would let a
+  // state transition clobber a concurrency setting.
+  //
+  // No index and no ordering column. `agent_id` is the primary key, which is
+  // both the only lookup and the whole sort key — there is no timestamp on this
+  // record to derive an order from, and nothing filters on `queue` yet. An index
+  // for a query no caller makes is the same dead weight as a store method
+  // nothing calls.
+  `CREATE TABLE IF NOT EXISTS oriant_agent_runtime_config (
+     agent_id    text PRIMARY KEY,
+     concurrency integer NOT NULL,
+     queue       text NOT NULL,
+     record      jsonb NOT NULL
+   )`,
 ];
 
 /**
@@ -191,8 +216,28 @@ const DDL: string[] = [
  * safe to run concurrently from two instances starting at once.
  */
 export async function migrate(sql: Sql): Promise<void> {
-  for (const statement of DDL) {
-    await sql.unsafe(statement);
+  /*
+   * A DDL statement that cannot get its lock must FAIL, not wait.
+   *
+   * `CREATE TABLE / INDEX IF NOT EXISTS` still takes an ACCESS EXCLUSIVE lock
+   * when the object already exists and the statement does nothing. Blocked
+   * behind an open transaction, it waits forever by default — and a waiting
+   * exclusive lock also blocks every ordinary reader queued behind it, so one
+   * stalled migration takes the whole table down rather than just itself.
+   *
+   * Three seconds is far longer than this DDL needs against an existing schema
+   * and short enough that the failure is visible as a failure. It is set per
+   * session rather than globally so nothing else inherits it.
+   */
+  await sql.unsafe(`SET lock_timeout = '3s'`);
+  try {
+    for (const statement of DDL) {
+      await sql.unsafe(statement);
+    }
+  } finally {
+    // The connection returns to a shared pool; leaving a timeout on it would
+    // apply to unrelated queries that never asked for one.
+    await sql.unsafe(`SET lock_timeout = DEFAULT`).catch(() => {});
   }
 }
 

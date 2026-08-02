@@ -1,0 +1,835 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   components/live/pipeline/pipeline.module.css — layout for the end-to-end
+   pass. Everything visual comes from app/app/app.css (`.oa` scope): surfaces,
+   type scale, buttons, `.oa-status--*` badges, focus rings, easing. Nothing
+   below invents a colour, a radius or a font.
+
+   THREE RULES SHAPE THIS FILE.
+
+   Colour is never the signal. Every tinted surface here sits beside a word
+   that says the same thing — the badge on a stage, the heading on a severity
+   group, the title on the notice. A pass read in greyscale, or by somebody who
+   does not distinguish amber from teal, has to be exactly as legible: the
+   difference between "blocked" and "failed" is the difference between a gate
+   shutting on purpose and an engineer's problem.
+
+   Four states must not look alike. Not-run-yet, running, blocked and failed
+   each get their own shape, because the two most expensive mistakes this
+   screen could invite are reading a stage that was never attempted as one that
+   passed, and reading a refused activation as a crash.
+
+   The draft_only notice is sized like a headline, not a footnote. It is the
+   one thing somebody watching a successful pass must not miss, and the whole
+   reason it is stated so loudly is that everything else on a completed pass
+   looks like a workforce that is off and running.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+
+.head {
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.headTitles {
+  display: grid;
+  gap: 8px;
+  max-width: 64ch;
+}
+
+.headSide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 420px;
+}
+
+/* ── Split: the pass on the left, the standing facts on the right ──────── */
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1.35fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.mainPane {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  align-content: start;
+}
+
+.railPane {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .railPane {
+    position: sticky;
+    top: calc(var(--oa-topbar-h) + 20px);
+  }
+}
+
+@media (max-width: 1023px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── The draft_only notice ─────────────────────────────────────────────────
+   Deliberately the loudest thing on the page after the h1. See the header. */
+
+.draftNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--oa-amber-border);
+  border-left-width: 5px;
+  border-radius: var(--oa-r-card);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+}
+
+.draftIcon {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 13px;
+  background: var(--oa-surface);
+  color: var(--oa-amber-ink);
+  display: grid;
+  place-items: center;
+}
+
+.draftText {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.draftTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.draftBody {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  max-width: 96ch;
+}
+
+/* The agents, each with the mode the pass actually recorded for it. Evidence
+   for the claim above rather than a restatement of it. */
+.modeList {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.modeChip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 3px 10px;
+  border: 1px solid var(--oa-amber-border);
+  border-radius: var(--oa-r-chip);
+  background: var(--oa-surface);
+  font-size: 11.5px;
+  color: var(--oa-amber-ink);
+}
+
+.modeName {
+  font-weight: 750;
+}
+
+.modeValue {
+  font-family: var(--oa-mono);
+  font-size: 10.5px;
+}
+
+/* A mode that is NOT draft_only. Outlined, red-inked AND labelled in words
+   beside it — this is the one row nobody may skim past. */
+.modeChipOther {
+  border-color: var(--oa-red);
+  background: var(--oa-soft-red);
+  color: var(--oa-red-ink);
+  font-weight: 750;
+}
+
+/* ── The run panel ─────────────────────────────────────────────────────── */
+
+.runPanel {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.runRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.runNote {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+  max-width: 92ch;
+}
+
+.payloadForm {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px dashed var(--oa-border-strong);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-bg-alt);
+}
+
+.payloadArea {
+  min-height: 150px;
+  font-family: var(--oa-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* The one message that must not be mistaken for a runtime failure: the JSON did
+   not parse in this browser and nothing was sent. */
+.payloadError {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  font-weight: 650;
+  color: var(--oa-red-ink);
+  overflow-wrap: anywhere;
+}
+
+/* ── The six stages ────────────────────────────────────────────────────── */
+
+.stageList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 4px 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--oa-border);
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+  min-width: 0;
+}
+
+/* The position in the pass. A number, because "third of six" is the fact an
+   owner uses to know how far it got. */
+.stageIndex {
+  grid-row: 1 / span 3;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--oa-bg-alt);
+  color: var(--oa-muted-strong);
+  font-size: 12.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.stageHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+}
+
+.stageTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 780;
+  letter-spacing: -0.01em;
+}
+
+.stageIcon {
+  flex: none;
+  color: var(--oa-muted);
+}
+
+.stageSummary {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--oa-ink);
+  overflow-wrap: anywhere;
+}
+
+.stageWhat {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted);
+}
+
+.stageBody {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.detailList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.detailItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--oa-bg-alt);
+  font-family: var(--oa-mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+  overflow-wrap: anywhere;
+}
+
+.stageActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.stageFix {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-amber-ink);
+  max-width: 92ch;
+}
+
+/* Blocked, failed and skipped are outlined AND tinted AND carry their word in
+   the badge. The tint is the third signal, never the first. */
+.stageBlocked {
+  border-color: var(--oa-amber-border);
+  background: linear-gradient(0deg, var(--oa-soft-amber) 0%, var(--oa-surface) 62%);
+}
+
+.stageFailed {
+  border-color: var(--oa-red);
+  background: linear-gradient(0deg, var(--oa-soft-red) 0%, var(--oa-surface) 62%);
+}
+
+.stageFailed .stageFix {
+  color: var(--oa-red-ink);
+}
+
+.stageSkipped {
+  border-style: dashed;
+  background: var(--oa-bg-alt);
+}
+
+/* Never attempted, as opposed to attempted-and-skipped: no number badge tint,
+   no status badge at all, and the word "not run yet" in the head. The two must
+   not be confusable — see the file header. */
+.stageIdle {
+  border-style: dashed;
+  border-color: var(--oa-border);
+  background: transparent;
+}
+
+.stageIdle .stageIndex {
+  background: transparent;
+  border: 1px dashed var(--oa-border-strong);
+  color: var(--oa-muted);
+}
+
+.notRun {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+  border: 1px dashed var(--oa-border-strong);
+  border-radius: var(--oa-r-chip);
+  padding: 2px 9px;
+}
+
+.stopMark {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oa-amber-ink);
+  border: 1px solid var(--oa-amber-border);
+  border-radius: var(--oa-r-chip);
+  padding: 2px 9px;
+}
+
+/* ── The gap report ────────────────────────────────────────────────────── */
+
+.gapReport {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.gapGroup {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.gapGroupHead {
+  display: grid;
+  gap: 4px;
+  max-width: 92ch;
+}
+
+/* Section headings sit a step below the page title and a step above a group
+   heading, so the three levels of this page are legible without reading them. */
+.sectionTitle {
+  font-size: 21px;
+}
+
+.gapGroupTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.gapCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--oa-bg-alt);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.gapList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.gap {
+  display: grid;
+  gap: 8px;
+  padding: 13px 15px;
+  border: 1px solid var(--oa-border);
+  border-left-width: 4px;
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+  min-width: 0;
+}
+
+.gapBlocking {
+  border-color: var(--oa-red);
+  background: var(--oa-soft-red);
+}
+
+.gapDegraded {
+  border-color: var(--oa-amber-border);
+  background: var(--oa-soft-amber);
+}
+
+.gapNote {
+  border-color: var(--oa-border-strong);
+  background: var(--oa-bg-alt);
+}
+
+.gapMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.gapCode,
+.mono {
+  font-family: var(--oa-mono);
+  font-size: 11px;
+  color: var(--oa-muted-strong);
+  overflow-wrap: anywhere;
+}
+
+.gapCode {
+  border: 1px solid var(--oa-border-strong);
+  border-radius: var(--oa-r-chip);
+  padding: 2px 8px;
+  background: var(--oa-surface);
+}
+
+.gapMessage {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--oa-ink);
+}
+
+/* The resolution is the actionable half of a gap and is never behind a
+   disclosure. It gets its own labelled block so it cannot read as a
+   continuation of the sentence above it. */
+.gapResolution {
+  display: grid;
+  gap: 3px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--oa-border);
+  background: var(--oa-surface);
+}
+
+.gapResolutionLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--oa-muted-strong);
+}
+
+.gapResolutionText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--oa-ink);
+}
+
+/* ── What went live ────────────────────────────────────────────────────── */
+
+.liveCard {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--oa-teal-deep);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-soft-teal);
+}
+
+.liveTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--oa-teal-deep);
+}
+
+.liveGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.liveStat {
+  display: grid;
+  gap: 3px;
+  padding: 11px 13px;
+  border-radius: var(--oa-r-inner);
+  background: var(--oa-surface);
+  min-width: 0;
+}
+
+.liveLabel {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+}
+
+.liveValue {
+  font-size: 19px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.liveValueId {
+  font-family: var(--oa-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.liveMissing {
+  font-size: 14px;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--oa-muted);
+}
+
+/* ── The rail ──────────────────────────────────────────────────────────── */
+
+.railCard {
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.railRows {
+  display: grid;
+  gap: 6px;
+}
+
+.railRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+}
+
+.railLabel {
+  color: var(--oa-muted-strong);
+  font-weight: 650;
+}
+
+/* The status legend. A badge and its sentence, so the four words are explained
+   once instead of on every one of the six rows. */
+.legendRow {
+  display: grid;
+  gap: 4px;
+  padding: 8px 0;
+  border-top: 1px dashed var(--oa-border);
+}
+
+.legendRow:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.legendRow dd {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+}
+
+.railValue {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.steps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 7px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--oa-muted-strong);
+}
+
+.steps code,
+.railCard code,
+.runNote code,
+.stateBox code {
+  font-family: var(--oa-mono);
+  font-size: 11.5px;
+  background: var(--oa-bg-alt);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+/* ── Page-level states ─────────────────────────────────────────────────────
+   Four treatments, because a reader has to tell them apart before reading
+   them:
+
+     .errorBox    something failed and may work on the next press — red, alert
+     .blockedBox  nothing failed; a gate refused, and refreshing changes
+                  nothing — amber, with the stage that stopped it named
+     .stateBox    nothing has been run yet — dashed, quiet, instructional
+     .runningBox  a pass is in flight and nothing is known yet             */
+
+.errorBox {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--oa-red);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-soft-red);
+  color: var(--oa-red-ink);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.errorTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: 800;
+}
+
+.errorDetail {
+  margin: 0;
+  font-family: var(--oa-mono);
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.errorBox p {
+  margin: 0;
+  max-width: 96ch;
+}
+
+.blockedBox {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--oa-amber-border);
+  border-left-width: 4px;
+  border-radius: var(--oa-r-card);
+  background: var(--oa-soft-amber);
+  color: var(--oa-amber-ink);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.blockedBox p {
+  margin: 0;
+  max-width: 96ch;
+}
+
+.blockedTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.blockedActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stateBox {
+  display: grid;
+  gap: 10px;
+  padding: 26px 22px;
+  border: 1px dashed var(--oa-border);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-surface);
+  color: var(--oa-muted-strong);
+  font-size: 13.5px;
+}
+
+.stateTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--oa-ink);
+}
+
+.stateBox p {
+  margin: 0;
+  max-width: 92ch;
+}
+
+.runningBox {
+  display: grid;
+  gap: 8px;
+  padding: 15px 17px;
+  border: 1px solid var(--oa-blue);
+  border-radius: var(--oa-r-card);
+  background: var(--oa-soft-blue);
+  color: var(--oa-blue-dark);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.runningBox p {
+  margin: 0;
+  max-width: 96ch;
+}
+
+.runningTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: 800;
+}
+
+/* The previous pass, still on screen while a new one runs. Dimmed and labelled
+   rather than blanked: an empty screen mid-run reads as "nothing is live". */
+.superseded {
+  opacity: 0.62;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  .headSide {
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  .stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stageIndex {
+    grid-row: auto;
+  }
+
+  .draftNotice {
+    flex-direction: column;
+  }
+}

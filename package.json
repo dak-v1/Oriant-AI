@@ -20,6 +20,7 @@
     "verify:m7": "node scripts/verify.mjs m7",
     "verify:ingest": "node scripts/verify.mjs ingest",
     "verify:e2e": "node scripts/verify.mjs e2e",
+    "verify:pg": "node scripts/verify.mjs pg",
     "verify:int": "node scripts/verify.mjs integration",
     "sandbox:bundle": "node scripts/bundle-sandbox-runner.mjs",
     "daytona:check": "node scripts/daytona-check.mjs",

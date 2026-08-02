@@ -43,7 +43,8 @@
 
 import { createHash } from "node:crypto";
 import path from "node:path";
-import type { TriggerSpec } from "../../plan/types";
+import type { AgentRuntimeConfig, TriggerSpec } from "../../plan/types";
+import { assertConcurrencyStorable } from "../schedule/types";
 import type {
   AgentRuntimeRecord,
   Deployment,
@@ -106,6 +107,7 @@ export class FileSchedulerStore implements SchedulerStore {
   private readonly jobs: Table<QueuedJob>;
   private readonly deployments: Table<Deployment>;
   private readonly agentStates: Table<AgentRuntimeRecord>;
+  private readonly agentConfigs: Table<AgentRuntimeConfig>;
   private readonly claimLockFile: string;
 
   constructor(readonly root: string) {
@@ -115,6 +117,14 @@ export class FileSchedulerStore implements SchedulerStore {
     this.agentStates = new Table<AgentRuntimeRecord>(
       path.join(root, "agent-runtime-state"),
       "agent_runtime_state",
+    );
+    // Its own table rather than more fields on `agent-runtime-state`: one is
+    // rewritten by the runtime on every transition, the other is written by an
+    // operator, and sharing a file would let a state transition clobber a
+    // concurrency setting (STORAGE.md §3.12).
+    this.agentConfigs = new Table<AgentRuntimeConfig>(
+      path.join(root, "agent-runtime-config"),
+      "agent_runtime_config",
     );
     // Outside every table directory, so a lock can never be listed as a record
     // and `reset()` cannot delete one that is currently held.
@@ -358,11 +368,55 @@ export class FileSchedulerStore implements SchedulerStore {
     return records;
   }
 
+  /* ── Agent runtime config ── */
+
+  /**
+   * Upsert, keyed by agent id: an operator setting a knob replaces the previous
+   * setting rather than appending to a history nobody reads.
+   *
+   * The plain `write` is deliberate where `saveJob` needs `update`. A config is
+   * the operator's latest word on this agent and there is no in-flight claim for
+   * a concurrent writer to trample — the failure `enqueueJob`'s exclusive create
+   * exists to prevent has no counterpart here.
+   */
+  async saveAgentConfig(config: AgentRuntimeConfig): Promise<void> {
+    // JSON would hold 2.5 or 1e12 without complaint; Postgres would not. The
+    // shared guard is what keeps the two stores interchangeable.
+    assertConcurrencyStorable(config, "FileSchedulerStore.saveAgentConfig");
+    await this.agentConfigs.write(config.agentId, config);
+  }
+
+  /**
+   * Null covers both "no file" and "no table yet", which are the same fact: no
+   * operator has configured this agent, so the caller's defaults apply. A clean
+   * clone never creates the directory, and `Table.read` answers a missing table
+   * with null rather than an error precisely so that stays unremarkable.
+   */
+  async getAgentConfig(agentId: string): Promise<AgentRuntimeConfig | null> {
+    return this.agentConfigs.read(agentId);
+  }
+
+  /**
+   * Agent id order.
+   *
+   * Unlike every other listing here there is no immutable instant to derive an
+   * order from — `AgentRuntimeConfig` carries no timestamp at all — so the id is
+   * not a tie-break but the whole key. It is also what the in-memory store sorts
+   * on, which is the one listing where that store departs from insertion order,
+   * so all three implementations return the same list in the same order.
+   */
+  async listAgentConfigs(): Promise<AgentRuntimeConfig[]> {
+    const configs = await this.agentConfigs.all();
+    configs.sort((a, b) => compareId(a.agentId, b.agentId));
+    return configs;
+  }
+
   /* ── Development helper ── */
 
   /**
-   * Drops every trigger, job, deployment and agent state on disk. The claim lock
-   * is left alone: it lives outside these tables and may be held right now.
+   * Drops every trigger, job, deployment, agent state and agent config on disk.
+   * The claim lock is left alone: it lives outside these tables and may be held
+   * right now.
    */
   async reset(): Promise<void> {
     await Promise.all([
@@ -370,6 +424,7 @@ export class FileSchedulerStore implements SchedulerStore {
       this.jobs.clear(),
       this.deployments.clear(),
       this.agentStates.clear(),
+      this.agentConfigs.clear(),
     ]);
   }
 }
