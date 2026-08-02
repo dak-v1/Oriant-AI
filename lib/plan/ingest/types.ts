@@ -81,6 +81,9 @@ export type GapSeverity =
   | "note";
 
 export type GapCode =
+  /** The payload names no organization, so the plan has no owner to resolve
+      credentials from. Blocking: see `ingestHandoff`'s refusal. */
+  | "organization_unresolved"
   | "policy_absent"
   | "steps_synthesised"
   | "trigger_not_scheduled"

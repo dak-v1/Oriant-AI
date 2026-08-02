@@ -391,6 +391,12 @@ async function makeWorld(seed: string, options: WorldOptions = {}): Promise<Worl
       buildStore: build.store,
       schedulerStore: scheduler.store,
       tools: integrations,
+      // Mirrors the not-live branch of `toolsFor` in lib/runtime/session.ts: with
+      // tools off every organization gets the one stub, because a simulated send
+      // is not attributable to anybody. `toolsLive: false` above is what makes
+      // ignoring the organization correct here rather than the bug this method
+      // exists to prevent.
+      toolsFor: () => integrations,
       reasoner,
       executor,
       build,

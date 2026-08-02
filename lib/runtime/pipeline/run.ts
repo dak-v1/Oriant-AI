@@ -58,7 +58,38 @@ import { STAGE_HREF, type PipelineResult, type StageResult } from "./types";
 export interface PipelineDeps {
   build: BuildDeps;
   scheduler: SchedulerDeps;
-  integrations: IntegrationProvider;
+  /**
+   * WHOSE CONNECTED ACCOUNTS, ASKED ONCE THE PLAN EXISTS — A RESOLVER, NOT A
+   * PROVIDER, AND THE STAGE ORDER IS THE WHOLE ARGUMENT.
+   *
+   * A provider is scoped to one organization's Composio connections. The
+   * organization is a field on `ApprovedPlan`, and this function INGESTS the
+   * plan: at the moment a caller builds these deps there is a handoff payload and
+   * nothing else, so a fixed `IntegrationProvider` here could only ever have been
+   * chosen from something OTHER than the plan about to run. Both callers proved
+   * it — they passed `session.tools`, which is the BrightPath fixture's
+   * organization, so the integrations gate at stage 6 asked whether the DEMO has
+   * Gmail connected and printed the answer under the customer's name. There is no
+   * value that would have made the fixed field correct, because the fact it needs
+   * had not been read yet. That is what makes this a resolver rather than a
+   * better default.
+   *
+   * REJECTED: resolving inside this module by calling
+   * `liveIntegrationProviderFor(plan.organizationId)` directly. It would weld the
+   * live Composio path into the pipeline, and the stub-versus-live switch is
+   * `ORIANT_RUNTIME_TOOLS`, read in lib/runtime/session.ts and nowhere else. The
+   * sandbox and the verify targets hand this function a `StubIntegrationProvider`
+   * on purpose; a pipeline that resolved its own hands would take that choice away
+   * from them and put a second place to read the switch in the repository.
+   *
+   * FAIL CLOSED IS THE RESOLVER'S JOB, NOT THIS FILE'S, and it is already built:
+   * `session.toolsFor` answers an unresolvable organization with
+   * `UnresolvedOrganizationProvider`, which reports every connection as "required"
+   * and refuses every call by name. So a plan whose organization cannot be
+   * resolved arrives at the integrations gate SHUT, with the reason in the
+   * blocker — never another organization's provider, and never the stub.
+   */
+  integrationsFor(organizationId: string): IntegrationProvider;
   /** Recorded on the deployment as whoever put this workforce live. */
   activatedBy: string;
   /**
@@ -320,7 +351,11 @@ export async function runPipeline(
   const activationDeps: ActivationDeps = {
     scheduler: deps.scheduler,
     packages: deps.build,
-    integrations: deps.integrations,
+    // Resolved HERE and not a line earlier, because here is the first point in
+    // the pass where `plan.organizationId` exists at all — stage 2 is what
+    // produces it. The gate about to run asks "has this business connected
+    // Gmail", and the only plan it may ask that about is the one it is gating.
+    integrations: deps.integrationsFor(plan.organizationId),
     // The verdict just produced, pinned. Re-running the suite inside activation
     // would prove a second workforce and gate on the first.
     sandbox: new FixedSandboxEvidence(verdict),

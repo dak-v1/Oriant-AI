@@ -54,6 +54,29 @@ export function isOperatingMode(value: unknown): value is OperatingMode {
 
 export interface ApprovedPlan {
   planId: string;
+  /**
+   * The business this workforce belongs to.
+   *
+   * A workforce is not a free-floating set of agents; it is one company's staff,
+   * and this is the field that says which company. That makes it the field that
+   * decides WHOSE CREDENTIALS the agents act through: Composio holds one set of
+   * OAuth connections per organization, so `gmail.messages.send` sends from
+   * whichever organization the runtime resolves here.
+   *
+   * REQUIRED, and deliberately not optional. The value already exists on Role
+   * B's handoff (`organization.id`) and on the `role_c_handoffs` row the plan was
+   * built from, so the only thing optionality would buy is an ingest path that
+   * silently skips it — leaving live execution to read the organization from the
+   * environment instead. That is one organization per process, set by hand, next
+   * to a plan that already knew the answer, and it is a wrong answer waiting for
+   * the second customer on the same server. Required turns "which business is
+   * this" from a deployment setting into a fact the plan carries.
+   *
+   * Fail closed. A plan whose organizationId is missing or blank must REFUSE to
+   * execute tools. It must never fall back to a process-wide default, because
+   * that default is some other business's connected accounts.
+   */
+  organizationId: string;
   /** Bumps on every approval. */
   version: number;
   approvedAt: string; // ISO 8601

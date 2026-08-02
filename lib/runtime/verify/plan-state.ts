@@ -190,6 +190,10 @@ function makeWorld(seed: string): World {
   };
   const schedulerStore = new InMemorySchedulerStore();
   const scheduler: SchedulerDeps = { store: schedulerStore, clock, newId };
+  // One stub per world, not one per resolution. Mirrors the not-live branch of
+  // `toolsFor` in lib/runtime/session.ts: with tools off every organization gets
+  // the same stub, because a simulated send is not attributable to anybody.
+  const integrations = new StubIntegrationProvider();
 
   return {
     build,
@@ -197,7 +201,7 @@ function makeWorld(seed: string): World {
     deps: {
       build,
       scheduler,
-      integrations: new StubIntegrationProvider(),
+      integrationsFor: () => integrations,
       activatedBy: OWNER,
     },
   };

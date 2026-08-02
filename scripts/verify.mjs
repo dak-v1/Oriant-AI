@@ -68,7 +68,9 @@ const TARGETS = {
     entry: "lib/plan/verify/m0.ts",
     out: "lib/plan/verify/m0.js",
     label: "M0 — plan contract",
-    expectedChecks: 27,
+    // 28 since the plan carries its owning organization: INVALID_PLANS gained
+    // MISSING_ORGANIZATION_ID, and M0-8 runs one check per case in that table.
+    expectedChecks: 28,
   },
   m1: {
     entry: "lib/runtime/verify/m1.ts",
@@ -140,7 +142,15 @@ const TARGETS = {
     entry: "lib/runtime/verify/collect.ts",
     out: "lib/runtime/verify/collect.js",
     label: "COLLECT — the handoff seam's protocol",
-    expectedChecks: 7,
+    // 14 since the route's OTHER seam got cover. COLLECT-8..11 drive the two
+    // handlers through lib/runtime/pipeline/organization-gate.ts — the fixture
+    // arm refused, every door refusing identically, the two configurations that
+    // must still run, and the Supabase arm answering about its own
+    // configuration before there is a handoff to gate. COLLECT-12..14 close the
+    // door that arm left open: a stored handoff is gated too, BEFORE it is
+    // claimed (so a refusal leaves the row 'ready'), on the organization of the
+    // row actually named, and without shutting the automated lane.
+    expectedChecks: 14,
   },
   /*
    * NOT OPT-IN, deliberately, even though the code under test is the only thing
@@ -154,7 +164,22 @@ const TARGETS = {
     entry: "lib/runtime/verify/tools.ts",
     out: "lib/runtime/verify/tools.js",
     label: "TOOLS — Composio execution, mapping and refusals",
-    expectedChecks: 10,
+    // 16 since the plan decides whose connections its agents act through:
+    // TOOLS-11..16 cover lib/runtime/tools/organization.ts — the blank-owner
+    // refusal, ORIANT_ORGANIZATION_ID reaching the fixture and nothing else, the
+    // refusing (never null, never stub) provider, one memoised provider per
+    // organization, the missing-key refusal, and the ingest gap
+    // `organization_unresolved` followed through to the hands.
+    //
+    // 20 since ORIANT_ALLOWED_ORGANIZATION_IDS moved into that same module.
+    // TOOLS-17..20 are the chokepoint: a permitted organization still gets live
+    // hands, an unpermitted one gets a refusing provider naming the variable,
+    // every spelling of an empty allowlist permits nothing, and with tools off
+    // nothing is restricted at all. It was previously read only by
+    // lib/runtime/pipeline/organization-gate.ts, which sits on three request
+    // routes — while /api/runtime/activation, /run, /approvals, /scheduler and
+    // the background poller reached live Composio execution without it.
+    expectedChecks: 20,
   },
   pg: {
     entry: "lib/runtime/verify/pg.ts",

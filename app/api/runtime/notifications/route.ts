@@ -642,7 +642,13 @@ export async function GET(request: Request) {
     activationChecklist(plan, {
       scheduler: session.scheduler,
       packages: session.build,
-      integrations: session.tools,
+      // The plan's OWN organization, not `session.tools`. That member resolves
+      // the fixture's organization, so judging this plan's integrations gate
+      // through it would tell an owner to reconnect a tool that is already
+      // connected — or stay silent while theirs is not. An attention list is
+      // read precisely when somebody suspects something is wrong, so every row
+      // in it has to be about one business.
+      integrations: session.toolsFor(plan.organizationId),
       sandbox: new FixedSandboxEvidence(null),
     }),
   );

@@ -456,6 +456,12 @@ function sessionFor(world: Omit<World, "session">): RuntimeSession {
     buildStore: world.build.store,
     schedulerStore: world.scheduler.store,
     tools: world.integrations,
+    // Mirrors the not-live branch of `toolsFor` in lib/runtime/session.ts: with
+    // tools off every organization gets the one stub, because a simulated send
+    // is not attributable to anybody. `toolsLive: false` above is what makes
+    // ignoring the organization correct here rather than the bug this method
+    // exists to prevent.
+    toolsFor: () => world.integrations,
     reasoner: world.executor.reasoner,
     executor: world.executor,
     build: world.build,

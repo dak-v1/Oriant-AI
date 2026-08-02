@@ -476,6 +476,33 @@ function integrationBlockerText(
   );
 }
 
+/**
+ * The provider's own refusal sentence, when it is refusing everything.
+ *
+ * STRUCTURAL, NOT NOMINAL. `lib/runtime/tools/organization.ts` puts a `refusal`
+ * discriminant and a `reason` on its refusing providers so a caller can tell
+ * "this provider answers nothing" from "this tool is not connected" — the two
+ * are indistinguishable through `getIntegrationStatus` alone, which is what made
+ * the checklist blame the tools. Read as a shape rather than imported as a
+ * class, because `IntegrationProvider` is the contract this file depends on and
+ * a scheduler reaching into the tools layer for a constructor would invert that.
+ *
+ * Any provider growing the same two fields gets the same treatment, which is the
+ * intended extension point.
+ */
+function wholesaleRefusal(integrations: IntegrationProvider): string | null {
+  const candidate = integrations as unknown as {
+    refusal?: unknown;
+    reason?: unknown;
+  };
+  if (typeof candidate.refusal !== "string") return null;
+  return typeof candidate.reason === "string" && candidate.reason.trim() !== ""
+    ? candidate.reason
+    : // A refusal that cannot say why is still a refusal; withholding it and
+      // falling through to the per-tool walk would restore the false blockers.
+      `This deployment refused to resolve tool access for the plan's organization (${candidate.refusal}).`;
+}
+
 function statusOf(
   integrations: IntegrationProvider,
   integrationId: string,
@@ -494,6 +521,39 @@ function integrationsGate(
   const names = agentNames(plan);
   const demand = integrationDemand(plan);
   const blockers: ActivationBlocker[] = [];
+
+  /*
+   * A PROVIDER REFUSING WHOLESALE HAS TO SAY SO IN ITS OWN WORDS.
+   *
+   * The organization-refusing providers answer "required" for every integration,
+   * because "required" is the only honest status when nothing could be checked.
+   * Walked one integration at a time that becomes "gmail is not connected.
+   * google-drive is not connected." — every sentence false, and every one of them
+   * sending the owner to reconnect a tool that is very likely connected already.
+   *
+   * The truth is one fact about the DEPLOYMENT rather than several about the
+   * tools: it cannot act for this plan's organization, and no amount of
+   * reconnecting will change that. So it is reported once, in the provider's own
+   * sentence, and the per-integration walk is skipped — it has nothing to add.
+   *
+   * Detected through the `refusal` discriminant those classes carry for exactly
+   * this, rather than an `instanceof` that would reach from the scheduler across
+   * into lib/runtime/tools.
+   */
+  const refusal = wholesaleRefusal(integrations);
+  if (refusal !== null) {
+    const required = demand.required.size;
+    return {
+      id: "integrations",
+      label: "Integrations connected",
+      satisfied: false,
+      detail:
+        `None of the ${required} required ${plural(required, "connection", "connections")} ` +
+        `could be checked: this deployment cannot act for the plan's organization. ` +
+        `This is not a disconnected tool, and reconnecting will not clear it.`,
+      blockers: [{ message: refusal, href: GATE_HREF.integrations }],
+    };
+  }
 
   for (const malformed of demand.malformed) {
     blockers.push({

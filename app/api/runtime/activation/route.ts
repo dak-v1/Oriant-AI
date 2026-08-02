@@ -50,6 +50,29 @@
  * one failure mode that ships a workforce on evidence gathered before the plan
  * changed. Nothing here memoises, and nothing here should learn to.
  *
+ * AND THE EVIDENCE IS NOW DERIVED FROM THE PLAN BEING GATED, which it was not.
+ * This route judged `session.currentPlan()` while proving it with
+ * `BRIGHTPATH_SCENARIOS` and the authored `runStressSweep`, both of which name
+ * BrightPath agent ids. Against an ingested plan the runner answered `Agent "…"
+ * is not in the plan` for every case, so the sandbox gate reported:
+ *
+ *     0 of 24 scenarios passed, 0 of 20 stress cases passed
+ *     blockers: "Agent marketing-content-approval-agent has no scenarios."
+ *
+ * The go-live button was therefore unpressable for every real workforce — not
+ * because anything was unsafe, but because the gate was reading someone else's
+ * homework. `POST /api/runtime/collect` already derived its suite from the plan
+ * (lib/runtime/pipeline/run.ts), so the same workforce passed through one door
+ * and was refused at this one. `SessionSandboxEvidence` below now derives both
+ * halves the same way that pipeline does, and the doors agree.
+ *
+ * IT DOES NOT OPEN ANY GATE THAT WAS HONESTLY SHUT. `runSuite` still refuses a
+ * verdict for an agent no scenario covers and still refuses one with no sweep,
+ * so a plan generation cannot cover arrives here BLOCKED with the reason named —
+ * checked against a plan with every workflow disabled, a plan with no agents,
+ * and a provable plan with one unprovable agent added, all three of which still
+ * shut this gate and say which agent shut it.
+ *
  * Unauthenticated on purpose for now, exactly as /api/runtime/build is: this
  * branch is Role C's development surface and the runtime is fixture-backed. It
  * must be gated before any deployment, along with every other /api route — and
@@ -59,10 +82,14 @@
  */
 import { NextResponse } from "next/server";
 import type { ApprovedPlan } from "@/lib/plan/types";
+import { BRIGHTPATH_PLAN } from "@/lib/plan/fixtures/brightpath";
 import { runSuite } from "@/lib/runtime/sandbox/runner";
+import type { SandboxDeps } from "@/lib/runtime/sandbox/runner";
 import { BRIGHTPATH_SCENARIOS } from "@/lib/runtime/sandbox/scenarios";
+import { suiteForPlan } from "@/lib/runtime/sandbox/smoke";
+import { runGeneratedStress } from "@/lib/runtime/sandbox/smoke-stress";
 import { runStressSweep } from "@/lib/runtime/sandbox/stress";
-import type { SandboxVerdict } from "@/lib/runtime/sandbox/types";
+import type { SandboxVerdict, StressResult } from "@/lib/runtime/sandbox/types";
 import {
   activate,
   activationBlockers,
@@ -75,6 +102,53 @@ import type { RuntimeSession } from "@/lib/runtime/session";
 export const dynamic = "force-dynamic";
 
 /* ═══════════════════════════ Gate inputs ═══════════════════════════ */
+
+/**
+ * The stress sweep that is evidence ABOUT THIS PLAN.
+ *
+ * `suiteForPlan` already decides scenario by scenario whether an authored case
+ * applies. A sweep has no such seam — it is one function over a whole plan — so
+ * the same decision has to be made once, here.
+ *
+ * THE OBVIOUS ANSWER IS "ALWAYS GENERATE", AND IT IS WRONG. lib/runtime/pipeline
+ * /run.ts always generates and is right to: it only ever holds a plan that came
+ * over the seam. This route also gates the fixture, and the generated sweep is
+ * measurably wrong about it. `stressScenariosForPlan` assumes an
+ * `auto_within_limits` agent ACTS anywhere inside its limits, but BrightPath's
+ * admin-operations agent carries `alwaysApprove:
+ * ["google-calendar.events.update"]` and its first enabled workflow ends on
+ * exactly that operation — so it pauses whatever the numbers say, exactly as the
+ * plan instructs. Generating for it produced four failures of the form
+ *
+ *     bookings.per_run = 11 (within <= 12)
+ *     expected "completed" but got "awaiting_approval"
+ *
+ * — accusing an agent of a guardrail breach for obeying its guardrail, and
+ * shutting a gate that verify M7 walks through this route and requires to open.
+ * A false red is not a safe default: it is the thing that teaches an owner to
+ * stop reading blockers.
+ *
+ * So the authored sweep wins where it is genuinely about the plan in hand, which
+ * is the SAME rule `suiteForPlan` applies to scenarios rather than an exception.
+ *
+ * MATCHED ON `planId`, NOT ON AN AGENT ID. The authored sweep's 20 cases are
+ * hard-coded against this fixture's `invoice.amount <= 500` and
+ * `emails.per_run <= 20`; another plan merely containing an agent named
+ * `finance-followup` would be swept against numbers that are not its own, which
+ * is the exact class of bug being removed. The version is deliberately not
+ * compared — fixture and sweep are edited together here, and pinning it would
+ * silently drop a bumped fixture into the false failures above.
+ *
+ * KEPT IN STEP WITH ITS TWIN BY HAND. app/api/runtime/sandbox/route.ts carries
+ * the same function, because Next refuses a route module that exports anything
+ * but its handlers and neither route may import from the other. Change one and
+ * change the other in the same commit, or the two doors start disagreeing again.
+ */
+function sweepFor(plan: ApprovedPlan, deps: SandboxDeps): Promise<StressResult> {
+  return plan.planId === BRIGHTPATH_PLAN.planId
+    ? runStressSweep(plan, deps)
+    : runGeneratedStress(plan, deps);
+}
 
 /**
  * The sandbox gate's evidence, earned on demand.
@@ -97,6 +171,17 @@ export const dynamic = "force-dynamic";
  * describes — resolving it a second time inside `latestVerdict` would let an
  * ingest land between the two and produce a verdict about a workforce this
  * response never mentions.
+ *
+ * AND THE SUITE IS DERIVED FROM THAT PLAN. `suiteForPlan` keeps every authored
+ * BrightPath case whose agent the plan actually contains and generates smoke
+ * cover for every agent it does not reach, so the gate judges the workforce in
+ * front of it instead of failing to find a workforce it has never been given.
+ * Handing `BRIGHTPATH_SCENARIOS` straight to `runSuite`, as this did, meant an
+ * ingested plan was gated on 24 cases that could only ever report "not in the
+ * plan" — see the header. The generated cases are weaker claims than the
+ * authored ones and say so in their own descriptions; what they are not is
+ * absent, and an absent scenario is what `runSuite` correctly refuses to treat
+ * as safety.
  */
 class SessionSandboxEvidence implements SandboxEvidence {
   private readonly session: RuntimeSession;
@@ -108,9 +193,14 @@ class SessionSandboxEvidence implements SandboxEvidence {
   }
 
   async latestVerdict(): Promise<SandboxVerdict> {
-    const packages = this.session.build;
-    const stress = await runStressSweep(this.plan, { packages });
-    return runSuite(BRIGHTPATH_SCENARIOS, this.plan, { packages, stress });
+    const deps: SandboxDeps = { packages: this.session.build };
+    // Sweep first, so a throw from it closes the gate before any scenario runs
+    // and the caller pays for a suite whose verdict could not be reached anyway.
+    const stress = await sweepFor(this.plan, deps);
+    return runSuite(suiteForPlan(this.plan, BRIGHTPATH_SCENARIOS), this.plan, {
+      ...deps,
+      stress,
+    });
   }
 }
 
@@ -119,12 +209,28 @@ class SessionSandboxEvidence implements SandboxEvidence {
  *
  * Cheap on its own — the expense is inside the evidence, and only when a gate
  * actually reads it.
+ *
+ * AND THE INTEGRATIONS GATE NOW ASKS THE PLAN'S OWN ORGANIZATION, which it did
+ * not. This function had the plan in its hand and still passed `session.tools` —
+ * the provider for the BrightPath fixture's organization, which is a demo with
+ * no Composio connections behind it at all. So gate 3, one of the three things
+ * standing between a workforce and go-live, answered "has the DEMO connected
+ * Gmail?" and printed the result under the customer's name. Every blocker on
+ * this checklist was about somebody else's connections, and the two directions
+ * it can be wrong are both bad: an owner told to reconnect a tool that is
+ * connected, or a go-live opened on connections that are not theirs.
+ *
+ * `toolsFor` fails closed on its own (lib/runtime/tools/organization.ts): a plan
+ * whose organization cannot be resolved gets a provider that reports every
+ * connection as "required" and refuses every call by name, so this gate comes
+ * back SHUT with the reason rather than falling through to the fixture's
+ * provider or the stub. Nothing about that is re-implemented here.
  */
 function gateInputs(session: RuntimeSession, plan: ApprovedPlan): ActivationDeps {
   return {
     scheduler: session.scheduler,
     packages: session.build,
-    integrations: session.tools,
+    integrations: session.toolsFor(plan.organizationId),
     sandbox: new SessionSandboxEvidence(session, plan),
   };
 }

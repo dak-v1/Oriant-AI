@@ -10,6 +10,13 @@
  * of a live workforce: what may each agent do through this connection, and is
  * anything missing that stops the plan going live.
  *
+ * ONE PLAN AND ONE ORGANIZATION, FOR BOTH HALVES OF EVERY ROW. A row here is a
+ * grant walked out of the current plan set beside the status of that connection,
+ * and the two are only comparable if they belong to the same business. The
+ * status therefore comes from `session.toolsFor(plan.organizationId)` and never
+ * from `session.tools`, which is the fixture's organization — see where the
+ * provider is resolved in `GET`.
+ *
  * BLOCKING IS THE ACTIVATION CHECKLIST'S ANSWER, NOT A SECOND OPINION. The rule
  * "`required: true` plus anything other than a live connection blocks go-live"
  * is written once, in `lib/runtime/schedule/activation.ts`, and the go-live
@@ -68,6 +75,11 @@ import { FixedSandboxEvidence, activationChecklist } from "@/lib/runtime/schedul
 import type { ActivationBlocker, AgentRuntimeState } from "@/lib/runtime/schedule/types";
 import { getRuntimeSession } from "@/lib/runtime/session";
 import { StubIntegrationProvider } from "@/lib/runtime/tools";
+import {
+  FIXTURE_ORGANIZATION_ENV,
+  UnresolvedOrganizationProvider,
+  resolveToolsOrganization,
+} from "@/lib/runtime/tools/organization";
 import type { IntegrationProvider } from "@/lib/runtime/types";
 
 export const dynamic = "force-dynamic";
@@ -368,6 +380,98 @@ const UNAVAILABLE = [
   },
 ] as const;
 
+/* ═══════════════════ Where these statuses came from ═══════════════════ */
+
+interface ProviderView {
+  kind: "stub" | "unresolved" | "external";
+  detail: string;
+}
+
+/**
+ * WHOSE CONNECTIONS THESE ARE, said out loud, about the object the rows above
+ * were actually read through.
+ *
+ * ASKED OF `provider`, NEVER OF `session.tools`. This disclosure used to name a
+ * different object from the one every status came from, so on a live deployment
+ * it described the fixture's provider while the rows described the customer's —
+ * the disclosure disagreeing with the thing it was disclosing.
+ *
+ * `unresolved` IS ITS OWN ANSWER AND NOT AN OUTAGE. In that case every row reads
+ * "required", which on the wire is indistinguishable from a business that has
+ * genuinely connected nothing — and the two have different fixes. One is "go and
+ * connect Gmail"; the other is "this plan does not say which business it belongs
+ * to, so nobody's Gmail was consulted". `UnresolvedOrganizationProvider` already
+ * carries the sentence that tells them apart, so it is quoted rather than
+ * restated here.
+ *
+ * AND THE LIVE ARM NAMES THE ORGANIZATION BY ASKING THE RESOLVER, not by
+ * printing `plan.organizationId`. They are the same id for every ingested plan
+ * and deliberately different for one case: the BrightPath fixture borrows
+ * whichever organization ORIANT_ORGANIZATION_ID nominates, so a screen echoing
+ * the plan's own id would attribute a real company's connected accounts to a
+ * demo that has none. `resolveToolsOrganization` is the one place that decision
+ * is made; this reads it rather than re-deriving it.
+ */
+function describeProvider(
+  provider: IntegrationProvider,
+  planOrganizationId: string,
+): ProviderView {
+  if (provider instanceof StubIntegrationProvider) {
+    return {
+      kind: "stub",
+      detail:
+        "Connection status on this screen comes from StubIntegrationProvider " +
+        "(lib/runtime/tools.ts), whose connected set is a constant. It is not an OAuth " +
+        "grant: it cannot expire, nobody authorised it, and it reports the same tools " +
+        "connected on every machine. Real status arrives with Role D's integration " +
+        "layer (PLAN_CONTRACT §8 Q3).",
+    };
+  }
+
+  if (provider instanceof UnresolvedOrganizationProvider) {
+    return {
+      kind: "unresolved",
+      detail:
+        "No connection status could be read for this plan, because the runtime could not " +
+        `work out whose connected accounts it acts through: ${provider.reason} Every ` +
+        "connection below is therefore shown as required and the go-live gate is shut. " +
+        "Nothing was read from any other organization's connections.",
+    };
+  }
+
+  const resolved = resolveToolsOrganization(planOrganizationId);
+  if (resolved.kind === "plan") {
+    return {
+      kind: "external",
+      detail:
+        `Connection status comes from the Composio connected accounts of organization ` +
+        `${resolved.organizationId}, which is the organization this plan names as its own.`,
+    };
+  }
+  if (resolved.kind === "fixture_fallback") {
+    return {
+      kind: "external",
+      detail:
+        `Connection status comes from the Composio connected accounts of organization ` +
+        `${resolved.organizationId}, which ${FIXTURE_ORGANIZATION_ENV} nominates to stand ` +
+        `in for the BrightPath demo fixture. The fixture is not a business and has no ` +
+        `connections of its own, so these belong to somebody else and are being borrowed ` +
+        `for the demo.`,
+    };
+  }
+
+  // Reachable only if a deployment wires in a provider of its own: the runtime's
+  // own resolver answers an unresolved organization with the refusing provider
+  // handled above. Reported as unattributable rather than guessed at.
+  return {
+    kind: "external",
+    detail:
+      "Connection status comes from an integration provider this deployment wired into " +
+      "the runtime session. This build cannot attribute it to an organization: " +
+      resolved.reason,
+  };
+}
+
 /* ═══════════════════════════ The read ═══════════════════════════ */
 
 export async function GET() {
@@ -379,7 +483,19 @@ export async function GET() {
   // One read, reused for the walk and for the checklist: two could not be shown
   // to be about the same set of grants.
   const plan = await session.currentPlan();
-  const provider = session.tools;
+  /* ── The same plan's organization, so the two halves of every row agree ──
+     The grants below are walked out of THIS plan and the connection status
+     beside each one is read from this provider, so they have to be about one
+     business or the screen is a fabrication: it was `session.tools`, the
+     BrightPath fixture's organization, which meant a row read "gmail — the plan
+     requires it — not connected" where the plan was the customer's and the
+     "not connected" was the demo's. One screen, two organizations, and nothing
+     on it said so.
+
+     `toolsFor` fails closed by itself when the organization cannot be resolved;
+     the refusing provider it returns reports every connection as "required" and
+     is reported below by name rather than as a mystery outage. */
+  const provider = session.toolsFor(plan.organizationId);
 
   /* ── The blocking rule, borrowed rather than restated ──
      Only the integrations gate is read; see the module header for why the
@@ -446,24 +562,10 @@ export async function GET() {
      * runtime is wired to a stub whose connected set is a constant, and a screen
      * reporting eight live connections on a machine where nothing was ever
      * authorised has to admit that or it is the most convincing lie in the
-     * product.
+     * product. `describeProvider` above says which of the three cases this is
+     * and, when there is one to name, whose organization answered.
      */
-    provider: session.tools instanceof StubIntegrationProvider
-      ? {
-          kind: "stub" as const,
-          detail:
-            "Connection status on this screen comes from StubIntegrationProvider " +
-            "(lib/runtime/tools.ts), whose connected set is a constant. It is not an OAuth " +
-            "grant: it cannot expire, nobody authorised it, and it reports the same tools " +
-            "connected on every machine. Real status arrives with Role D's integration " +
-            "layer (PLAN_CONTRACT §8 Q3).",
-        }
-      : {
-          kind: "external" as const,
-          detail:
-            "Connection status comes from the integration provider this deployment wired " +
-            "into the runtime session.",
-        },
+    provider: describeProvider(provider, plan.organizationId),
     activation: {
       // The gate as the checklist derived it. `satisfied` here is about
       // integrations alone and says nothing about whether the plan can go live.

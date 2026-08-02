@@ -53,6 +53,29 @@ import type {
 /** Every approval in this plan lands with the owner. */
 const OWNER = "user_sarah_chen";
 
+/**
+ * The organization this fixture belongs to, named so it can never be mistaken
+ * for a customer's.
+ *
+ * `ApprovedPlan.organizationId` is what decides whose connected accounts an
+ * agent acts through, so the value in the demo plan is the one value in this
+ * file that could do real damage if it were believed. A realistic uuid here
+ * would be indistinguishable from a live organization in a log line, a database
+ * row or a screenshot — and the first person to copy it out of the fixture would
+ * be pointing the runtime at whatever real organization happened to match. So
+ * the value SAYS demo, and so does the constant's name. Deliberately not a uuid.
+ *
+ * There are no Composio connections behind it, because BrightPath is not a
+ * business. That is what leaves ORIANT_ORGANIZATION_ID a job: when this fixture
+ * is the plan being served (lib/runtime/current-plan.ts falls back to it on a
+ * clone that has ingested nothing), live tool execution has no real owner to
+ * resolve, and the environment variable stands in so the demo can run through
+ * somebody's own connections. That is its ONLY remaining legitimate use — the
+ * fixture's missing owner, never a deployment-wide answer for real plans, which
+ * carry their own and must be executed through it.
+ */
+export const BRIGHTPATH_DEMO_ORGANIZATION_ID = "org-brightpath-demo-fixture";
+
 /** Shared business context, so the four prompts describe one company. */
 const COMPANY_CONTEXT =
   "BrightPath Home Services, Singapore. 18 staff handling roughly 650 " +
@@ -1144,6 +1167,7 @@ const businessOutcomes: BusinessOutcome[] = [
 
 export const BRIGHTPATH_PLAN: ApprovedPlan = {
   planId: "plan-brightpath-001",
+  organizationId: BRIGHTPATH_DEMO_ORGANIZATION_ID,
   version: 2,
   approvedAt: "2026-07-24T09:30:00+08:00",
   approvedBy: OWNER,

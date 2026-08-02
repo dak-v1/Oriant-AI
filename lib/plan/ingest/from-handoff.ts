@@ -34,6 +34,16 @@
  *     so this is defence in depth against the day somebody relaxes the mode
  *     without revisiting the grants.
  *
+ * AND ONE REFUSAL, which is the other half of the same principle. Where Role B
+ * is silent about the ORGANIZATION, there is no safe assumption to record: the
+ * organization is what decides whose connected accounts the agents act through,
+ * and the only "assumption" available is somebody else's Gmail. So a payload
+ * with no organization id is refused outright rather than defaulted. Role B has
+ * always sent it (`organization.id`) and it has always been on the
+ * `role_c_handoffs` row — the field was present and discarded, which is why the
+ * runtime ended up asking an environment variable a question the plan could
+ * already answer.
+ *
  * Nothing here parses prose into behaviour. `spec.forbidden` says "never issue
  * a refund"; the deny that enforces it comes from the operation registry, and
  * the sentence goes into the prompt. A guardrail derived from a regex over
@@ -105,6 +115,51 @@ function resolveApprovalOwner(displayName: string | undefined): string | null {
 
 function customSpecOf(config: Record<string, unknown>): CustomAgentSpec {
   return isRecord(config.spec) ? (config.spec as CustomAgentSpec) : {};
+}
+
+/* ═══════════════════════ Whose workforce this is ═══════════════════════ */
+
+/**
+ * The organization that owns the plan, or a blocking gap.
+ *
+ * `ApprovedPlan.organizationId` is what resolves credentials at run time, so
+ * this is the one field where the module's usual posture — assume the safe thing
+ * and record the assumption — has nothing to offer. There is no safe default
+ * organization. Any value invented here names a real business whose Composio
+ * connections the agents would then act through, so an absent id has to stop the
+ * build rather than be filled in.
+ *
+ * Blank is returned rather than thrown for the same reason `approvalOwner` is:
+ * `ingestHandoff` reports the WHOLE list of gaps to the ingest screen, and a
+ * throw would hand back one problem instead of all of them. The empty string is
+ * caught twice more downstream — `validateApprovedPlan` rejects it structurally,
+ * and the runtime refuses to execute a tool without a resolvable organization —
+ * so nothing runs on it. `runnable` is already false by the time it is returned.
+ *
+ * Read through `isRecord` even though the type says `organization` is present:
+ * the payload crosses the seam as JSON, and a handoff that lost the object
+ * entirely is precisely the case being refused.
+ */
+function organizationIdOf(
+  payload: WorkforceHandoffPayload,
+  gaps: IngestGap[],
+): string {
+  const organization: unknown = payload.organization;
+  const organizationId = isRecord(organization) ? asString(organization.id) : undefined;
+
+  if (!organizationId) {
+    gaps.push({
+      code: "organization_unresolved",
+      severity: "blocking",
+      message:
+        "This handoff does not say which business the workforce belongs to, so there is no way to tell whose connected accounts its agents should act through. Building it would mean either agents that can touch nothing, or agents pointed at whichever organization the server happened to be configured with — which would be somebody else's email and calendar.",
+      resolution:
+        "Re-fetch the handoff: Role B's payload carries `organization.id`, and it is the same value as the `organization_id` on the `role_c_handoffs` row and in the /api/integrations/[organizationId]/... routes the owner connected their tools through.",
+    });
+    return "";
+  }
+
+  return organizationId;
 }
 
 /* ═══════════════════════════ Tools ═══════════════════════════ */
@@ -374,6 +429,11 @@ function outcomesFor(agents: AgentSpec[]): BusinessOutcome[] {
 export function ingestHandoff(payload: WorkforceHandoffPayload): IngestResult {
   const gaps: IngestGap[] = [];
 
+  // Resolved first so its gap leads the list. "Which business is this?" is the
+  // question underneath every other one here — an unowned workforce cannot be
+  // given credentials, so nothing below it is worth reading if this failed.
+  const organizationId = organizationIdOf(payload, gaps);
+
   if (payload.workforce_plan.status !== "approved") {
     gaps.push({
       code: "plan_stale",
@@ -458,6 +518,10 @@ export function ingestHandoff(payload: WorkforceHandoffPayload): IngestResult {
 
   const plan: ApprovedPlan = {
     planId: payload.workforce_plan.id,
+    // Carried, not configured. The whole point of the field: the plan that was
+    // just ingested for a specific customer is the thing that knows whose
+    // credentials its agents act through, so nothing downstream has to be told.
+    organizationId,
     version: payload.workforce_plan.version,
     approvedAt: payload.workforce_plan.approved_at ?? payload.generated_at,
     // "pending-auth" is Role B's placeholder while they have no auth system.

@@ -40,6 +40,14 @@ const OWNER = "user_sarah_chen";
 const AGENT_ID = "finance-followup";
 const WORKFLOW_ID = "wf-overdue-sweep";
 
+/**
+ * The base plan's owning organization. Named like `planId` above so it reads as
+ * test data at a glance: `organizationId` decides whose connected accounts a
+ * plan's agents act through, and a fixture value that looked like a real one
+ * would be the wrong thing to copy out of this file.
+ */
+const ORGANIZATION_ID = "org-validator-fixture";
+
 /* ═══════════════════════ The minimal valid base ═══════════════════════ */
 
 const FETCH_INVOICES: StepSpec = {
@@ -179,6 +187,7 @@ function baseOutcome(over: Partial<BusinessOutcome> = {}): BusinessOutcome {
 function basePlan(over: Partial<ApprovedPlan> = {}): ApprovedPlan {
   return {
     planId: "plan-invalid-fixture",
+    organizationId: ORGANIZATION_ID,
     version: 1,
     approvedAt: "2026-07-24T09:30:00+08:00",
     approvedBy: OWNER,
@@ -214,6 +223,24 @@ export const VALID_BASE_PLAN: ApprovedPlan = basePlan();
 export const EMPTY_PLAN: ApprovedPlan = basePlan({
   agents: [],
   businessOutcomes: [],
+});
+
+/**
+ * Rule 0 — the plan does not say which business it belongs to.
+ *
+ * `organizationId` is what resolves credentials: it decides whose Gmail the
+ * `act` step below actually sends from. A plan that reaches the runtime without
+ * one has exactly two possible behaviours, and both are defects — refuse every
+ * tool call, or act through whichever organization the process was configured
+ * with, which is another customer's connected accounts.
+ *
+ * Blank rather than deleted, because blank is the shape the ingest adapter
+ * produces: it records a blocking gap and leaves the field empty, the same way
+ * MISSING_APPROVAL_OWNER models an owner that would not resolve. The gate has to
+ * catch the empty string, not just the absent key.
+ */
+export const MISSING_ORGANIZATION_ID: ApprovedPlan = basePlan({
+  organizationId: "",
 });
 
 /** Rule 1 — the act step calls an operation the agent was never granted. */
@@ -499,6 +526,11 @@ export const INVALID_PLANS: {
     name: "plan contains no agents",
     expectedRule: 0,
     plan: EMPTY_PLAN,
+  },
+  {
+    name: "plan names no owning organization",
+    expectedRule: 0,
+    plan: MISSING_ORGANIZATION_ID,
   },
   {
     name: "step calls an operation the agent was not granted",

@@ -72,7 +72,11 @@ function deps(seed: string): PipelineDeps & {
       sleep: async () => {},
     },
     scheduler,
-    integrations: provider,
+    // Mirrors the not-live branch of `toolsFor` in lib/runtime/session.ts: with
+    // tools off every organization gets the one stub, because a simulated send is
+    // not attributable to anybody — and because the checks below assert against
+    // `provider`'s call log, which a per-organization stub would split in two.
+    integrationsFor: () => provider,
     activatedBy: "user_sarah_chen",
     buildStore,
     schedulerStore,

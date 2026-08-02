@@ -73,6 +73,9 @@ export type OperatingMode =
 
 export interface ApprovedPlan {
   planId: string;
+  /** Whose workforce this is: the business that owns the plan, and therefore
+      whose connected accounts its agents act through. REQUIRED. */
+  organizationId: string;
   /** Bumps on every approval. */
   version: number;
   approvedAt: string;   // ISO 8601
@@ -90,6 +93,22 @@ export interface ApprovedPlan {
   };
 }
 ```
+
+> **Why the plan carries its owner.** A workforce belongs to a business, and the
+> runtime has to know which one before it can execute anything: OAuth connections
+> are held per organization, so `organizationId` is what decides whose Gmail a
+> send comes from. D already has the value — it is the `organization.id` on the
+> handoff payload and the `organization_id` on the `role_c_handoffs` row — so
+> putting it on the plan costs nothing and removes the alternative, which is one
+> organization per deployment configured by hand (`ORIANT_ORGANIZATION_ID`). That
+> alternative is a wrong answer the moment two customers share a server. The
+> environment variable survives only as the owner of the built-in BrightPath
+> fixture, which genuinely has none.
+>
+> It is required rather than optional, and blank counts as absent: an optional
+> field is one an adapter can skip, and a plan with no resolvable organization
+> must refuse to execute tools rather than fall back to somebody else's
+> connections.
 
 ### 3.2 Business outcomes
 

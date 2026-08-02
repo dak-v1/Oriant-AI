@@ -57,7 +57,8 @@ import { InMemorySchedulerStore } from "./schedule/store";
 import type { SchedulerDeps, SchedulerStore } from "./schedule/types";
 import { InMemoryRunStore, SystemClock, createIdFactory } from "./store";
 import { StubIntegrationProvider } from "./tools";
-import { createComposioIntegrationProvider } from "./tools/composio-sdk";
+import { requireComposioApiKey } from "./tools/composio-sdk";
+import { liveIntegrationProviderFor } from "./tools/organization";
 import { currentPlan, resolvePlanState, type PlanState } from "./current-plan";
 import { resolveActivePlan } from "./active-plan";
 import type { IntegrationProvider, Reasoner, RunStore } from "./types";
@@ -162,7 +163,9 @@ export function runtimeDataDir(): string {
 export interface RuntimeSession {
   mode: RuntimeMode;
   /**
-   * Whether `tools` can reach a real customer.
+   * Whether the providers this session hands out can reach a real customer.
+   * True means `tools` and every `toolsFor(...)` is a Composio client or a
+   * refusal; false means all of them are the stub.
    *
    * SEPARATE FROM `mode`, and every safety guard must ask THIS one. `mode` is
    * about the reasoner; since `ORIANT_RUNTIME_TOOLS` was split out, a session
@@ -213,19 +216,57 @@ export interface RuntimeSession {
    */
   deployedPlan(): Promise<ApprovedPlan | null>;
   /**
-   * Executor dependencies carrying THAT plan's global policy.
+   * Executor dependencies carrying THAT plan's global policy AND THAT PLAN'S
+   * HANDS.
    *
    * `globalPolicy` is org-wide DENIES and the quiet window, so running an agent
    * with another plan's copy is a safety bug, not an inaccuracy: a capability
    * the owner forbade would not be forbidden. Any caller that actually executes
    * must build its deps from the plan it is executing, which is what this is
    * for. `executor` below is the seeded one and must not be used to run work.
+   *
+   * `tools` belongs to exactly the same decision and for a sharper reason. The
+   * provider is scoped to one organization's Composio connected accounts, so a
+   * plan executed through another plan's provider does not merely apply the
+   * wrong quiet hours — it sends from the wrong company's Gmail, to that
+   * company's customers, under that company's name. Wrong quiet hours can be
+   * apologised for. So the plan's `organizationId` chooses the provider here,
+   * and `session.tools` is not used to run work any more than `session.executor`
+   * is.
    */
   executorFor(plan: ApprovedPlan): ExecutorOptions;
   runStore: RunStore;
   buildStore: BuildStore;
   schedulerStore: SchedulerStore;
+  /**
+   * THE PROCESS-WIDE PROVIDER, AND THE ODD ONE OUT. It acts as the FIXTURE's
+   * organization, which is to say: as ORIANT_ORGANIZATION_ID when that is set,
+   * and as a provider that refuses everything by name when it is not.
+   *
+   * KEPT FOR CALLERS THAT GENUINELY HAVE NO PLAN IN HAND — a status screen
+   * asking "is anything connected on this deployment", a diagnostic, the
+   * `instanceof StubIntegrationProvider` check that lets a screen admit its
+   * numbers are simulated. For those, "the deployment's own organization" is a
+   * coherent question and this is the answer.
+   *
+   * IT IS THE WRONG OBJECT FOR ANYTHING THAT EXECUTES, AND FOR ANYTHING THAT
+   * REPORTS ON A SPECIFIC PLAN. Both of those know an organization — it is on
+   * the plan — and both must use `toolsFor(plan.organizationId)`. Reading a
+   * customer's activation checklist through this provider answers "is BrightPath
+   * connected?" and prints the result under the customer's name.
+   */
   tools: IntegrationProvider;
+  /**
+   * The provider for ONE organization's connected accounts. What every caller
+   * holding a plan should use: `session.toolsFor(plan.organizationId)`.
+   *
+   * Live, this is the memoised Composio provider for that organization, or one
+   * that refuses by name when the organization cannot be resolved — never
+   * another organization's, and never the stub (lib/runtime/tools/
+   * organization.ts). With tools off it is the session's single stub, whatever
+   * the organization, because a simulated send is not attributable to anyone.
+   */
+  toolsFor(organizationId: string): IntegrationProvider;
   reasoner: Reasoner;
   executor: ExecutorOptions;
   build: BuildDeps;
@@ -305,27 +346,63 @@ function createSession(): RuntimeSession {
   const stores = createStores(storage);
 
   /*
-   * THE HANDS FOLLOW THE BRAIN, and until now they did not.
+   * THE HANDS FOLLOW THE BRAIN, and they now also follow the PLAN.
    *
    * `.env.example` has always promised that live mode means "real LLM for
    * `reason` steps AND real tool clients for `fetch`/`act` steps". Only the
-   * first half was true: this line mounted the stub unconditionally, so a
+   * first half was true: this file mounted the stub unconditionally, so a
    * deployment configured for live ran a real model against simulated hands and
    * reported success for sends that never happened. That is the worst failure
    * available here — worse than refusing — because nothing downstream can tell.
    *
-   * `createComposioIntegrationProvider()` throws `ComposioToolsConfigError` when
-   * COMPOSIO_API_KEY or ORIANT_ORGANIZATION_ID is missing, exactly as
-   * `AiAndReasoner` throws below. Loud at wiring, never a silent stub.
-   *
    * ORIANT_RUNTIME_TOOLS is its own switch and defaults to the stub whatever
    * the mode — see `liveTools`. Reaching a real customer takes a variable that
    * says so and nothing else does.
+   *
+   * WHAT CHANGED, AND WHAT IS STILL LOUD AT WIRING. The provider used to be
+   * built here, once, from ORIANT_ORGANIZATION_ID — one organization per
+   * process, chosen by hand, next to plans that each already carried their own
+   * owner. It is now built per organization, on demand, from
+   * `ApprovedPlan.organizationId` (lib/runtime/tools/organization.ts).
+   *
+   * That moves the ORGANIZATION out of the wiring check, and it should move:
+   * an organization is a property of a plan, and demanding one at boot is what
+   * made a second customer impossible. It does NOT move the API KEY, which is a
+   * genuine deployment setting and the same for every organization on the
+   * server. So the key is still asserted right here, at construction, in the
+   * style `AiAndReasoner` uses below — a deployment that asked for live tools
+   * without credentials stops now, with the variable named, rather than at the
+   * first `act` step of somebody's workflow.
    */
   const toolsLive = liveTools(mode);
-  const tools: IntegrationProvider = toolsLive
-    ? createComposioIntegrationProvider()
-    : new StubIntegrationProvider();
+  if (toolsLive) requireComposioApiKey();
+
+  // ONE stub for the whole session rather than one per plan. `StubToolClient`
+  // keeps a call log that the sandbox and the verify targets assert against, and
+  // a fresh stub per lookup would empty it between the run and the assertion.
+  // Null in live mode so there is no stub in scope to fall back to by accident —
+  // the fail-closed rule below is easier to keep when the wrong answer does not
+  // exist.
+  const stubTools = toolsLive ? null : new StubIntegrationProvider();
+
+  /*
+   * WHOSE CONNECTIONS, ASKED PER CALLER.
+   *
+   * Live: the memoised provider for that organization, or one that refuses by
+   * name. Never another organization's, never the stub — see the header of
+   * lib/runtime/tools/organization.ts for why a stub is the one fallback that
+   * must not exist here.
+   *
+   * Not live: the session's stub, whatever the organization was. Deliberately
+   * not one stub per organization — a simulated send is not attributable to
+   * anybody, so partitioning the pretend calls by customer would suggest an
+   * isolation that is not being tested.
+   */
+  const toolsFor = (organizationId: string): IntegrationProvider => {
+    if (stubTools !== null) return stubTools;
+    return liveIntegrationProviderFor(organizationId);
+  };
+
   const clock = new SystemClock();
   const newId = createIdFactory();
 
@@ -338,11 +415,14 @@ function createSession(): RuntimeSession {
   const seedPlan = BRIGHTPATH_PLAN;
 
   // One factory, so the seeded `executor` below and every per-plan set built by
-  // `executorFor` cannot drift apart in anything except the policy that is the
-  // whole point of the distinction.
+  // `executorFor` cannot drift apart in anything except the two things that are
+  // the whole point of the distinction: the plan's policy and the plan's hands.
   const executorWith = (plan: ApprovedPlan): ExecutorOptions => ({
     store: stores.runStore,
-    tools,
+    // Not `tools`. That provider belongs to the fixture's organization; this one
+    // belongs to the plan being executed, which is the only organization whose
+    // Gmail may send on its behalf.
+    tools: toolsFor(plan.organizationId),
     reasoner,
     clock,
     newId,
@@ -368,7 +448,11 @@ function createSession(): RuntimeSession {
     runStore: stores.runStore,
     buildStore: stores.buildStore,
     schedulerStore: stores.schedulerStore,
-    tools,
+    // The fixture's organization, said once here rather than left implicit.
+    // `seedPlan` IS the fixture, so this is the same resolution every other
+    // caller gets — including the refusal when the fixture has no stand-in.
+    tools: toolsFor(seedPlan.organizationId),
+    toolsFor,
     reasoner,
     executor: executorWith(seedPlan),
     build: {

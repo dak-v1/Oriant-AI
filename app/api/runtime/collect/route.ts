@@ -32,11 +32,51 @@
  * There is no force flag here either, for the reason `pipeline/run.ts` gives at
  * length: the gates are the product.
  *
+ * BOTH ARMS ARE GATED NOW, AND THE ARGUMENT FOR EXEMPTING ONE OF THEM IS WORTH
+ * KEEPING AS A WARNING. The Supabase arm's payload comes out of
+ * `role_c_handoffs` through the service-role key, where the organization was
+ * written by Role B's own finalize step — so, it was reasoned, there is no
+ * caller-supplied id in it to distrust and ORIANT_ALLOWED_ORGANIZATION_IDS does
+ * not apply. The premise is true. The conclusion does not follow, because the
+ * writer that fills that table is `POST /api/planner/:workforcePlanId/
+ * finalize-handoff`, which has NO AUTH CHECK OF ANY KIND, and
+ * `GET /api/planner/context` — also unauthenticated — hands out the plan and
+ * organization ids to call it with. So an anonymous caller finalises a 'ready'
+ * row for any already-approved plan whose tools are connected, POSTs `{}` here,
+ * and the pass runs with LIVE Composio clients. The id's provenance was never
+ * the question; authority to trigger an activation is, and the allowlist is the
+ * only thing on this deployment that answers it. See
+ * lib/runtime/pipeline/organization-gate.ts.
+ *
+ * THE CHECK GOES BEFORE THE CLAIM, WHICH IS WHY IT IS NOT WRITTEN INLINE HERE.
+ * `lib/runtime/pipeline/gated-claim.ts` resolves the target through
+ * `source.pending()` — the accessor that returns a handoff's organization while
+ * claiming nothing — gates it, and only then claims. A refused handoff is left
+ * 'ready' and collects unchanged the day an operator permits its organization.
+ * Refusing after the claim would leave the row 'consumed' with nothing deployed,
+ * which is the wedge lib/runtime/pipeline/source.ts was rewritten to remove.
+ *
+ * BOTH OF THOSE 403s ARE THE EARLY, EXPLAINING REFUSAL. The allowlist is enforced
+ * where a live Composio client is handed out (`liveIntegrationProviderFor` in
+ * lib/runtime/tools/organization.ts), which is what every path into live
+ * execution goes through — this route among them, at the activate stage, through
+ * `session.toolsFor`. Answering here first is what buys the untouched row: a pass
+ * that only refused at its first `act` step would have claimed the handoff,
+ * ingested it and written it in as the current plan on the way, and the caller
+ * would get a failed run instead of a sentence naming the variable. The gate
+ * explains; the provider is the one that cannot be routed around.
+ *
+ * NEITHER GET IS GATED, on either arm. They claim nothing and run nothing, so
+ * there is no organization to act as; the gate is about what a request would DO
+ * with somebody's connected accounts, and a listing does nothing with anybody's.
+ *
  * Unauthenticated, like every other /api/runtime/* route (ROLE_C_PLAN M7). This
  * one is a write path into a live workforce and must be gated before deployment.
  */
 import { NextResponse } from "next/server";
 import { ROLE_B_HANDOFF_RESOLVED } from "@/lib/plan/fixtures/role-b-handoff";
+import { assertedActor } from "@/lib/runtime/pipeline/attribution";
+import { claimIfPermitted } from "@/lib/runtime/pipeline/gated-claim";
 import { runPipeline } from "@/lib/runtime/pipeline/run";
 import type { PipelineResult } from "@/lib/runtime/pipeline/types";
 import {
@@ -46,7 +86,7 @@ import {
   type CollectedHandoff,
   type HandoffSource,
 } from "@/lib/runtime/pipeline/source";
-import { getRuntimeSession } from "@/lib/runtime/session";
+import { getRuntimeSession, type RuntimeSession } from "@/lib/runtime/session";
 import { SupabaseConfigurationError, supabaseLive } from "@/lib/server/supabase";
 
 export const dynamic = "force-dynamic";
@@ -80,12 +120,17 @@ function fixtureHandoff(): CollectedHandoff {
  * Throws `SupabaseConfigurationError` rather than returning null so the one
  * handler below turns every "not configured" into the same 503 — a collector
  * pointed at nothing must say so, not report an empty queue.
+ *
+ * The session is PASSED IN rather than fetched here, so both handlers read it
+ * exactly once and the gate below judges the same object this source was built
+ * from. It is memoised on `globalThis`, so this changes no behaviour; it changes
+ * how obvious it is that `toolsLive` and the clock came from one place.
  */
-function sourceFor(fixture: boolean): HandoffSource {
+function sourceFor(fixture: boolean, session: RuntimeSession): HandoffSource {
   if (fixture) return new StaticHandoffSource([fixtureHandoff()]);
   if (!supabaseLive()) throw new SupabaseConfigurationError();
   // The scheduler's clock, because lib/runtime never reads a wall clock itself.
-  return new SupabaseHandoffSource({ clock: getRuntimeSession().scheduler.clock });
+  return new SupabaseHandoffSource({ clock: session.scheduler.clock });
 }
 
 function errorResponse(err: unknown): NextResponse {
@@ -130,7 +175,7 @@ export async function GET(request: Request) {
   const fixture = new URL(request.url).searchParams.get("fixture") === "1";
 
   try {
-    const source = sourceFor(fixture);
+    const source = sourceFor(fixture, getRuntimeSession());
     const { collectable, unreadable } = await source.pending();
     return NextResponse.json({
       source: fixture ? "fixture" : "supabase",
@@ -167,51 +212,90 @@ export async function POST(request: Request) {
   }
 
   const fixture = body.fixture === true;
+
+  // An empty or blank `handoffId` means "the oldest", which is what `!targetId`
+  // used to say. Written out because the two are now different code paths —
+  // `""` reaching the claim as an explicit target would answer 409 to a request
+  // that meant "give me whatever is next".
+  const requested = typeof body.handoffId === "string" ? body.handoffId.trim() : "";
+  const handoffId = requested === "" ? undefined : requested;
+
+  /*
+   * ONE SESSION READ FOR THE WHOLE HANDLER, and earlier than it used to be.
+   * It is memoised on `globalThis`, so the object is the same one either way;
+   * what moves is WHEN a live-tools deployment missing COMPOSIO_API_KEY throws —
+   * now before anything is claimed rather than after, which is the better of the
+   * two orders. `session.toolsLive` is what the gate below reads, and NOT
+   * `session.mode`: a session can report "fixture" while holding live Composio
+   * clients, which is the one deployment that can reach a customer.
+   */
+  let session: RuntimeSession;
   let source: HandoffSource;
   try {
-    source = sourceFor(fixture);
+    session = getRuntimeSession();
+    source = sourceFor(fixture, session);
   } catch (err) {
     return errorResponse(err);
   }
 
   let handoff: CollectedHandoff;
   try {
-    let targetId = body.handoffId;
-    if (!targetId) {
-      const { collectable, unreadable } = await source.pending();
-      const oldest = collectable[0];
-      if (!oldest) {
-        // Not an error: a poller asking an empty queue is the healthy case.
-        // Unreadable rows are named, because "nothing is waiting" would be a
-        // lie to an operator whose queue is full of rows nobody can parse.
-        return NextResponse.json({
-          collected: false,
-          reason:
-            unreadable.length > 0
-              ? `Nothing runnable is waiting. ${unreadable.length} waiting row(s) could not be read; Role B must re-finalise them.`
-              : "Nothing is waiting for Role C.",
-          unreadable,
-        });
-      }
-      targetId = oldest.id;
+    /*
+     * RESOLVE, GATE, THEN CLAIM — in `lib/runtime/pipeline/gated-claim.ts`, and
+     * in that order for the reason its header gives at length: a refused handoff
+     * has to be left exactly as it was found, 'ready' and collectable, because
+     * `workforce_plan_id` is UNIQUE and a row wrongly marked 'consumed' has no
+     * successor to collect instead.
+     *
+     * BOTH ARMS GO THROUGH IT. The fixture arm's payload names a real
+     * organization uuid out of Role B's seed data — not the
+     * `org-brightpath-demo-fixture` stand-in `resolveToolsOrganization` treats
+     * specially — so with live tools `{"fixture": true}` reaches a real
+     * company's connected accounts, and the Supabase arm reaches whichever
+     * company an unauthenticated `finalize-handoff` deposited a row for. One
+     * call, because the difference between the arms was never a difference in
+     * who is allowed to put a workforce live.
+     */
+    const attempt = await claimIfPermitted(source, handoffId, session.toolsLive);
+
+    if (attempt.outcome === "empty") {
+      // Not an error: a poller asking an empty queue is the healthy case.
+      // Unreadable rows are named, because "nothing is waiting" would be a
+      // lie to an operator whose queue is full of rows nobody can parse.
+      const { unreadable } = attempt.scan;
+      return NextResponse.json({
+        collected: false,
+        reason:
+          unreadable.length > 0
+            ? `Nothing runnable is waiting. ${unreadable.length} waiting row(s) could not be read; Role B must re-finalise them.`
+            : "Nothing is waiting for Role C.",
+        unreadable,
+      });
     }
 
-    const claimed = await source.claim(targetId);
-    if (!claimed) {
+    if (attempt.outcome === "refused") {
+      // 403, and the row is untouched — still 'ready', still first in the queue.
+      // A descriptor turned into a response here; the gate lives under
+      // lib/runtime, which imports nothing from Next.
+      return NextResponse.json(attempt.refusal.body, { status: attempt.refusal.status });
+    }
+
+    if (attempt.outcome === "unclaimable") {
       // The conditional UPDATE matched no row. Another collector won it, or it
       // is no longer 'ready'. 409 rather than 404: the request was reasonable
       // and the row's state moved underneath it.
       return NextResponse.json(
         {
           collected: false,
-          handoffId: targetId,
+          handoffId: attempt.handoffId,
           error:
             "This handoff is not collectable: it was already claimed, consumed or failed. Another collector may hold it.",
         },
         { status: 409 },
       );
     }
-    handoff = claimed;
+
+    handoff = attempt.handoff;
   } catch (err) {
     if (err instanceof HandoffPayloadError) {
       // Claimed, unreadable, and already marked 'failed' by the source. 422:
@@ -224,8 +308,6 @@ export async function POST(request: Request) {
     return errorResponse(err);
   }
 
-  const session = getRuntimeSession();
-
   let result: PipelineResult;
   try {
     result = await runPipeline(
@@ -233,10 +315,21 @@ export async function POST(request: Request) {
       {
         build: session.build,
         scheduler: session.scheduler,
-        integrations: session.tools,
-        // Recorded on the deployment. A deployment that cannot say who put it
-        // live is not evidence of anything, so this has a real default.
-        activatedBy: body.activatedBy ?? "user_sarah_chen",
+        // NOT `session.tools`. The row this route just claimed carries
+        // `organizationId` — it is in the response body a dozen lines below — and
+        // the plan ingest builds from it carries the same id. A fixed provider
+        // here judged every collected workforce against the BrightPath fixture's
+        // connections, which is the one organization guaranteed to have none.
+        // The pipeline resolves it once ingest has run; see
+        // `PipelineDeps.integrationsFor`.
+        integrationsFor: (organizationId) => session.toolsFor(organizationId),
+        // Recorded on the deployment, MARKED FOR WHAT IT IS. This route is
+        // unauthenticated, so `body.activatedBy` is a claim and nothing more;
+        // the old `?? "user_sarah_chen"` put a real person from
+        // lib/plan/users.ts on the record of an anonymous activation. See
+        // lib/runtime/pipeline/attribution.ts — it grants nothing and refuses
+        // nothing, it only stops the audit field saying more than it knows.
+        activatedBy: assertedActor(body.activatedBy),
       },
     );
   } catch (err) {

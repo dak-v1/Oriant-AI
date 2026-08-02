@@ -502,6 +502,20 @@ function checkStructure(plan: ApprovedPlan, errors: PlanValidationError[]): void
   /* ── Plan header ── */
 
   if (!isNonEmptyString(plan.planId)) fail("Plan has no planId.");
+  // What this protects: an act step executing through the wrong business's
+  // connected accounts. `organizationId` is the plan's answer to "whose Gmail is
+  // about to send", and it is the only answer the runtime is allowed to use —
+  // the process-wide fallback exists solely for the built-in fixture, which has
+  // no owner. So a plan that arrives without one must be stopped at the gate
+  // rather than left to be resolved later by whatever the server was configured
+  // with. Blank counts as absent: the ingest adapter emits an empty string when
+  // Role B's payload names no organization, and that is the shape that would
+  // otherwise reach execution.
+  if (!isNonEmptyString(plan.organizationId)) {
+    fail(
+      "Plan has no organizationId, so nothing records which business this workforce belongs to. It is the field credentials are resolved from, and a plan without one either cannot execute a single tool or executes through some other customer's connected accounts.",
+    );
+  }
   if (!isFiniteNumber(plan.version)) {
     fail(`Plan has version ${String(plan.version)}, which is not a number. Re-approval is detected by comparing it.`);
   }

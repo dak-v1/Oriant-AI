@@ -55,20 +55,32 @@ export function requireComposioApiKey(override?: string): string {
 }
 
 /**
- * The organization whose connected accounts this runtime acts through.
+ * ORIANT_ORGANIZATION_ID, WHICH IS NOW THE FIXTURE'S FALLBACK AND NOTHING ELSE.
  *
- * NOT A DEFAULT — a throw. Composio scopes every connected account to a user
- * id, and this application uses the organization id for that (see the header of
- * ./composio.ts). Guessing it would mean executing one business's Gmail under
- * another business's identity, so an unset variable stops live mode rather than
- * picking something plausible.
+ * This used to be how live tool execution learned whose Gmail to send from, for
+ * every plan. That was wrong, and wrong in a way configuration could not fix:
+ * the answer was already on the plan. Role B's handoff carries
+ * `organization.id`, `role_c_handoffs.organization_id` stores it, and
+ * `ApprovedPlan.organizationId` now holds it — so an ingested plan knows its own
+ * owner and must be executed through it. One organization per process, set by
+ * hand, is a wrong answer waiting for the second customer on the same server.
+ *
+ * WHAT IS LEFT FOR IT. The BrightPath fixture is a demo company that does not
+ * exist, so `BRIGHTPATH_DEMO_ORGANIZATION_ID` has no Composio connections behind
+ * it and never will. When the fixture is the plan being served — a clone that
+ * has ingested nothing (lib/runtime/current-plan.ts) — there is no real owner to
+ * resolve, and this variable stands in so a demo can run through somebody's own
+ * connections. That is its ONLY legitimate use. The decision to reach for it
+ * lives in ./organization.ts, which reaches for it for the fixture and refuses
+ * for anything else; this function only reads and validates.
+ *
+ * NOT A DEFAULT, even there — a throw. Composio scopes every connected account
+ * to a user id, and this application uses the organization id for that (see the
+ * header of ./composio.ts). Guessing would mean executing one business's Gmail
+ * under another business's identity.
  *
  * The value is the `organization_id` that `/api/integrations/[organizationId]/
- * [toolKey]/connect` was called with when the owner linked their tools — the
- * same id on the `role_c_handoffs` row this workforce was built from. Set
- * ORIANT_ORGANIZATION_ID to it, or pass `organizationId` explicitly when a
- * caller already has one in hand (the pipeline does: `CollectedHandoff.
- * organizationId`), which is the better path once activation is wired per org.
+ * [toolKey]/connect` was called with when the owner linked their tools.
  */
 export function requireComposioOrganizationId(override?: string): string {
   const env = typeof process === "undefined" ? undefined : process.env;
@@ -93,7 +105,12 @@ export function createComposioClient(apiKey?: string): ComposioExecutionClient {
 
 export interface ComposioProviderWiring
   extends Omit<ComposioIntegrationProviderOptions, "client" | "organizationId"> {
-  /** Defaults to ORIANT_ORGANIZATION_ID; pass it when the caller knows better. */
+  /**
+   * The organization to act as. PASS IT — it is `ApprovedPlan.organizationId`,
+   * and every plan carries one. Omitting it falls back to ORIANT_ORGANIZATION_ID,
+   * which is now correct for the fixture plan alone; see
+   * `requireComposioOrganizationId` and ./organization.ts.
+   */
   organizationId?: string;
 }
 
@@ -114,4 +131,82 @@ export function createComposioIntegrationProvider(
     organizationId,
     client: createComposioClient(apiKey),
   });
+}
+
+/* ═══════════════ One provider per organization, per process ═══════════════ */
+
+interface CachedProvider {
+  /** The key this provider was built with; a rotation must not be served the
+      old client. See `providerForOrganization`. */
+  apiKey: string;
+  provider: ComposioIntegrationProvider;
+}
+
+interface ProviderCacheGlobal {
+  __oriantComposioProviders?: Map<string, CachedProvider>;
+}
+
+/**
+ * The Composio provider for ONE organization, built once and reused.
+ *
+ * CACHED FOR THE SAME REASON `getPool` CACHES THE POSTGRES POOL: this is a
+ * shared resource with state, not a value. A `ComposioIntegrationProvider`
+ * carries a connection snapshot, an in-flight scan and a TTL, and those exist to
+ * make `getToolClient`/`getIntegrationStatus` answerable SYNCHRONOUSLY (see the
+ * header of ./composio.ts). Constructing one per request would defeat both
+ * halves: every call would rescan Composio, and every scan would still be in
+ * flight when the synchronous getters were asked — so they would answer
+ * "required" forever, which reads as "the owner has not connected Gmail" and
+ * blocks activation on a workforce whose tools are perfectly well connected.
+ *
+ * KEYED BY ORGANIZATION, which is the entire point. Two customers on one server
+ * get two providers, each scanning its own connected accounts; the same customer
+ * asked twice gets one. A single-entry cache like `getPool`'s would evict one
+ * customer's snapshot every time the other executed a step, and a cache with no
+ * key at all is the process-wide provider this change exists to remove.
+ *
+ * NO ENVIRONMENT FALLBACK HERE, deliberately. A blank organization id throws
+ * rather than quietly becoming ORIANT_ORGANIZATION_ID, because the caller that
+ * passed a blank one is a plan that does not know its owner — and answering that
+ * with somebody else's connections is the exact failure this module was rewritten
+ * to make impossible. The one caller allowed to reach for the environment does it
+ * explicitly, for the fixture, in ./organization.ts.
+ *
+ * Held on `globalThis` alongside the runtime session and the SQL pool, so a
+ * dev-server hot reload does not orphan an in-flight connection scan and start a
+ * second one against the same organization.
+ */
+export function providerForOrganization(organizationId: string): ComposioIntegrationProvider {
+  const orgId = organizationId.trim();
+  if (orgId.length === 0) {
+    throw new ComposioToolsConfigError([
+      "organizationId (this plan does not say which business it belongs to, and " +
+        "there is no process-wide default to borrow — see ApprovedPlan.organizationId)",
+    ]);
+  }
+
+  // Read once, so the cached entry and the client inside it cannot disagree
+  // about which key built it.
+  const apiKey = requireComposioApiKey();
+
+  const g = globalThis as unknown as ProviderCacheGlobal;
+  const cache = (g.__oriantComposioProviders ??= new Map<string, CachedProvider>());
+
+  const hit = cache.get(orgId);
+  // The key comparison mirrors `getPool`'s `key === connectionString`: a
+  // credential that changed under a live process (a rotation, or a test that
+  // sets the variable and resets the session) must rebuild, not be served a
+  // client still authenticating with the old one.
+  if (hit !== undefined && hit.apiKey === apiKey) return hit.provider;
+
+  const provider = createComposioIntegrationProvider({ organizationId: orgId, apiKey });
+  cache.set(orgId, { apiKey, provider });
+  return provider;
+}
+
+/** Discards every cached provider. Tests and credential rotation only; a
+    running workforce keeps its snapshots. */
+export function resetOrganizationProviders(): void {
+  const g = globalThis as unknown as ProviderCacheGlobal;
+  g.__oriantComposioProviders = undefined;
 }

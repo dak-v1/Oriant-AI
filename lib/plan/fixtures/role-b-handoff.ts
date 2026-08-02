@@ -132,3 +132,28 @@ export const ROLE_B_HANDOFF_RESOLVED: WorkforceHandoffPayload = {
     config: { ...agent.config, approvalOwner: "Sarah Chen" },
   })),
 };
+
+/**
+ * THE ONE FIELD INGEST CANNOT DEFAULT, MISSING.
+ *
+ * `organization_unresolved` is the only blocking gap Role B's real payload never
+ * produces — `organization.id` has always been on it — so without a payload that
+ * lacks one, both halves of the refusal are code nothing executes: the gap in
+ * lib/plan/ingest/from-handoff.ts and the runtime's matching refusal in
+ * lib/runtime/tools/organization.ts, which is the module that decides whose
+ * Gmail an agent sends from. lib/runtime/verify/tools.ts (TOOLS-16) ingests this
+ * and follows the blank id through to the hands, requiring both to refuse.
+ *
+ * BLANK RATHER THAN ABSENT. `organizationIdOf` reads the id through `asString`,
+ * which rejects `""`, `"   "` and a missing object identically, so every shape
+ * lands on the same gap. Blank is the one that types as
+ * `WorkforceHandoffPayload` without a cast — and it is also the shape that
+ * actually arrives, since the id crosses the seam as a JSON column that is
+ * empty far more often than the enclosing object is dropped. Deleting the key
+ * instead would have made this fixture the only one in the file that has to lie
+ * about its own type to exist.
+ */
+export const ROLE_B_HANDOFF_UNOWNED: WorkforceHandoffPayload = {
+  ...ROLE_B_HANDOFF_RESOLVED,
+  organization: { ...ROLE_B_HANDOFF.organization, id: "   " },
+};
