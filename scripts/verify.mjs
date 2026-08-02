@@ -131,7 +131,7 @@ const TARGETS = {
     entry: "lib/runtime/verify/pg.ts",
     out: "lib/runtime/verify/pg.js",
     label: "PG — the Postgres stores, executed",
-    expectedChecks: 11,
+    expectedChecks: 12,
     /*
      * OPT-IN. Needs a real DATABASE_URL, and RUNTIME_SETUP.md §1 promises a
      * clean clone runs on `npm install && npm run dev` with an empty .env — so

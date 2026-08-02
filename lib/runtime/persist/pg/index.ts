@@ -25,7 +25,7 @@
 import type { BuildStore } from "../../build/types";
 import type { SchedulerStore } from "../../schedule/types";
 import type { RunStore } from "../../types";
-import { closeSql, getSql, type Sql } from "./client";
+import { closeSql, getPool, type PoolGate, type Sql } from "./client";
 import { PostgresBuildStore } from "./build-store";
 import { PostgresRunStore } from "./run-store";
 import { PostgresSchedulerStore } from "./scheduler-store";
@@ -34,7 +34,16 @@ import { dropAll, migrate, truncateAll } from "./schema";
 export { PostgresRunStore } from "./run-store";
 export { PostgresBuildStore } from "./build-store";
 export { PostgresSchedulerStore } from "./scheduler-store";
-export { PostgresConfigError, createSql, getSql, closeSql } from "./client";
+export {
+  PostgresConfigError,
+  createSql,
+  getSql,
+  getPool,
+  closeSql,
+  createPoolGate,
+  DEFAULT_POOL_MAX,
+  type PoolGate,
+} from "./client";
 export { PG_SCHEMA_VERSION, migrate, dropAll, truncateAll } from "./schema";
 
 export interface PostgresStores {
@@ -58,13 +67,20 @@ export interface PostgresStores {
  * forget one — where forgetting one means exactly the race this exists to close,
  * on whichever method happens to be called first on a cold start.
  */
-function schemaGuarded<T extends object>(store: T, ready: Promise<void>): T {
+function schemaGuarded<T extends object>(store: T, ready: Promise<void>, gate: PoolGate): T {
   return new Proxy(store, {
     get(target, property, receiver) {
       const value = Reflect.get(target, property, receiver);
       if (typeof value !== "function") return value;
       return (...args: unknown[]) =>
-        ready.then(() => (value as (...a: unknown[]) => unknown).apply(target, args));
+        // The gate is INSIDE the ready.then, so waiting for the schema does not
+        // hold a connection slot. Applied with `target` rather than `receiver`,
+        // which also means a store method calling another method on `this`
+        // bypasses the proxy — so nothing here can deadlock against itself by
+        // asking for a second slot while holding the first.
+        ready.then(() =>
+          gate.run(async () => (value as (...a: unknown[]) => unknown).apply(target, args)),
+        );
     },
   });
 }
@@ -112,13 +128,15 @@ function migrationFor(connectionString: string, sql: Sql): Promise<void> {
 }
 
 export function createPostgresStores(connectionString: string): PostgresStores {
-  const sql: Sql = getSql(connectionString);
+  // One pool and ONE gate for all three stores: they share the connections, so
+  // a gate per store would permit three times the limit it advertises.
+  const { sql, gate } = getPool(connectionString);
   const ready = migrationFor(connectionString, sql);
 
   return {
-    runStore: schemaGuarded(new PostgresRunStore(sql), ready),
-    buildStore: schemaGuarded(new PostgresBuildStore(sql), ready),
-    schedulerStore: schemaGuarded(new PostgresSchedulerStore(sql), ready),
+    runStore: schemaGuarded(new PostgresRunStore(sql), ready, gate),
+    buildStore: schemaGuarded(new PostgresBuildStore(sql), ready, gate),
+    schedulerStore: schemaGuarded(new PostgresSchedulerStore(sql), ready, gate),
     ready,
     async reset() {
       await ready;

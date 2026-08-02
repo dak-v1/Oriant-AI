@@ -20,7 +20,7 @@
  * Run it with: npm run verify:pg
  */
 
-import { createPostgresStores, closeSql } from "../persist/pg";
+import { createPostgresStores, closeSql, DEFAULT_POOL_MAX } from "../persist/pg";
 import { InMemoryRunStore } from "../store";
 import type {
   ApprovalRequest,
@@ -363,6 +363,71 @@ export async function runPGVerification(): Promise<Check[]> {
         same,
         `memory=${a?.status}/${a?.cursor}/${a?.events.length} postgres=${b?.status}/${b?.cursor}/${b?.events.length}`,
       );
+    }
+
+    /* ═══ PG-12 fanning out wider than the pool does not wedge it ═══
+       The regression this exists for cost a day. `GET /api/runtime/agents`
+       issues six concurrent store reads against a pool of five; the first
+       request answered and EVERY REQUEST AFTER IT HUNG FOREVER — no error, no
+       timeout, nothing in the log. postgres.js does not recover a query it had
+       to queue for a connection, so `createPoolGate` keeps in-flight work at or
+       below `max` and the driver is never asked to queue.
+
+       Two batches, because one proves nothing: the wedge appears on the SECOND
+       batch, when the first has already exhausted the pool. The fan-out is four
+       times the pool so the check keeps its teeth if `max` is ever raised.
+
+       PLAIN READS, NOT `listRuns()`. This check was written against `listRuns`
+       first and passed with the gate deliberately removed — no teeth at all.
+       `listRuns` opens a transaction, and `sql.begin` waits for a connection
+       CORRECTLY; it is the plain tagged-template query that does not come back
+       from postgres.js's queue. Verified by bypassing the gate: 20 concurrent
+       transactions are fine, 6 concurrent plain reads wedge on the second
+       batch, every time. So the fan-out here must stay non-transactional or it
+       silently stops testing anything. */
+    {
+      const wide = DEFAULT_POOL_MAX * 4;
+      // A FRESH handle, not the suite's top-level `stores`. PG-8 proves
+      // durability across a restart by calling `closeSql()`, which ends the
+      // pool every earlier handle points at — reusing one here fails with
+      // CONNECTION_ENDED and looks exactly like the wedge this check hunts.
+      const fanned = createPostgresStores(url);
+      const batch = () =>
+        Promise.all(
+          Array.from({ length: wide }, (_, i) =>
+            i % 2 === 0
+              ? fanned.runStore.listPendingApprovals()
+              : fanned.schedulerStore.listAgentStates(),
+          ),
+        );
+
+      const timeout = <T,>(p: Promise<T>, ms: number) =>
+        Promise.race([
+          p,
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`no answer within ${ms}ms`)), ms),
+          ),
+        ]);
+
+      let detail: string;
+      let survived = false;
+      const started = Date.now();
+      try {
+        await timeout(batch(), 30_000);
+        const second = Date.now();
+        await timeout(batch(), 30_000);
+        survived = true;
+        detail =
+          `two batches of ${wide} concurrent reads on a pool of ${DEFAULT_POOL_MAX} ` +
+          `answered in ${second - started}ms and ${Date.now() - second}ms`;
+      } catch (err) {
+        detail =
+          `${wide} concurrent reads on a pool of ${DEFAULT_POOL_MAX}: ` +
+          `${err instanceof Error ? err.message : String(err)} — the pool is wedged, ` +
+          `which is exactly the bug createPoolGate exists to prevent`;
+      }
+
+      add(`PG-12 ${DEFAULT_POOL_MAX * 4} concurrent reads on a pool of ${DEFAULT_POOL_MAX} do not wedge it`, survived, detail);
     }
   } finally {
     /* Remove only what this run created. The suite must be safe against a

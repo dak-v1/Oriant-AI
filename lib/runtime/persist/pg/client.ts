@@ -134,10 +134,85 @@ export function createSql(options: PostgresClientOptions): Sql {
   }) as Sql;
 }
 
+/** The pool size every gate below is sized against. See `POOL_GATE` doc. */
+export const DEFAULT_POOL_MAX = 5;
+
+/* ═══════════════════════ The concurrency gate ═══════════════════════ */
+
+/**
+ * NEVER LET postgres.js QUEUE. This is not a tuning knob; it is a correctness
+ * requirement, and it was found the hard way.
+ *
+ * Issuing more concurrent queries than the pool has connections WEDGES THE POOL
+ * PERMANENTLY against the Supabase transaction pooler. Measured, with everything
+ * else held constant:
+ *
+ *   max=5,  6 concurrent  → first batch answers, the SECOND never returns
+ *   max=5,  6 concurrent, no transaction anywhere → same
+ *   max=5, 12 concurrent  → the FIRST batch never returns
+ *   max=6,  6 concurrent  → fine, indefinitely
+ *   max=10, 6 concurrent  → fine, indefinitely
+ *
+ * The symptom is the worst kind: the query that overflows does not fail, and
+ * neither does the batch that overflows it. Everything answers once, and then
+ * the next caller hangs forever with no error, no timeout and nothing in the
+ * log. `GET /api/runtime/agents` — six concurrent store reads on a pool of five
+ * — answered on a cold server and hung on every request after it.
+ *
+ * The transaction is NOT the cause; the table above holds with plain SELECTs.
+ * The cause is postgres.js's own queue: a query that has to wait for a
+ * connection is attached to one in a state it does not recover from. So this
+ * gate keeps the number of in-flight queries at or below `max`, which means
+ * postgres.js is never asked to queue and never reaches that path.
+ *
+ * WHY HERE AND NOT "just raise max". Raising it moves the cliff rather than
+ * removing it: the next route that fans out one call wider falls off the same
+ * edge, with the same silent symptom, and nothing in the type system or the
+ * test suite would say so. A gate makes any fan-out safe at any pool size —
+ * 40 concurrent through a gate of 8 was measured clean over six rounds.
+ *
+ * Queueing HERE is safe in a way queueing inside postgres.js is not, because
+ * this queue hands work to a driver that is idle by construction.
+ */
+export interface PoolGate {
+  /** Runs `fn` once a connection slot is free. */
+  run<T>(fn: () => Promise<T>): Promise<T>;
+  /** In-flight count. Diagnostics only. */
+  active(): number;
+}
+
+export function createPoolGate(limit: number): PoolGate {
+  let active = 0;
+  const waiting: Array<() => void> = [];
+
+  const release = () => {
+    active -= 1;
+    const next = waiting.shift();
+    if (next) next();
+  };
+
+  return {
+    async run<T>(fn: () => Promise<T>): Promise<T> {
+      if (active >= limit) {
+        await new Promise<void>((resolve) => waiting.push(resolve));
+      }
+      active += 1;
+      try {
+        return await fn();
+      } finally {
+        // `finally`, so a throwing query returns its slot. A leaked slot here
+        // would reproduce by hand exactly the deadlock this gate prevents.
+        release();
+      }
+    },
+    active: () => active,
+  };
+}
+
 /* ═══════════════════════ Process-wide handle ═══════════════════════ */
 
 interface SqlGlobal {
-  __oriantSql?: { key: string; sql: Sql };
+  __oriantSql?: { key: string; sql: Sql; gate: PoolGate };
 }
 
 /**
@@ -145,13 +220,24 @@ interface SqlGlobal {
  * DATABASE_URL in dev replaces the pool rather than silently reusing the old one.
  */
 export function getSql(connectionString: string): Sql {
+  return getPool(connectionString).sql;
+}
+
+/**
+ * The pool AND the gate that belongs to it. They are memoised together because
+ * a gate sized against a different pool than the one it guards is no gate at
+ * all — and because all three stores share one pool, so they must share one
+ * gate or the limit is three times what it says.
+ */
+export function getPool(connectionString: string): { sql: Sql; gate: PoolGate } {
   const g = globalThis as unknown as SqlGlobal;
   if (g.__oriantSql && g.__oriantSql.key === connectionString) {
-    return g.__oriantSql.sql;
+    return { sql: g.__oriantSql.sql, gate: g.__oriantSql.gate };
   }
   const sql = createSql({ connectionString });
-  g.__oriantSql = { key: connectionString, sql };
-  return sql;
+  const gate = createPoolGate(DEFAULT_POOL_MAX);
+  g.__oriantSql = { key: connectionString, sql, gate };
+  return { sql, gate };
 }
 
 export async function closeSql(): Promise<void> {
