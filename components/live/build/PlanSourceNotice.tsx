@@ -31,7 +31,6 @@
 
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, CheckCircle2, HelpCircle, Loader2 } from "lucide-react";
-import { useAutopilot } from "@/lib/mock/autopilot";
 import type { PlanSourceView } from "./api";
 import styles from "./build.module.css";
 
@@ -68,19 +67,18 @@ export default function PlanSourceNotice({
   checking: boolean;
 }) {
   /*
-   * HIDDEN WHILE PRESENTING, and only then. "Hide sample-data labels" in the
-   * top bar sets this, and so does "Do it for me" — both mean "somebody is
-   * watching this screen, keep the scaffolding out of shot".
+   * NOT HIDEABLE, AND THAT IS THE POINT.
    *
-   * It hides the NOTICE, never the fact: the runtime is still serving whatever
-   * plan it was serving, the Activation gate still refuses on the same
-   * evidence, and turning the labels back on says so again. This is the same
-   * switch that already suppresses the demo chrome elsewhere, so a notice that
-   * ignored it was the one piece of scaffolding that could not be put away.
+   * This notice was briefly suppressed while "presenting" — the same switch
+   * that puts demo chrome away — on the reasoning that it is scaffolding and
+   * somebody is watching. That reasoning is exactly inverted. A viewer is the
+   * person most likely to mistake a sample workforce for a real one, and the
+   * page kept asserting "Nothing on this page is made up" with the one sentence
+   * that qualifies it removed. Chrome that says which lane you are in is
+   * scaffolding; a sentence that says these agents are not yours is a fact
+   * about what is on screen, and a fact does not become untrue because someone
+   * is looking.
    */
-  const presenting = useAutopilot((s) => s.presentation);
-  if (presenting) return null;
-
   if (state.kind === "unread") {
     return (
       <section className={`${styles.notice} ${styles.noticeUnknown}`} aria-busy={checking}>
