@@ -84,11 +84,19 @@ export function smokeScenariosFor(agent: AgentSpec): SandboxScenario[] {
 
       return {
         id: `smoke-${agent.id}-${workflow.id}`,
-        name: `${agent.name}: prepares and stops`,
+        // THE WORKFLOW IS IN THE NAME because the id alone is not what a person
+        // reads. This was `${agent.name}: prepares and stops` — fine while an
+        // agent contributed one scenario, and wrong the moment the generator
+        // started sweeping EVERY enabled workflow: a two-workflow agent
+        // produced two rows with the same name, the same agent chip and the
+        // same description, so the sandbox list showed a test twice and an
+        // owner could not tell which one they had just run.
+        name: `${agent.name}: ${workflow.name ?? workflow.id} prepares and stops`,
         description:
-          `Generated because no scenario was written for ${agent.name}. It proves ` +
-          `the agent runs its workflow, stops before acting, and touches nothing ` +
-          `outside what the plan granted. It does not prove the agent does its job well.`,
+          `Generated because no scenario was written for ${agent.name}'s ` +
+          `"${workflow.name ?? workflow.id}" workflow. It proves the agent runs ` +
+          `that workflow, stops before acting, and touches nothing outside what ` +
+          `the plan granted. It does not prove the agent does its job well.`,
         category: SMOKE_CATEGORY,
         agentId: agent.id,
         workflowId: workflow.id,

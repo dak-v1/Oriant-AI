@@ -126,6 +126,16 @@ export default function ScenarioRail({
                 aria-pressed={isSelected}
                 disabled={locked && !isSelected}
                 onClick={() => onSelect(entry.id)}
+                /* An explicit name because the visible text lives in nested
+                   spans, which the accessibility tree flattened to nothing —
+                   the rows read as bare unnamed buttons to a screen reader and
+                   to anything driving the page by role. The agent id is part of
+                   it because a generated suite repeats the agent's name across
+                   its workflows. */
+                aria-label={
+                  `${entry.name}${entry.agentId !== null ? ` (${entry.agentId})` : ""} — ` +
+                  `${meta.label}${entry.note !== undefined ? `, ${entry.note}` : ""}`
+                }
               >
                 <span className="oa-radio" aria-hidden />
                 <span className={styles.railBody}>
