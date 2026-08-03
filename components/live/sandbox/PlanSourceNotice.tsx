@@ -41,6 +41,7 @@
 
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, CheckCircle2, HelpCircle, Loader2 } from "lucide-react";
+import { useAutopilot } from "@/lib/mock/autopilot";
 import type { PlanSourceView } from "./api";
 import styles from "./sandbox.module.css";
 
@@ -76,6 +77,12 @@ export default function PlanSourceNotice({
   /** A provenance read is in flight. Only changes the wording, never the verdict. */
   checking: boolean;
 }) {
+  /* Hidden while presenting — see the identical guard in
+     components/live/build/PlanSourceNotice.tsx. The notice goes, the fact
+     stays: the suite is still generated from whatever plan the runtime holds. */
+  const presenting = useAutopilot((s) => s.presentation);
+  if (presenting) return null;
+
   if (state.kind === "unread") {
     return (
       <section className={`${styles.notice} ${styles.noticeUnknown}`} aria-busy={checking}>

@@ -32,6 +32,7 @@
  */
 
 import { Info, ShieldQuestion, TriangleAlert } from "lucide-react";
+import { useAutopilot } from "@/lib/mock/autopilot";
 import type { LiveCountsView, PlanSourceView } from "./api";
 import styles from "./deploy.module.css";
 
@@ -53,6 +54,14 @@ export default function PlanSourceNotice({
   /** What is RUNNING, when a read said. Null when nobody has been told. */
   live: LiveCountsView | null;
 }) {
+  /* Hidden while presenting — see the identical guard in
+     components/live/build/PlanSourceNotice.tsx. Worth restating HERE, because
+     this is the screen with the go-live button: hiding the label does not
+     change what the button does. It still activates whatever plan the runtime
+     holds, and the gates still judge that plan on its own evidence. */
+  const presenting = useAutopilot((s) => s.presentation);
+  if (presenting) return null;
+
   if (plan === null) {
     return (
       <section className={`${styles.sourceNotice} ${styles.sourceNoticeCalm}`}>

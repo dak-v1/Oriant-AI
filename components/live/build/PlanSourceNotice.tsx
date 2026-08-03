@@ -31,6 +31,7 @@
 
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, CheckCircle2, HelpCircle, Loader2 } from "lucide-react";
+import { useAutopilot } from "@/lib/mock/autopilot";
 import type { PlanSourceView } from "./api";
 import styles from "./build.module.css";
 
@@ -66,6 +67,20 @@ export default function PlanSourceNotice({
   /** A provenance read is in flight. Only changes the wording, never the verdict. */
   checking: boolean;
 }) {
+  /*
+   * HIDDEN WHILE PRESENTING, and only then. "Hide sample-data labels" in the
+   * top bar sets this, and so does "Do it for me" — both mean "somebody is
+   * watching this screen, keep the scaffolding out of shot".
+   *
+   * It hides the NOTICE, never the fact: the runtime is still serving whatever
+   * plan it was serving, the Activation gate still refuses on the same
+   * evidence, and turning the labels back on says so again. This is the same
+   * switch that already suppresses the demo chrome elsewhere, so a notice that
+   * ignored it was the one piece of scaffolding that could not be put away.
+   */
+  const presenting = useAutopilot((s) => s.presentation);
+  if (presenting) return null;
+
   if (state.kind === "unread") {
     return (
       <section className={`${styles.notice} ${styles.noticeUnknown}`} aria-busy={checking}>
